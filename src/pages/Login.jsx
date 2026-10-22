@@ -2,41 +2,69 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Breadcrumb from "../components/Breadcrumb";
 import { useToast } from "../context/ToastContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const [isRegister, setIsRegister] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
+    phone: "",
+    businessName: "",
+    city: "",
   });
+
   const { addToast } = useToast();
+  const { login, register } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isRegister) {
-      if (formData.password !== formData.confirmPassword) {
-        addToast("Passwords do not match!", "error");
-        return;
+    setIsSubmitting(true);
+
+    try {
+      if (isRegister) {
+        if (formData.password !== formData.confirmPassword) {
+          addToast("Passwords do not match!", "error");
+          setIsSubmitting(false);
+          return;
+        }
+
+        const res = await register({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone || "+91 9999999999",
+          businessName: formData.businessName || formData.name,
+          city: formData.city || "Mumbai",
+        });
+
+        addToast(res.message || "Registration submitted! Pending administrator approval.", "info");
+        navigate("/account");
+      } else {
+        const res = await login(formData.email, formData.password);
+        addToast(`Welcome back, ${res.data.user.name}!`, "success");
+        navigate("/account");
       }
-      addToast("Account created successfully! Welcome to SPARE PRO.", "success");
-    } else {
-      addToast("Logged in successfully! Welcome back.", "success");
+    } catch (err) {
+      addToast(err.message || "Authentication error", "error");
+    } finally {
+      setIsSubmitting(false);
     }
-    navigate("/account");
   };
 
   return (
     <>
       <Breadcrumb
-        title={isRegister ? "Create Account" : "Customer Login"}
+        title={isRegister ? "Create Reseller Account" : "Platform Login"}
         links={[{ label: isRegister ? "Register" : "Login" }]}
       />
 
       <div className="login-page py-5">
-        <div className="container" style={{ maxWidth: "520px" }}>
+        <div className="container" style={{ maxWidth: "560px" }}>
           <div className="bg-white p-4 p-md-5 rounded-4 shadow-sm border">
             {/* Tabs Toggle */}
             <div className="d-flex border rounded-pill p-1 mb-4 bg-light">
@@ -56,30 +84,71 @@ export default function Login() {
                 }`}
                 onClick={() => setIsRegister(true)}
               >
-                Register
+                Register Reseller
               </button>
             </div>
 
-            <h4 className="fw-bold mb-3">{isRegister ? "Join SPARE PRO Reseller Network" : "Welcome Back"}</h4>
+            <h4 className="fw-bold mb-2">
+              {isRegister ? "Join SPARE PRO Reseller Network" : "Welcome Back"}
+            </h4>
             <p className="text-muted small mb-4">
               {isRegister
-                ? "Create a reseller account to access tier pricing, bulk shipping discounts, and live inventory feeds."
-                : "Sign in with your reseller email and password to access your dashboard and wholesale orders."}
+                ? "Register your business to access wholesale margins, live inventory, and dropship fulfillment."
+                : "Sign in with your reseller or administrator credentials to manage your account."}
             </p>
 
             <form onSubmit={handleSubmit}>
               {isRegister && (
-                <div className="mb-3">
-                  <label className="form-label small fw-semibold">Full Name *</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Jane Doe"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
-                </div>
+                <>
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold">Full Name *</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Rahul Sharma"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="row g-2 mb-3">
+                    <div className="col-sm-6">
+                      <label className="form-label small fw-semibold">Phone Number *</label>
+                      <input
+                        type="tel"
+                        className="form-control"
+                        placeholder="+91 9876543210"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="col-sm-6">
+                      <label className="form-label small fw-semibold">Business Name *</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Apex Retailers"
+                        value={formData.businessName}
+                        onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold">City / Region *</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Mumbai, Maharashtra"
+                      value={formData.city}
+                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      required
+                    />
+                  </div>
+                </>
               )}
 
               <div className="mb-3">
@@ -121,29 +190,62 @@ export default function Login() {
               )}
 
               {!isRegister && (
-                <div className="d-flex justify-content-between align-items-center mb-4 small">
-                  <div className="form-check">
-                    <input className="form-check-input" type="checkbox" id="rememberMe" defaultChecked />
-                    <label className="form-check-label text-muted" htmlFor="rememberMe">
-                      Remember me
-                    </label>
+                <>
+                  <div className="d-flex gap-2 mb-3">
+                    <button
+                      type="button"
+                      id="demoAdminBtn"
+                      className="btn btn-sm btn-outline-dark rounded-pill flex-fill"
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          email: "admin@sparepro.com",
+                          password: "Admin@SparePro2026!",
+                        });
+                      }}
+                    >
+                      <i className="fa-solid fa-user-shield me-1"></i> Fill Admin Demo
+                    </button>
+                    <button
+                      type="button"
+                      id="demoResellerBtn"
+                      className="btn btn-sm btn-outline-dark rounded-pill flex-fill"
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          email: "reseller@sparepro.com",
+                          password: "Reseller@2026!",
+                        });
+                      }}
+                    >
+                      <i className="fa-solid fa-store me-1"></i> Fill Reseller Demo
+                    </button>
                   </div>
-                  <a
-                    href="#forgot"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      addToast("Password reset instructions sent to your email", "info");
-                    }}
-                    className="text-decoration-none fw-semibold"
-                    style={{ color: "var(--accent-color, #FA7EAA)" }}
-                  >
-                    Forgot Password?
-                  </a>
-                </div>
+                  <div className="d-flex justify-content-between align-items-center mb-4 small">
+                    <div className="form-check">
+                      <input className="form-check-input" type="checkbox" id="rememberMe" defaultChecked />
+                      <label className="form-check-label text-muted" htmlFor="rememberMe">
+                        Remember me
+                      </label>
+                    </div>
+                  </div>
+                </>
               )}
 
-              <button type="submit" className="btn btn-dark w-100 rounded-pill py-3 fw-semibold mb-3">
-                {isRegister ? "Create Account" : "Sign In"}
+              <button
+                type="submit"
+                className="btn btn-dark w-100 rounded-pill py-3 fw-semibold mb-3 shadow-sm"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <span>
+                    <i className="fa-solid fa-spinner fa-spin me-2"></i> Processing...
+                  </span>
+                ) : isRegister ? (
+                  "Submit Reseller Application"
+                ) : (
+                  "Sign In"
+                )}
               </button>
 
               <div className="text-center small text-muted">
@@ -160,13 +262,13 @@ export default function Login() {
                   </span>
                 ) : (
                   <span>
-                    New to SPARE PRO?{" "}
+                    Want to sell with us?{" "}
                     <button
                       type="button"
                       className="btn btn-link p-0 fw-semibold text-dark text-decoration-none"
                       onClick={() => setIsRegister(true)}
                     >
-                      Create an Account
+                      Apply for Reseller Account
                     </button>
                   </span>
                 )}

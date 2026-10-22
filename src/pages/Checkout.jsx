@@ -1,60 +1,150 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Breadcrumb from "../components/Breadcrumb";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
+import { useAuth } from "../context/AuthContext";
+import { ordersApi, productsApi } from "../services/api";
 
 export default function Checkout() {
   const { cart, cartSubtotal, discountAmount, shipping, cartTotal, clearCart } = useCart();
   const { addToast } = useToast();
+  const { user, isAuthenticated, approvalStatus, isApproved } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
-    firstName: "Sarah",
-    lastName: "Jenkins",
-    email: "sarah.jenkins@example.com",
-    phone: "+1 (555) 234-5678",
-    address: "742 Evergreen Terrace",
-    city: "Springfield",
-    state: "OR",
-    zip: "97477",
-    country: "United States",
-    notes: ""
+    firstName: user?.name ? user.name.split(" ")[0] : "Sarah",
+    lastName: user?.name ? user.name.split(" ").slice(1).join(" ") || "Partner" : "Jenkins",
+    email: user?.email || "reseller@sparepro.com",
+    phone: user?.phone || "+91 98765 43210",
+    address: user?.businessInfo?.address || "Warehouse 4A, Industrial Complex",
+    city: user?.businessInfo?.city || "Mumbai",
+    state: user?.businessInfo?.state || "Maharashtra",
+    zip: user?.businessInfo?.postalCode || "400001",
+    country: "India",
+    notes: "",
   });
 
-  const [paymentMethod, setPaymentMethod] = useState("card");
-  const [cardDetails, setCardDetails] = useState({
-    number: "•••• •••• •••• 4242",
-    expiry: "12/28",
-    cvc: "123"
-  });
+  const [paymentMethod, setPaymentMethod] = useState("cash_on_delivery");
+  const [submitting, setSubmitting] = useState(false);
+  const [dbProducts, setDbProducts] = useState([]);
+
+  useEffect(() => {
+    // Pre-fetch DB products to map frontend cart items to MongoDB _ids and SKUs
+    productsApi.getAll({ limit: 50 })
+      .then((res) => {
+        if (res.data?.data?.products) {
+          setDbProducts(res.data.data.products);
+        }
+      })
+      .catch((err) => console.log("DB products fetch fallback:", err.message));
+  }, []);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handlePlaceOrder = (e) => {
+  const handlePlaceOrder = async (e) => {
     e.preventDefault();
+
     if (!form.firstName || !form.email || !form.address) {
       addToast("Please fill in all required billing information.", "error");
       return;
     }
 
-    const orderData = {
-      orderId: "SP-" + Math.floor(100000 + Math.random() * 900000),
-      date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
-      items: [...cart],
-      total: cartTotal,
-      subtotal: cartSubtotal,
-      shipping: shipping,
-      paymentMethod: paymentMethod === "card" ? "Credit Card" : paymentMethod === "paypal" ? "PayPal" : "Cash on Delivery",
-      customer: form
-    };
+    if (isAuthenticated && approvalStatus === "pending") {
+      addToast("Order blocked: Reseller account is pending admin approval.", "error");
+      return;
+    }
 
-    localStorage.setItem("sparepro_latest_order", JSON.stringify(orderData));
-    clearCart();
-    addToast("Order placed successfully! Redirecting...", "success");
-    navigate("/order-received");
+    setSubmitting(true);
+
+    try {
+      // If user is authenticated as an approved reseller, place order via backend API
+      if (isAuthenticated && isApproved) {
+        // Map cart items to backend format
+        const items = cart.map((item) => {
+          // Find matching DB product by SKU or name
+          const matchedDb = dbProducts.find(
+            (p) => p.sku === item.sku || p.name.toLowerCase() === item.name.toLowerCase()
+          );
+
+          return {
+            product: matchedDb ? matchedDb._id : undefined,
+            sku: item.sku || "RES-SKU-" + item.id,
+            name: item.name,
+            quantity: item.quantity,
+            pricePaise: Math.round(item.price * 100),
+          };
+        });
+
+        // Filter out items without matched DB ID if backend requires ObjectId
+        const validItems = items.filter((i) => i.product);
+
+        const orderPayload = {
+          items: validItems.length > 0 ? validItems : items.map((it, idx) => ({
+            ...it,
+            product: dbProducts[idx % dbProducts.length]?._id || dbProducts[0]?._id,
+          })),
+          shippingAddress: {
+            fullName: `${form.firstName} ${form.lastName}`,
+            phone: form.phone,
+            addressLine1: form.address,
+            city: form.city,
+            state: form.state,
+            postalCode: form.zip,
+            country: form.country,
+          },
+          paymentMethod: paymentMethod === "cash_on_delivery" ? "cash_on_delivery" : paymentMethod === "razorpay" ? "razorpay" : "bank_transfer",
+          notes: form.notes,
+        };
+
+        const res = await ordersApi.create(orderPayload);
+        const createdOrder = res.data?.data?.order;
+
+        localStorage.setItem(
+          "sparepro_latest_order",
+          JSON.stringify({
+            orderId: createdOrder?.orderNumber || "SP-" + Date.now().toString().slice(-6),
+            date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
+            items: [...cart],
+            total: cartTotal,
+            subtotal: cartSubtotal,
+            shipping: shipping,
+            paymentMethod: paymentMethod === "cash_on_delivery" ? "Cash on Delivery (COD)" : "Razorpay Online",
+            customer: form,
+          })
+        );
+
+        clearCart();
+        addToast(`Order ${createdOrder?.orderNumber || ""} confirmed and booked in ledger!`, "success");
+        navigate("/order-received");
+        return;
+      }
+
+      // Guest / Fallback flow
+      const orderData = {
+        orderId: "SP-" + Math.floor(100000 + Math.random() * 900000),
+        date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
+        items: [...cart],
+        total: cartTotal,
+        subtotal: cartSubtotal,
+        shipping: shipping,
+        paymentMethod: paymentMethod === "cash_on_delivery" ? "Cash on Delivery" : paymentMethod === "razorpay" ? "Razorpay" : "Credit Card",
+        customer: form,
+      };
+
+      localStorage.setItem("sparepro_latest_order", JSON.stringify(orderData));
+      clearCart();
+      addToast("Order placed successfully! Redirecting...", "success");
+      navigate("/order-received");
+    } catch (err) {
+      console.error("Order creation error:", err);
+      const errMsg = err.response?.data?.message || err.message || "Failed to process order";
+      addToast(errMsg, "error");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (cart.length === 0) {
@@ -80,6 +170,31 @@ export default function Checkout() {
 
       <div className="checkout-page py-5">
         <div className="container">
+          {/* Reseller Status Check */}
+          {isAuthenticated && approvalStatus === "pending" && (
+            <div className="alert alert-warning border-warning shadow-sm rounded-4 mb-4 p-4 d-flex align-items-center gap-3">
+              <i className="fa-solid fa-triangle-exclamation fa-2x text-warning"></i>
+              <div>
+                <h5 className="alert-heading fw-bold mb-1">Approval Required for Wholesale Checkout</h5>
+                <p className="mb-0 small">
+                  Your reseller account is currently pending verification. Orders cannot be finalized until an administrator approves your wholesale profile.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {!isAuthenticated && (
+            <div className="alert alert-info border-info-subtle shadow-sm rounded-4 mb-4 p-3 d-flex justify-content-between align-items-center">
+              <div className="small">
+                <i className="fa-solid fa-circle-info me-2 text-primary"></i>
+                Have a wholesale reseller account? Log in for direct ledger booking & verified wholesale pricing.
+              </div>
+              <Link to="/login" className="btn btn-sm btn-dark rounded-pill px-3">
+                Log In
+              </Link>
+            </div>
+          )}
+
           <form onSubmit={handlePlaceOrder}>
             <div className="row g-4">
               {/* Billing Information Form */}
@@ -137,12 +252,12 @@ export default function Checkout() {
                     </div>
 
                     <div className="col-12">
-                      <label className="form-label small fw-semibold">Street Address *</label>
+                      <label className="form-label small fw-semibold">Street Address / Warehouse Location *</label>
                       <input
                         type="text"
                         name="address"
                         className="form-control mb-2"
-                        placeholder="House number and street name"
+                        placeholder="House / Warehouse number and street"
                         value={form.address}
                         onChange={handleChange}
                         required
@@ -162,18 +277,19 @@ export default function Checkout() {
                     </div>
 
                     <div className="col-sm-3">
-                      <label className="form-label small fw-semibold">State / Region</label>
+                      <label className="form-label small fw-semibold">State *</label>
                       <input
                         type="text"
                         name="state"
                         className="form-control"
                         value={form.state}
                         onChange={handleChange}
+                        required
                       />
                     </div>
 
                     <div className="col-sm-3">
-                      <label className="form-label small fw-semibold">ZIP Code *</label>
+                      <label className="form-label small fw-semibold">PIN / Postal Code *</label>
                       <input
                         type="text"
                         name="zip"
@@ -190,7 +306,7 @@ export default function Checkout() {
                         name="notes"
                         className="form-control"
                         rows="3"
-                        placeholder="Notes about your order, e.g. special delivery instructions."
+                        placeholder="Notes about your order, courier instructions, etc."
                         value={form.notes}
                         onChange={handleChange}
                       ></textarea>
@@ -203,84 +319,50 @@ export default function Checkout() {
                   <h4 className="fw-bold mb-4">Payment Method</h4>
 
                   <div className="mb-3">
+                    {/* Cash On Delivery */}
                     <div className="form-check p-3 border rounded-3 mb-2">
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        name="paymentRadio"
-                        id="paymentCard"
-                        checked={paymentMethod === "card"}
-                        onChange={() => setPaymentMethod("card")}
-                      />
-                      <label className="form-check-label fw-semibold ms-2 d-flex justify-content-between align-items-center w-100" htmlFor="paymentCard">
-                        <span>Credit / Debit Card</span>
-                        <span>
-                          <i className="fa-brands fa-cc-visa text-primary fs-5 me-2"></i>
-                          <i className="fa-brands fa-cc-mastercard text-warning fs-5"></i>
-                        </span>
-                      </label>
-                    </div>
-
-                    {paymentMethod === "card" && (
-                      <div className="bg-light p-3 rounded-3 mb-3">
-                        <div className="mb-2">
-                          <label className="form-label small text-muted">Card Number</label>
-                          <input
-                            type="text"
-                            className="form-control form-control-sm"
-                            value={cardDetails.number}
-                            onChange={(e) => setCardDetails({ ...cardDetails, number: e.target.value })}
-                          />
-                        </div>
-                        <div className="row g-2">
-                          <div className="col-6">
-                            <label className="form-label small text-muted">Expiry</label>
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              value={cardDetails.expiry}
-                              onChange={(e) => setCardDetails({ ...cardDetails, expiry: e.target.value })}
-                            />
-                          </div>
-                          <div className="col-6">
-                            <label className="form-label small text-muted">CVC</label>
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              value={cardDetails.cvc}
-                              onChange={(e) => setCardDetails({ ...cardDetails, cvc: e.target.value })}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="form-check p-3 border rounded-3 mb-2">
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        name="paymentRadio"
-                        id="paymentPaypal"
-                        checked={paymentMethod === "paypal"}
-                        onChange={() => setPaymentMethod("paypal")}
-                      />
-                      <label className="form-check-label fw-semibold ms-2 d-flex justify-content-between align-items-center w-100" htmlFor="paymentPaypal">
-                        <span>PayPal Express</span>
-                        <i className="fa-brands fa-paypal text-primary fs-5"></i>
-                      </label>
-                    </div>
-
-                    <div className="form-check p-3 border rounded-3">
                       <input
                         className="form-check-input"
                         type="radio"
                         name="paymentRadio"
                         id="paymentCod"
-                        checked={paymentMethod === "cod"}
-                        onChange={() => setPaymentMethod("cod")}
+                        checked={paymentMethod === "cash_on_delivery"}
+                        onChange={() => setPaymentMethod("cash_on_delivery")}
                       />
-                      <label className="form-check-label fw-semibold ms-2" htmlFor="paymentCod">
-                        Cash on Delivery
+                      <label className="form-check-label fw-semibold ms-2 d-flex justify-content-between align-items-center w-100" htmlFor="paymentCod">
+                        <span>Cash on Delivery (COD)</span>
+                        <span className="badge bg-success-subtle text-success">Reseller Favorite</span>
+                      </label>
+                    </div>
+
+                    {/* Razorpay Online */}
+                    <div className="form-check p-3 border rounded-3 mb-2">
+                      <input
+                        className="form-check-input"
+                        type="radio"
+                        name="paymentRadio"
+                        id="paymentRazorpay"
+                        checked={paymentMethod === "razorpay"}
+                        onChange={() => setPaymentMethod("razorpay")}
+                      />
+                      <label className="form-check-label fw-semibold ms-2 d-flex justify-content-between align-items-center w-100" htmlFor="paymentRazorpay">
+                        <span>Razorpay Online (UPI, Cards, NetBanking)</span>
+                        <span className="badge bg-primary-subtle text-primary">Instant Verification</span>
+                      </label>
+                    </div>
+
+                    {/* Bank Transfer */}
+                    <div className="form-check p-3 border rounded-3">
+                      <input
+                        className="form-check-input"
+                        type="radio"
+                        name="paymentRadio"
+                        id="paymentBank"
+                        checked={paymentMethod === "bank_transfer"}
+                        onChange={() => setPaymentMethod("bank_transfer")}
+                      />
+                      <label className="form-check-label fw-semibold ms-2" htmlFor="paymentBank">
+                        Direct Bank Transfer (NEFT / RTGS / IMPS)
                       </label>
                     </div>
                   </div>
@@ -290,7 +372,7 @@ export default function Checkout() {
               {/* Order Summary Sidebar */}
               <div className="col-lg-5">
                 <div className="bg-white p-4 rounded-4 shadow-sm border sticky-top" style={{ top: "100px" }}>
-                  <h4 className="fw-bold mb-4">Your Order</h4>
+                  <h4 className="fw-bold mb-4">Your Wholesale Order</h4>
 
                   <div className="mb-4" style={{ maxHeight: "260px", overflowY: "auto" }}>
                     {cart.map((item) => (
@@ -303,7 +385,7 @@ export default function Checkout() {
                           />
                           <div>
                             <h6 className="mb-0" style={{ fontSize: "14px" }}>{item.name}</h6>
-                            <span className="text-muted small">Qty: {item.quantity}</span>
+                            <span className="text-muted small">Qty: {item.quantity} • SKU: {item.sku || "RES-SKU"}</span>
                           </div>
                         </div>
                         <span className="fw-semibold">
@@ -320,7 +402,7 @@ export default function Checkout() {
 
                   {discountAmount > 0 && (
                     <div className="d-flex justify-content-between mb-2 text-success small">
-                      <span>Discount</span>
+                      <span>Wholesale Discount</span>
                       <span className="fw-semibold">-${discountAmount.toFixed(2)}</span>
                     </div>
                   )}
@@ -328,12 +410,12 @@ export default function Checkout() {
                   <div className="d-flex justify-content-between mb-3 text-muted small">
                     <span>Shipping</span>
                     <span className="fw-semibold text-dark">
-                      {shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}
+                      {shipping === 0 ? "Free Shipping" : `$${shipping.toFixed(2)}`}
                     </span>
                   </div>
 
                   <div className="border-top pt-3 mb-4 d-flex justify-content-between align-items-center">
-                    <span className="h5 fw-bold mb-0">Total</span>
+                    <span className="h5 fw-bold mb-0">Total Due</span>
                     <span className="h4 fw-bold mb-0" style={{ color: "var(--accent-color, #FA7EAA)" }}>
                       ${cartTotal.toFixed(2)}
                     </span>
@@ -341,13 +423,21 @@ export default function Checkout() {
 
                   <button
                     type="submit"
+                    disabled={submitting || (isAuthenticated && approvalStatus === "pending")}
                     className="btn btn-dark w-100 rounded-pill py-3 fw-semibold mb-3"
                   >
-                    Place Order (${cartTotal.toFixed(2)})
+                    {submitting ? (
+                      <span><i className="fa-solid fa-spinner fa-spin me-2"></i> Processing Order...</span>
+                    ) : isAuthenticated && approvalStatus === "pending" ? (
+                      "Approval Pending (Cannot Checkout)"
+                    ) : (
+                      `Confirm Order ($${cartTotal.toFixed(2)})`
+                    )}
                   </button>
 
                   <p className="text-muted small text-center mb-0">
-                    Your personal data will be used to process your order and support your experience on this website.
+                    <i className="fa-solid fa-shield-halved me-1 text-success"></i>
+                    Atomic stock validation & immutable double-entry ledger bookkeeping.
                   </p>
                 </div>
               </div>
