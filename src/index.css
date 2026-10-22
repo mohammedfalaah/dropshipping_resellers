@@ -1,0 +1,1129 @@
+/* Lumixa React Application Enhancements */
+
+:root {
+  --primary-color: #1A1A1A;
+  --secondary-color: #F7F3F0;
+  --bg-color: #FBF9F8;
+  --text-color: #565656;
+  --accent-color: #2dd2b3;
+  --accent-secondary-color: #FEA15A;
+  --white-color: #FFFFFF;
+  --black-color: #000000;
+  --default-font: "Inclusive Sans", sans-serif;
+  --divider-color: #EFEFEF;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--default-font);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ========================================================
+   MODERN OVERLAY TRANSPARENT & GLASSMORPHISM HEADER
+   ======================================================== */
+.site-header-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+  background: transparent;
+  pointer-events: auto;
+}
+
+/* Translucent Frosted Topbar */
+.topbar {
+  background: rgba(10, 10, 12, 0.45) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px 0;
+  transition: all 0.3s ease;
+}
+
+.topbar-info-content p {
+  color: rgba(255, 255, 255, 0.95) !important;
+  font-size: 14px;
+}
+
+.topbar-info-list ul li a {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.topbar-info-list ul li a:hover {
+  color: var(--accent-color, #2dd2b3) !important;
+}
+
+/* Main Header Transparent State (Overlaying Hero) with Top Space / Margin */
+header.main-header {
+  position: relative;
+  z-index: 1000;
+  background: transparent !important;
+  transition: all 0.35s ease;
+  padding: 0 24px;
+  margin-top: 16px;
+}
+
+@media (max-width: 767px) {
+  header.main-header {
+    padding: 0 12px;
+    margin-top: 10px;
+  }
+}
+
+header.main-header.header-sticky-active {
+  min-height: 90px;
+}
+
+/* Transparent Header Bar with Curved Cornering (Resting state over dark hero) */
+header.main-header .header-sticky {
+  position: relative;
+  background: rgba(15, 15, 20, 0.32) !important;
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 24px 24px 32px 32px !important;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.25) !important;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 1000;
+}
+
+/* Sticky Glassmorphism Header Bar (When Scrolled) */
+header.main-header .header-sticky.active {
+  position: fixed;
+  top: 16px;
+  left: 20px;
+  right: 20px;
+  width: calc(100% - 40px);
+  max-width: 1400px;
+  margin: 0 auto;
+  background: rgba(18, 18, 22, 0.92) !important;
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+  animation: slideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 1000;
+}
+
+@media (max-width: 767px) {
+  header.main-header .header-sticky {
+    border-radius: 18px 18px 24px 24px !important;
+  }
+
+  header.main-header .header-sticky.active {
+    top: 8px;
+    left: 10px;
+    right: 10px;
+    width: calc(100% - 20px);
+    border-radius: 18px !important;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* Nav Item styling - Crisp White Text for Transparent Overlay */
+.nav-menu-wrapper .navbar-nav .nav-link {
+  color: #ffffff !important;
+  font-weight: 600;
+  font-size: 16px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  transition: color 0.25s ease, transform 0.25s ease;
+}
+
+.nav-menu-wrapper .navbar-nav .nav-link:hover {
+  color: var(--accent-color, #FA7EAA) !important;
+}
+
+.nav-menu-wrapper .navbar-nav .nav-link.active {
+  color: var(--accent-color, #FA7EAA) !important;
+  font-weight: 600;
+}
+
+/* Action Details Icons - Crisp White */
+.header-action-details ul li img {
+  filter: brightness(0) invert(1);
+  transition: transform 0.25s ease, filter 0.25s ease;
+}
+
+.header-action-details ul li a:hover img,
+.header-action-details ul li button:hover img {
+  transform: scale(1.15);
+  filter: drop-shadow(0 0 6px rgba(250, 126, 170, 0.8)) brightness(0) invert(1);
+}
+
+.header-action-details .fa-bars,
+.header-action-details .fa-xmark {
+  color: #ffffff !important;
+}
+
+/* Seamless Hero Section - Solid black to blend flawlessly with 77b798f7-9f87-48a6-896d-48c0551d1b12.png */
+.hero {
+  background-color: #000000 !important;
+  background-image: none !important;
+  padding-top: 195px !important;
+  min-height: 800px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background-image: url('/images/dark-section-bg-image.jpg') !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% auto !important;
+  background-position: bottom center !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 0 !important;
+}
+
+@media (max-width: 991px) {
+  .hero::before {
+    background-size: cover !important;
+    background-position: center bottom !important;
+  }
+}
+
+.hero .container {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-sub-heading {
+  margin-bottom: 18px;
+}
+
+.hero-sub-heading p {
+  display: inline-block;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  color: rgba(255, 255, 255, 0.9) !important;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 6px 20px;
+  border-radius: 50px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  margin: 0;
+}
+
+.page-header {
+  padding-top: 215px !important;
+}
+
+/* Dropdown Menu Glassmorphism */
+.main-menu ul ul {
+  background: rgba(22, 22, 26, 0.95) !important;
+  backdrop-filter: blur(24px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(200%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5) !important;
+  border-radius: 16px !important;
+  padding: 12px 0 !important;
+}
+
+.main-menu ul ul li a {
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-weight: 500 !important;
+  padding: 8px 20px !important;
+  transition: all 0.25s ease !important;
+}
+
+.main-menu ul ul li a:hover {
+  color: var(--accent-color, #FA7EAA) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  padding-left: 24px !important;
+}
+
+/* Mega Menu Glassmorphism */
+.main-menu .mega-menu-box {
+  background: rgba(20, 20, 24, 0.96) !important;
+  backdrop-filter: blur(26px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(26px) saturate(200%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.6) !important;
+  border-radius: 20px !important;
+  color: #ffffff !important;
+}
+
+.mega-menu-link h2 {
+  color: #ffffff !important;
+}
+
+.main-menu .mega-menu-link ul li a {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.main-menu .mega-menu-link ul li a:hover {
+  color: var(--accent-color, #FA7EAA) !important;
+}
+
+.main-menu .mega-menu-item-content h2 a {
+  color: #ffffff !important;
+}
+
+.mega-menu-item-content p {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Mobile Menu Drawer Glassmorphism */
+.mobile-menu-drawer {
+  background: rgba(20, 20, 24, 0.95) !important;
+  backdrop-filter: blur(24px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-bottom-left-radius: 24px !important;
+  border-bottom-right-radius: 24px !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4) !important;
+}
+
+.mobile-menu-drawer .nav-link {
+  color: #ffffff !important;
+}
+
+/* ========================================================
+   CATEGORY & PRODUCT GRID FIXES
+   ======================================================== */
+/* Category Item List - 6 items per row */
+.category-item-list {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 30px 20px !important;
+}
+
+.category-item-list .category-item {
+  width: calc(16.66% - 16.66px) !important;
+  max-width: calc(16.66% - 16.66px) !important;
+  text-align: center;
+}
+
+@media (max-width: 991px) {
+  .category-item-list .category-item {
+    width: calc(33.33% - 13.33px) !important;
+    max-width: calc(33.33% - 13.33px) !important;
+  }
+}
+
+@media (max-width: 575px) {
+  .category-item-list .category-item {
+    width: calc(50% - 10px) !important;
+    max-width: calc(50% - 10px) !important;
+  }
+}
+
+/* Product Item List - 4 items per row */
+.product-item-list {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 20px !important;
+}
+
+.product-item-list .product-item {
+  width: calc(25% - 15px) !important;
+  max-width: calc(25% - 15px) !important;
+}
+
+@media (max-width: 991px) {
+  .product-item-list .product-item {
+    width: calc(50% - 10px) !important;
+    max-width: calc(50% - 10px) !important;
+  }
+}
+
+@media (max-width: 575px) {
+  .product-item-list .product-item {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* Only when items are DIRECT children of Bootstrap columns (e.g. in Shop.jsx, Related products) */
+[class*="col-"] > .product-item {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+[class*="col-"] > .post-item {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Product Card Styling */
+.product-item {
+  background: #ffffff;
+  border-radius: 20px;
+  overflow: hidden;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+
+.product-item:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 14px 30px rgba(0,0,0,0.09);
+}
+
+.product-item-image img {
+  transition: transform 0.5s ease;
+}
+
+.product-item:hover .product-item-image img {
+  transform: scale(1.05);
+}
+
+/* Product Action Buttons (Wishlist, QuickView, Cart) */
+.product-item-action ul li button {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  background: linear-gradient(to right, var(--accent-color, #FA7EAA) 0%, var(--accent-secondary-color, #FEA15A) 50%, var(--accent-color, #FA7EAA) 100%);
+  background-size: 200% auto;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.35s ease-in-out;
+  border: none;
+  cursor: pointer;
+  color: #ffffff;
+  padding: 0;
+  box-shadow: 0 4px 12px rgba(250, 126, 170, 0.35);
+}
+
+.product-item-action ul li button:hover {
+  background-position: right center;
+  transform: scale(1.15) translateY(-2px);
+  box-shadow: 0 6px 16px rgba(250, 126, 170, 0.5);
+}
+
+.product-item-action ul li button img {
+  max-width: 18px;
+  transition: all 0.3s ease;
+}
+
+.product-item-action ul li button:hover img {
+  transform: scale(1.1);
+}
+
+/* Buttons */
+.btn-default {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--primary-color);
+  color: #ffffff !important;
+  padding: 14px 34px;
+  border-radius: 50px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  border: 1px solid var(--primary-color);
+}
+
+.btn-default:hover {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #ffffff !important;
+  box-shadow: 0 6px 18px rgba(250, 126, 170, 0.35);
+}
+
+.btn-default.btn-border {
+  background-color: transparent;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.btn-default.btn-border:hover {
+  background-color: #ffffff;
+  color: var(--primary-color) !important;
+  border-color: #ffffff;
+}
+
+/* ========================================================
+   SCROLLING TICKER (Seamless, Continuous Horizontal Marquee)
+   ======================================================== */
+.our-scrolling-ticker {
+  position: relative;
+  background-color: #ffffff;
+  border-top: 1px solid var(--divider-color, #EFEFEF);
+  border-bottom: 1px solid var(--divider-color, #EFEFEF);
+  padding: 20px 0;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  /* Smooth edge fade mask so items emerge and glide away naturally */
+  mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
+}
+
+.scrolling-ticker-box {
+  display: flex !important;
+  align-items: center;
+  width: max-content !important;
+  overflow: hidden;
+}
+
+.scrolling-content {
+  display: flex !important;
+  align-items: center;
+  flex-shrink: 0 !important;
+  gap: 36px;
+  padding-right: 36px; /* Exactly matches gap for 100% mathematical zero-jump continuity */
+  animation: smoothSeamlessMarquee 38s linear infinite !important;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+@keyframes smoothSeamlessMarquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-100%, 0, 0);
+  }
+}
+
+.our-scrolling-ticker:hover .scrolling-content {
+  animation-play-state: paused !important;
+}
+
+.scrolling-content span {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: var(--primary-color, #1A1A1A);
+  white-space: nowrap !important;
+  padding: 8px 18px;
+  border-radius: 50px;
+  background-color: rgba(247, 243, 240, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.scrolling-content span:hover {
+  background-color: #ffffff;
+  border-color: var(--accent-color, #FA7EAA);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.scrolling-content span img {
+  width: 32px !important;
+  height: 32px !important;
+  max-width: 32px !important;
+  min-width: 32px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  display: block;
+}
+
+/* ========================================================
+   SCROLL ANIMATIONS SYSTEM (WOW.js & IntersectionObserver)
+   ======================================================== */
+.wow {
+  visibility: hidden;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.wow.animated {
+  visibility: visible;
+  opacity: 1;
+}
+
+.animated {
+  animation-duration: 0.9s;
+  animation-fill-mode: both;
+}
+
+/* Text Effect Animations */
+.text-anime-style-1,
+.text-anime-style-2,
+.text-anime-style-3 {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.text-anime-style-1.animated,
+.text-anime-style-2.animated,
+.text-anime-style-3.animated {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Image Reveal Anime */
+.image-anime {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.image-anime img {
+  transition: transform 0.6s ease;
+}
+
+.image-anime:hover img {
+  transform: scale(1.05);
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .wow,
+  .text-anime-style-1,
+  .text-anime-style-2,
+  .text-anime-style-3 {
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+  .scrolling-content {
+    animation: none !important;
+  }
+}
+
+/* ========================================================
+   BACK TO TOP FLOATING BUTTON
+   ======================================================== */
+.back-to-top-btn {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-color, #FA7EAA), var(--accent-secondary-color, #FEA15A));
+  color: #ffffff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(250, 126, 170, 0.45);
+  z-index: 9999;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(20px) scale(0.8);
+  transition: opacity 0.35s ease, visibility 0.35s ease, transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.back-to-top-btn.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+.back-to-top-btn:hover {
+  transform: translateY(-4px) scale(1.08);
+  box-shadow: 0 12px 28px rgba(250, 126, 170, 0.6);
+  color: #ffffff;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color);
+}
+
+/* ========================================================
+   SMOOTH, MODERN & PREMIUM PRODUCT SCROLLING SHOWCASE
+   ======================================================== */
+.product-showcase-container {
+  position: relative;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Controls Bar (Filter Tabs + View Mode + Navigation Arrows) */
+.product-showcase-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+  margin-bottom: 24px;
+}
+
+.product-category-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.product-category-tab {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+  color: #333333;
+  padding: 8px 20px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.product-category-tab:hover {
+  border-color: #111111;
+  color: #000000;
+  transform: translateY(-1px);
+}
+
+.product-category-tab.active {
+  background: #111111;
+  color: #ffffff;
+  border-color: #111111;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.product-action-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* View Mode Switcher */
+.view-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  background: #f1f3f5;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.view-mode-btn {
+  border: none;
+  background: transparent;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #666666;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.view-mode-btn.active {
+  background: #ffffff;
+  color: #111111;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Arrow Navigation Buttons */
+.carousel-nav-arrows {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.carousel-nav-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #ffffff;
+  color: #111111;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.carousel-nav-btn:hover:not(:disabled) {
+  background: #111111;
+  color: #ffffff;
+  border-color: #111111;
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+}
+
+.carousel-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Carousel Outer Viewport with Edge Fade */
+.product-carousel-viewport {
+  position: relative;
+  width: 100%;
+  overflow: visible;
+  padding: 10px 0 16px 0;
+}
+
+/* Floating Navigation Arrows Overlay (Desktop) */
+.floating-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.06);
+  color: #111111;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.floating-nav-btn.prev {
+  left: -20px;
+}
+
+.floating-nav-btn.next {
+  right: -20px;
+}
+
+@media (max-width: 991px) {
+  .floating-nav-btn {
+    display: none !important;
+  }
+}
+
+.floating-nav-btn:hover:not(:disabled) {
+  background: #111111;
+  color: #ffffff;
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.25);
+}
+
+.floating-nav-btn:disabled {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) scale(0.85);
+}
+
+/* Edge Vignette Overlays */
+.carousel-edge-fade-left,
+.carousel-edge-fade-right {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 36px;
+  pointer-events: none;
+  z-index: 6;
+  transition: opacity 0.3s ease;
+}
+
+.carousel-edge-fade-left {
+  left: 0;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.95), transparent);
+}
+
+.carousel-edge-fade-right {
+  right: 0;
+  background: linear-gradient(to left, rgba(255, 255, 255, 0.95), transparent);
+}
+
+/* The Horizontal Scroll Track */
+.product-scroll-track {
+  display: flex;
+  gap: 24px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  padding: 12px 6px 24px 6px;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+  user-select: none;
+  cursor: grab;
+}
+
+.product-scroll-track::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.product-scroll-track.is-dragging {
+  cursor: grabbing !important;
+  scroll-snap-type: none !important;
+  scroll-behavior: auto !important;
+}
+
+.product-scroll-track .product-item {
+  flex: 0 0 310px;
+  max-width: 310px;
+  scroll-snap-align: start;
+  scroll-snap-stop: normal;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  background: #ffffff;
+  border-radius: 20px;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease, border-color 0.35s ease;
+}
+
+@media (max-width: 767px) {
+  .product-scroll-track {
+    gap: 16px;
+    padding: 10px 4px 20px 4px;
+  }
+  .product-scroll-track .product-item {
+    flex: 0 0 270px;
+    max-width: 270px;
+  }
+}
+
+.product-scroll-track .product-item:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.1);
+  border-color: rgba(250, 126, 170, 0.45);
+}
+
+/* Enhanced Product Card Styles */
+.product-category-pill {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #71717a;
+  background: #f4f4f5;
+  padding: 3px 9px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.product-stock-pill {
+  font-size: 11px;
+  font-weight: 600;
+  color: #10b981;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.stock-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+  display: inline-block;
+}
+
+.reseller-margin-pill {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.product-rating-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  margin-bottom: 6px;
+}
+
+.product-rating-row .rating-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+.product-pricing-box {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.08);
+}
+
+.product-pricing-box .price-primary {
+  display: flex;
+  flex-direction: column;
+}
+
+.product-pricing-box .wholesale-tag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent-color, #FA7EAA);
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.product-pricing-box .current-price {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.1;
+}
+
+.product-pricing-box .price-secondary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.product-pricing-box .msrp-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #9ca3af;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.product-pricing-box .original-price {
+  font-size: 13px;
+  font-weight: 500;
+  color: #9ca3af;
+  text-decoration: line-through;
+  line-height: 1.1;
+}
+
+/* Progress Bar and Indicator Footer */
+.product-scroll-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.product-scroll-progress-track {
+  width: 100%;
+  max-width: 320px;
+  height: 5px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.product-scroll-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-color, #FA7EAA), var(--accent-secondary-color, #FEA15A));
+  border-radius: 999px;
+  transition: width 0.15s ease-out;
+  box-shadow: 0 0 10px rgba(250, 126, 170, 0.6);
+}
+
+.product-scroll-indicator-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #71717a;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.product-scroll-dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.product-scroll-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.18);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.product-scroll-dot:hover {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.product-scroll-dot.active {
+  width: 26px;
+  background: linear-gradient(90deg, var(--accent-color, #FA7EAA), var(--accent-secondary-color, #FEA15A));
+}
+
+.fade-in-item {
+  animation: fadeInProduct 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInProduct {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
