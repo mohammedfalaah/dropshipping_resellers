@@ -10,7 +10,7 @@ export default function Resellers() {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, pages: 1 });
 
-  // Modals state
+  //Modals state
   const [selectedReseller, setSelectedReseller] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
