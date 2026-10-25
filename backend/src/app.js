@@ -22,21 +22,24 @@ const wishlistRoutes = require("./routes/wishlistRoutes");
 
 const app = express();
 
+const connectDB = require("./config/db");
+
 // Security HTTP headers
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 
-// Restricted CORS
+// CORS configuration supporting local dev, FRONTEND_URL and Vercel deployments
 const allowedOrigins = [
   FRONTEND_URL,
   "http://localhost:5173",
   "http://127.0.0.1:5173",
+  "http://localhost:3000",
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
       // allow requests with no origin (like mobile apps, curl, or tests)
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.includes(origin) || (origin && origin.endsWith(".vercel.app"))) {
         return callback(null, true);
       }
       return callback(new Error(`CORS error: Origin ${origin} not permitted`));
@@ -46,6 +49,23 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+// Auto-connect to database (essential for Vercel / serverless execution)
+app.use(async (req, res, next) => {
+  if (NODE_ENV === "test") return next();
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error("[Serverless DB Error]:", err.message);
+    return res.status(503).json({
+      success: false,
+      message: "Database connection failed. Check MONGODB_URI in Vercel environment variables.",
+      code: "DB_CONNECTION_ERROR",
+    });
+  }
+});
+
 
 // Global Rate Limiting
 const limiter = rateLimit({
