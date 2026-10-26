@@ -16,6 +16,8 @@ dist-ssr
 !.env.example
 *.zip
 .vite
+admin/
+
 
 # Editor directories and files
 .vscode/*
