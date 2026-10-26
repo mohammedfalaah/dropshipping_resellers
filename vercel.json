@@ -17,38 +17,9 @@
       }
     },
     {
-      "source": "/assets/:path*",
-      "destination": {
-        "service": "frontend",
-        "path": "/assets/:path*"
-      }
-    },
-    {
-      "source": "/css/:path*",
-      "destination": {
-        "service": "frontend",
-        "path": "/css/:path*"
-      }
-    },
-    {
-      "source": "/js/:path*",
-      "destination": {
-        "service": "frontend",
-        "path": "/js/:path*"
-      }
-    },
-    {
-      "source": "/images/:path*",
-      "destination": {
-        "service": "frontend",
-        "path": "/images/:path*"
-      }
-    },
-    {
       "source": "/:path*",
       "destination": {
-        "service": "frontend",
-        "path": "/index.html"
+        "service": "frontend"
       }
     }
   ]
