@@ -74,4 +74,12 @@ router.post(
   productController.uploadImage
 );
 
+router.post(
+  "/import",
+  protect,
+  restrictTo("admin"),
+  productController.bulkImportProducts
+);
+
 module.exports = router;
+

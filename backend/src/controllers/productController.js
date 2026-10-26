@@ -3,6 +3,8 @@ const Category = require("../models/Category");
 const AuditLog = require("../models/AuditLog");
 const { successResponse, errorResponse } = require("../utils/response");
 const { rupeesToPaise, paiseToRupees } = require("../utils/currency");
+const { optimizeImage } = require("../utils/imageOptimizer");
+
 
 const slugify = (text) => {
   return text
@@ -327,17 +329,120 @@ const deleteProduct = async (req, res, next) => {
 };
 
 /**
- * Upload Image
+ * Upload & Compress Image (Auto-Resizes & Reduces File Size via Sharp)
  */
-const uploadImage = (req, res) => {
-  if (!req.file) {
-    return errorResponse(res, "Please select an image file to upload.", "NO_FILE", 400);
+const uploadImage = async (req, res, next) => {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return errorResponse(res, "Please select an image file to upload.", "NO_FILE", 400);
+    }
+
+    const optimization = await optimizeImage(req.file.buffer, req.file.originalname);
+
+    return successResponse(
+      res,
+      `Image imported & compressed successfully: ${optimization.originalSizeFormatted} → ${optimization.compressedSizeFormatted} (${optimization.savingsPercent} reduction)`,
+      optimization
+    );
+  } catch (err) {
+    console.error("Image optimization error:", err);
+    return errorResponse(res, "Failed to optimize image: " + err.message, "OPTIMIZATION_ERROR", 500);
   }
-  const fileUrl = `/uploads/${req.file.filename}`;
-  return successResponse(res, "Image uploaded successfully.", {
-    url: fileUrl,
-    filename: req.file.filename,
-  });
+};
+
+/**
+ * Bulk Import Products (Array of product records)
+ */
+const bulkImportProducts = async (req, res, next) => {
+  try {
+    const { products } = req.body;
+
+    if (!Array.isArray(products) || products.length === 0) {
+      return errorResponse(res, "Please provide an array of products to import.", "INVALID_DATA", 400);
+    }
+
+    const validCategories = ["Gadgets", "Watches", "Footwear", "Fashion"];
+    const preparedProducts = [];
+    const errors = [];
+
+    for (let i = 0; i < products.length; i++) {
+      const p = products[i];
+      if (!p.name || !p.sku) {
+        errors.push(`Row ${i + 1}: Name and SKU are required.`);
+        continue;
+      }
+
+      // Check category
+      const category = p.category || "Gadgets";
+      if (!validCategories.includes(category)) {
+        errors.push(`Row ${i + 1} (${p.name}): Invalid category '${category}'. Must be one of: ${validCategories.join(", ")}`);
+        continue;
+      }
+
+      // Check existing SKU
+      const skuUpper = p.sku.trim().toUpperCase();
+      const existingSku = await Product.findOne({ sku: skuUpper });
+      if (existingSku) {
+        errors.push(`Row ${i + 1}: SKU '${skuUpper}' already exists.`);
+        continue;
+      }
+
+      const slug = slugify(p.name);
+      const existingSlug = await Product.findOne({ slug });
+      const finalSlug = existingSlug ? `${slug}-${Date.now().toString().slice(-4)}-${i}` : slug;
+
+      preparedProducts.push({
+        name: p.name.trim(),
+        sku: skuUpper,
+        slug: finalSlug,
+        category,
+        categorySlug: category.toLowerCase(),
+        description: p.description || p.name,
+        shortDescription: p.shortDescription || "",
+        mainImage: p.mainImage || "/images/product-earbuds.jpg",
+        gallery: Array.isArray(p.gallery) ? p.gallery : [],
+        regularPricePaise: rupeesToPaise(p.regularPrice || 999),
+        resellerPricePaise: rupeesToPaise(p.resellerPrice || 699),
+        stockQuantity: Number(p.stockQuantity) || 50,
+        minOrderQuantity: Number(p.minOrderQuantity) || 1,
+        isActive: p.isActive !== false,
+      });
+    }
+
+    if (preparedProducts.length === 0) {
+      return errorResponse(
+        res,
+        "No valid products could be imported.",
+        "IMPORT_FAILED",
+        400,
+        { errors }
+      );
+    }
+
+    const inserted = await Product.insertMany(preparedProducts);
+
+    await AuditLog.create({
+      action: "PRODUCT_BULK_IMPORT",
+      entity: "Product",
+      entityId: inserted[0]._id,
+      performedBy: req.user._id,
+      description: `Admin imported ${inserted.length} products. Skipped/errors: ${errors.length}`,
+      metadata: { count: inserted.length, errors },
+    });
+
+    return successResponse(
+      res,
+      `Successfully imported ${inserted.length} product(s).${errors.length > 0 ? ` (${errors.length} skipped)` : ""}`,
+      {
+        importedCount: inserted.length,
+        errors,
+        products: inserted,
+      },
+      201
+    );
+  } catch (err) {
+    next(err);
+  }
 };
 
 /**
@@ -360,5 +465,7 @@ module.exports = {
   updateStock,
   deleteProduct,
   uploadImage,
+  bulkImportProducts,
   getCategories,
 };
+
