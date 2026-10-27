@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { productsApi } from "../../services/api";
 import { useToast } from "../../context/ToastContext";
+import { useProducts } from "../../context/ProductContext";
 
 export default function Products() {
+  const { refreshProducts } = useProducts();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -101,6 +103,7 @@ export default function Products() {
       await productsApi.delete(id);
       addToast(`Product "${name}" deleted.`, "info");
       fetchProducts();
+      if (refreshProducts) refreshProducts();
     } catch (err) {
       addToast(err.message || "Failed to delete product.", "error");
     }
@@ -166,6 +169,7 @@ export default function Products() {
       }
       setShowModal(false);
       fetchProducts();
+      if (refreshProducts) refreshProducts();
     } catch (err) {
       addToast(err.message || "Failed to save product.", "error");
     }
@@ -198,6 +202,7 @@ export default function Products() {
         setShowImportModal(false);
         setImportJsonText("");
         fetchProducts();
+        if (refreshProducts) refreshProducts();
       }
     } catch (err) {
       addToast(err.message || "Bulk import failed.", "error");

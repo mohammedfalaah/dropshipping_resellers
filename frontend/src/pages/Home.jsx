@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { products, categories, blogPosts, testimonials } from "../data/productsData";
+import { blogPosts, testimonials } from "../data/productsData";
+import { useProducts } from "../context/ProductContext";
 import ProductCard from "../components/ProductCard";
 import QuickViewModal from "../components/QuickViewModal";
 
@@ -14,6 +15,7 @@ const tickerItems = [
 ];
 
 export default function Home() {
+  const { products, categories } = useProducts();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [viewMode, setViewMode] = useState("carousel"); // "carousel" | "grid"

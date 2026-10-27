@@ -9,7 +9,7 @@ export default function ProductCard({ product, onQuickView, className = "", isDr
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { addToast } = useToast();
 
-  const isFavorited = isInWishlist(product.id);
+  const isFavorited = isInWishlist(product.id || product._id);
 
   const marginPercent =
     product.originalPrice && product.originalPrice > product.price
@@ -79,7 +79,7 @@ export default function ProductCard({ product, onQuickView, className = "", isDr
         <div className="product-item-image">
           <Link to={`/product/${product.slug}`} onClick={handleLinkClick}>
             <figure className="mb-0">
-              <img src={product.image} alt={product.name} draggable="false" />
+              <img src={product.image || product.mainImage || "/images/product-earbuds.jpg"} alt={product.name} draggable="false" />
             </figure>
           </Link>
         </div>
@@ -161,12 +161,12 @@ export default function ProductCard({ product, onQuickView, className = "", isDr
         <div className="product-pricing-box">
           <div className="price-primary">
             <span className="wholesale-tag">Wholesale</span>
-            <span className="current-price">${product.price.toFixed(2)}</span>
+            <span className="current-price">${(product.price ?? product.resellerPrice ?? product.regularPrice ?? 0).toFixed(2)}</span>
           </div>
           {product.originalPrice && (
             <div className="price-secondary">
               <span className="msrp-label">MSRP</span>
-              <span className="original-price">${product.originalPrice.toFixed(2)}</span>
+              <span className="original-price">${(product.originalPrice ?? product.regularPrice ?? 0).toFixed(2)}</span>
             </div>
           )}
         </div>

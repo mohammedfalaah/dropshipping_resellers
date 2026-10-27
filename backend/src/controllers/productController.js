@@ -66,10 +66,13 @@ const getProducts = async (req, res, next) => {
 
     const formattedProducts = products.map((p) => {
       const obj = p.toObject();
-      obj.price = isApprovedResellerOrAdmin ? paiseToRupees(p.resellerPricePaise) : null;
-      obj.originalPrice = paiseToRupees(p.regularPricePaise);
-      obj.resellerPrice = isApprovedResellerOrAdmin ? paiseToRupees(p.resellerPricePaise) : null;
-      obj.regularPrice = paiseToRupees(p.regularPricePaise);
+      obj.id = p._id.toString();
+      obj.price = paiseToRupees(p.resellerPricePaise || p.regularPricePaise || 0);
+      obj.originalPrice = paiseToRupees(p.regularPricePaise || p.resellerPricePaise || 0);
+      obj.resellerPrice = paiseToRupees(p.resellerPricePaise || 0);
+      obj.regularPrice = paiseToRupees(p.regularPricePaise || 0);
+      obj.image = p.mainImage || "/images/product-earbuds.jpg";
+      obj.thumbnails = p.gallery && p.gallery.length ? p.gallery : [p.mainImage || "/images/product-earbuds.jpg"];
       return obj;
     });
 
@@ -103,10 +106,13 @@ const getProductBySlug = async (req, res, next) => {
       (req.user.role === "admin" || (req.user.role === "reseller" && req.user.approvalStatus === "approved"));
 
     const obj = product.toObject();
-    obj.price = isApprovedResellerOrAdmin ? paiseToRupees(product.resellerPricePaise) : null;
-    obj.originalPrice = paiseToRupees(product.regularPricePaise);
-    obj.resellerPrice = isApprovedResellerOrAdmin ? paiseToRupees(product.resellerPricePaise) : null;
-    obj.regularPrice = paiseToRupees(product.regularPricePaise);
+    obj.id = product._id.toString();
+    obj.price = paiseToRupees(product.resellerPricePaise || product.regularPricePaise || 0);
+    obj.originalPrice = paiseToRupees(product.regularPricePaise || product.resellerPricePaise || 0);
+    obj.resellerPrice = paiseToRupees(product.resellerPricePaise || 0);
+    obj.regularPrice = paiseToRupees(product.regularPricePaise || 0);
+    obj.image = product.mainImage || "/images/product-earbuds.jpg";
+    obj.thumbnails = product.gallery && product.gallery.length ? product.gallery : [product.mainImage || "/images/product-earbuds.jpg"];
 
     return successResponse(res, "Product details retrieved.", {
       product: obj,

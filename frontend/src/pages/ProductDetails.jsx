@@ -1,19 +1,26 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import Breadcrumb from "../components/Breadcrumb";
 import ProductCard from "../components/ProductCard";
 import QuickViewModal from "../components/QuickViewModal";
-import { products } from "../data/productsData";
+import { useProducts } from "../context/ProductContext";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import { useToast } from "../context/ToastContext";
 
 export default function ProductDetails() {
   const { slug } = useParams();
-  const product = products.find((p) => p.slug === slug) || products[0];
+  const { products, getProductBySlug } = useProducts();
+  const product = getProductBySlug(slug) || products.find((p) => p.slug === slug) || products[0] || {};
 
-  const [activeImage, setActiveImage] = useState(product.image);
+  const [activeImage, setActiveImage] = useState(product?.image || product?.mainImage || "/images/product-earbuds.jpg");
   const [quantity, setQuantity] = useState(1);
+
+  useEffect(() => {
+    if (product) {
+      setActiveImage(product.image || product.mainImage || "/images/product-earbuds.jpg");
+    }
+  }, [product]);
   const [activeTab, setActiveTab] = useState("desc");
   const [reviewsList, setReviewsList] = useState([
     {
@@ -154,11 +161,11 @@ export default function ProductDetails() {
                 {/* Price */}
                 <div className="mb-4">
                   <span className="h3 fw-bold me-3" style={{ color: "var(--accent-color, #FA7EAA)" }}>
-                    ${product.price.toFixed(2)}
+                    ${(product?.price ?? product?.resellerPrice ?? product?.regularPrice ?? 0).toFixed(2)}
                   </span>
                   {product.originalPrice && (
                     <span className="text-muted text-decoration-line-through fs-5">
-                      ${product.originalPrice.toFixed(2)}
+                      ${(product?.originalPrice ?? product?.regularPrice ?? 0).toFixed(2)}
                     </span>
                   )}
                 </div>

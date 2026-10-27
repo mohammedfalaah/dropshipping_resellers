@@ -2,9 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
-import { products } from "../data/productsData";
+import { useProducts } from "../context/ProductContext";
 
 export default function Header() {
+  const { products } = useProducts();
   const { cartCount } = useCart();
   const { wishlistCount } = useWishlist();
   const [isSticky, setIsSticky] = useState(false);

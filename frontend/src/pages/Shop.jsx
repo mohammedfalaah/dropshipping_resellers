@@ -3,15 +3,24 @@ import { useSearchParams } from "react-router-dom";
 import Breadcrumb from "../components/Breadcrumb";
 import ProductCard from "../components/ProductCard";
 import QuickViewModal from "../components/QuickViewModal";
-import { products, categories } from "../data/productsData";
+import { useProducts } from "../context/ProductContext";
 
 export default function Shop() {
+  const { products, categories, loading } = useProducts();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentCategory = searchParams.get("category") || "all";
   const currentSearch = searchParams.get("search") || "";
 
   const [sortBy, setSortBy] = useState("featured");
-  const [maxPrice, setMaxPrice] = useState(120);
+
+  const catalogMaxPrice = useMemo(() => {
+    if (!products.length) return 1000;
+    const max = Math.max(...products.map((p) => p.price || 0));
+    return Math.max(120, Math.ceil(max));
+  }, [products]);
+
+  const [maxPrice, setMaxPrice] = useState(null);
+  const effectiveMaxPrice = maxPrice ?? catalogMaxPrice;
   const [quickViewProduct, setQuickViewProduct] = useState(null);
 
   const filteredProducts = useMemo(() => {
@@ -28,25 +37,25 @@ export default function Shop() {
       result = result.filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q) ||
+          (p.category && p.category.toLowerCase().includes(q)) ||
           (p.shortDescription && p.shortDescription.toLowerCase().includes(q))
       );
     }
 
     // Filter by Max Price
-    result = result.filter((p) => p.price <= maxPrice);
+    result = result.filter((p) => (p.price || 0) <= effectiveMaxPrice);
 
     // Sort
     if (sortBy === "price-low") {
-      result.sort((a, b) => a.price - b.price);
+      result.sort((a, b) => (a.price || 0) - (b.price || 0));
     } else if (sortBy === "price-high") {
-      result.sort((a, b) => b.price - a.price);
+      result.sort((a, b) => (b.price || 0) - (a.price || 0));
     } else if (sortBy === "name") {
       result.sort((a, b) => a.name.localeCompare(b.name));
     }
 
     return result;
-  }, [currentCategory, currentSearch, maxPrice, sortBy]);
+  }, [products, currentCategory, currentSearch, effectiveMaxPrice, sortBy]);
 
   const handleCategorySelect = (slug) => {
     const newParams = new URLSearchParams(searchParams);
@@ -60,7 +69,7 @@ export default function Shop() {
 
   const handleClearFilters = () => {
     setSearchParams({});
-    setMaxPrice(120);
+    setMaxPrice(null);
     setSortBy("featured");
   };
 
@@ -142,25 +151,25 @@ export default function Shop() {
                 <div className="mb-4">
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <h5 className="fw-bold mb-0" style={{ fontSize: "16px" }}>Max Price</h5>
-                    <span className="fw-semibold text-dark">${maxPrice}</span>
+                    <span className="fw-semibold text-dark">${effectiveMaxPrice}</span>
                   </div>
                   <input
                     type="range"
                     className="form-range"
-                    min="10"
-                    max="120"
+                    min="1"
+                    max={catalogMaxPrice}
                     step="1"
-                    value={maxPrice}
+                    value={effectiveMaxPrice}
                     onChange={(e) => setMaxPrice(Number(e.target.value))}
                   />
                   <div className="d-flex justify-content-between text-muted small">
-                    <span>$10</span>
-                    <span>$120</span>
+                    <span>$1</span>
+                    <span>${catalogMaxPrice}</span>
                   </div>
                 </div>
 
                 {/* Reset Filters */}
-                {(currentCategory !== "all" || currentSearch || maxPrice < 120 || sortBy !== "featured") && (
+                {(currentCategory !== "all" || currentSearch || maxPrice !== null || sortBy !== "featured") && (
                   <button
                     type="button"
                     className="btn btn-outline-danger w-100 rounded-pill py-2 small fw-semibold"
