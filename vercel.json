@@ -13,54 +13,56 @@
   },
   "rewrites": [
     {
-      "source": "/api",
+      "source": "/api/:path*",
       "destination": {
         "service": "backend"
       }
     },
     {
-      "source": "/api/(.*)",
+      "source": "/assets/:path*",
       "destination": {
-        "service": "backend"
+        "service": "frontend"
       }
     },
     {
-      "source": "/assets/(.*)",
+      "source": "/css/:path*",
+      "destination": {
+        "service": "frontend"
+      }
+    },
+    {
+      "source": "/js/:path*",
+      "destination": {
+        "service": "frontend"
+      }
+    },
+    {
+      "source": "/images/:path*",
+      "destination": {
+        "service": "frontend"
+      }
+    },
+    {
+      "source": "/favicon.png",
+      "destination": {
+        "service": "frontend"
+      }
+    },
+    {
+      "source": "/:file(.+\\.[a-zA-Z0-9]+)",
+      "destination": {
+        "service": "frontend"
+      }
+    },
+    {
+      "source": "/",
       "destination": {
         "service": "frontend",
-        "path": "/assets/$1"
+        "path": "/index.html"
       }
     },
     {
-      "source": "/css/(.*)",
-      "destination": {
-        "service": "frontend",
-        "path": "/css/$1"
-      }
-    },
-    {
-      "source": "/js/(.*)",
-      "destination": {
-        "service": "frontend",
-        "path": "/js/$1"
-      }
-    },
-    {
-      "source": "/images/(.*)",
-      "destination": {
-        "service": "frontend",
-        "path": "/images/$1"
-      }
-    },
-    {
-      "source": "/(.*\\.[a-zA-Z0-9]+)",
-      "destination": {
-        "service": "frontend",
-        "path": "/$1"
-      }
-    },
-    {
-      "source": "/(.*)",
+      "source": "/:path*",
       "destination": {
         "service": "frontend",
         "path": "/index.html"
