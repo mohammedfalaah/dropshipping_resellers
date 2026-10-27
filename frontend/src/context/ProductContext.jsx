@@ -5,7 +5,7 @@ import { products as initialProducts, categories as initialCategories } from "..
 const ProductContext = createContext();
 
 export const ProductProvider = ({ children }) => {
-  const [products, setProducts] = useState(initialProducts);
+  const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState(initialCategories);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -43,24 +43,13 @@ export const ProductProvider = ({ children }) => {
       // res is response.data from axios interceptor
       const rawProducts = res?.data?.products || res?.products || [];
 
-      if (rawProducts.length > 0) {
+      if (Array.isArray(rawProducts)) {
         const normalizedDbProducts = rawProducts.map(normalizeProduct);
-        
-        // Merge: DB products take top priority. Fill in any default items not present in DB.
-        const dbSlugs = new Set(normalizedDbProducts.map((p) => p.slug));
-        const remainingStatic = initialProducts
-          .filter((p) => !dbSlugs.has(p.slug))
-          .map(normalizeProduct);
-
-        setProducts([...normalizedDbProducts, ...remainingStatic]);
-      } else {
-        // Fallback to static catalog if DB empty
-        setProducts(initialProducts.map(normalizeProduct));
+        setProducts(normalizedDbProducts);
       }
       setError(null);
     } catch (err) {
-      console.warn("Could not fetch live products from API, using fallback catalog:", err.message);
-      setProducts(initialProducts.map(normalizeProduct));
+      console.warn("Could not fetch live products from API:", err.message);
       setError(err.message);
     } finally {
       setLoading(false);

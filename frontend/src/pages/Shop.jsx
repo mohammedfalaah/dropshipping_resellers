@@ -151,7 +151,7 @@ export default function Shop() {
                 <div className="mb-4">
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <h5 className="fw-bold mb-0" style={{ fontSize: "16px" }}>Max Price</h5>
-                    <span className="fw-semibold text-dark">${effectiveMaxPrice}</span>
+                    <span className="fw-semibold text-dark">₹{Number(effectiveMaxPrice).toLocaleString("en-IN")}</span>
                   </div>
                   <input
                     type="range"
@@ -163,8 +163,8 @@ export default function Shop() {
                     onChange={(e) => setMaxPrice(Number(e.target.value))}
                   />
                   <div className="d-flex justify-content-between text-muted small">
-                    <span>$1</span>
-                    <span>${catalogMaxPrice}</span>
+                    <span>₹1</span>
+                    <span>₹{Number(catalogMaxPrice).toLocaleString("en-IN")}</span>
                   </div>
                 </div>
 

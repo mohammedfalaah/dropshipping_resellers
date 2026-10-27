@@ -161,12 +161,12 @@ export default function ProductCard({ product, onQuickView, className = "", isDr
         <div className="product-pricing-box">
           <div className="price-primary">
             <span className="wholesale-tag">Wholesale</span>
-            <span className="current-price">${(product.price ?? product.resellerPrice ?? product.regularPrice ?? 0).toFixed(2)}</span>
+            <span className="current-price">₹{Number(product.price ?? product.resellerPrice ?? product.regularPrice ?? 0).toLocaleString("en-IN")}</span>
           </div>
           {product.originalPrice && (
             <div className="price-secondary">
               <span className="msrp-label">MSRP</span>
-              <span className="original-price">${(product.originalPrice ?? product.regularPrice ?? 0).toFixed(2)}</span>
+              <span className="original-price">₹{Number(product.originalPrice ?? product.regularPrice ?? 0).toLocaleString("en-IN")}</span>
             </div>
           )}
         </div>

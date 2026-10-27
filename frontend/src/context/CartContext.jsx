@@ -6,27 +6,7 @@ export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState(() => {
     try {
       const saved = localStorage.getItem("sparepro_cart") || localStorage.getItem("lumixa_cart");
-      return saved ? JSON.parse(saved) : [
-        // Default with 2 mock items for demo richness
-        {
-          id: 1,
-          name: "Aether Pro ANC Wireless Earbuds",
-          price: 34.99,
-          originalPrice: 59.99,
-          image: "/images/product-earbuds.jpg",
-          quantity: 2,
-          category: "Gadgets"
-        },
-        {
-          id: 3,
-          name: "Aethereus Automatic Chronograph Watch",
-          price: 68.00,
-          originalPrice: 129.00,
-          image: "/images/product-luxury-watch.jpg",
-          quantity: 1,
-          category: "Watches"
-        }
-      ];
+      return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
     }

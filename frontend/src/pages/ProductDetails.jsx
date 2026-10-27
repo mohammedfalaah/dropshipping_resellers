@@ -161,11 +161,11 @@ export default function ProductDetails() {
                 {/* Price */}
                 <div className="mb-4">
                   <span className="h3 fw-bold me-3" style={{ color: "var(--accent-color, #FA7EAA)" }}>
-                    ${(product?.price ?? product?.resellerPrice ?? product?.regularPrice ?? 0).toFixed(2)}
+                    ₹{Number(product?.price ?? product?.resellerPrice ?? product?.regularPrice ?? 0).toLocaleString("en-IN")}
                   </span>
                   {product.originalPrice && (
                     <span className="text-muted text-decoration-line-through fs-5">
-                      ${(product?.originalPrice ?? product?.regularPrice ?? 0).toFixed(2)}
+                      ₹{Number(product?.originalPrice ?? product?.regularPrice ?? 0).toLocaleString("en-IN")}
                     </span>
                   )}
                 </div>

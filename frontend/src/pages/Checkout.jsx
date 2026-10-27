@@ -389,7 +389,7 @@ export default function Checkout() {
                           </div>
                         </div>
                         <span className="fw-semibold">
-                          ${(item.price * item.quantity).toFixed(2)}
+                          ₹{Number(item.price * item.quantity).toLocaleString("en-IN")}
                         </span>
                       </div>
                     ))}
@@ -397,27 +397,27 @@ export default function Checkout() {
 
                   <div className="d-flex justify-content-between mb-2 text-muted small">
                     <span>Subtotal</span>
-                    <span className="fw-semibold text-dark">${cartSubtotal.toFixed(2)}</span>
+                    <span className="fw-semibold text-dark">₹{Number(cartSubtotal).toLocaleString("en-IN")}</span>
                   </div>
 
                   {discountAmount > 0 && (
                     <div className="d-flex justify-content-between mb-2 text-success small">
                       <span>Wholesale Discount</span>
-                      <span className="fw-semibold">-${discountAmount.toFixed(2)}</span>
+                      <span className="fw-semibold">-₹{Number(discountAmount).toLocaleString("en-IN")}</span>
                     </div>
                   )}
 
                   <div className="d-flex justify-content-between mb-3 text-muted small">
                     <span>Shipping</span>
                     <span className="fw-semibold text-dark">
-                      {shipping === 0 ? "Free Shipping" : `$${shipping.toFixed(2)}`}
+                      {shipping === 0 ? "Free Shipping" : `₹${Number(shipping).toLocaleString("en-IN")}`}
                     </span>
                   </div>
 
                   <div className="border-top pt-3 mb-4 d-flex justify-content-between align-items-center">
                     <span className="h5 fw-bold mb-0">Total Due</span>
                     <span className="h4 fw-bold mb-0" style={{ color: "var(--accent-color, #FA7EAA)" }}>
-                      ${cartTotal.toFixed(2)}
+                      ₹{Number(cartTotal).toLocaleString("en-IN")}
                     </span>
                   </div>
 
@@ -431,7 +431,7 @@ export default function Checkout() {
                     ) : isAuthenticated && approvalStatus === "pending" ? (
                       "Approval Pending (Cannot Checkout)"
                     ) : (
-                      `Confirm Order ($${cartTotal.toFixed(2)})`
+                      `Confirm Order (₹${Number(cartTotal).toLocaleString("en-IN")})`
                     )}
                   </button>
 

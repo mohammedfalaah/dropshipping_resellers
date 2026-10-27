@@ -110,11 +110,11 @@ export default function QuickViewModal({ product, onClose }) {
 
                   <div className="mb-3">
                     <span className="h4 fw-bold me-2" style={{ color: "var(--accent-color, #FA7EAA)" }}>
-                      ${product.price.toFixed(2)}
+                      ₹{Number(product.price ?? product.resellerPrice ?? product.regularPrice ?? 0).toLocaleString("en-IN")}
                     </span>
                     {product.originalPrice && (
                       <span className="text-muted text-decoration-line-through">
-                        ${product.originalPrice.toFixed(2)}
+                        ₹{Number(product.originalPrice ?? product.regularPrice ?? 0).toLocaleString("en-IN")}
                       </span>
                     )}
                   </div>

@@ -119,7 +119,7 @@ export default function Cart() {
                             </h6>
                             <span className="text-muted small">{item.category}</span>
                           </td>
-                          <td>${item.price.toFixed(2)}</td>
+                          <td>₹{Number(item.price).toLocaleString("en-IN")}</td>
                           <td>
                             <div className="d-flex align-items-center border rounded-pill px-2 py-1 bg-light" style={{ width: "105px" }}>
                               <button
@@ -142,7 +142,7 @@ export default function Cart() {
                             </div>
                           </td>
                           <td className="fw-bold">
-                            ${(item.price * item.quantity).toFixed(2)}
+                            ₹{Number(item.price * item.quantity).toLocaleString("en-IN")}
                           </td>
                           <td className="text-end">
                             <button
@@ -211,13 +211,13 @@ export default function Cart() {
 
                 <div className="d-flex justify-content-between mb-3 text-muted">
                   <span>Subtotal</span>
-                  <span className="fw-semibold text-dark">${cartSubtotal.toFixed(2)}</span>
+                  <span className="fw-semibold text-dark">₹{Number(cartSubtotal).toLocaleString("en-IN")}</span>
                 </div>
 
                 {coupon.applied && (
                   <div className="d-flex justify-content-between mb-3 text-success">
                     <span>Discount ({coupon.discountPercent}%)</span>
-                    <span className="fw-semibold">-${discountAmount.toFixed(2)}</span>
+                    <span className="fw-semibold">-₹{Number(discountAmount).toLocaleString("en-IN")}</span>
                   </div>
                 )}
 
@@ -227,21 +227,15 @@ export default function Cart() {
                     {shipping === 0 ? (
                       <span className="badge bg-success-subtle text-success">Free Shipping</span>
                     ) : (
-                      `$${shipping.toFixed(2)}`
+                      `₹${Number(shipping).toLocaleString("en-IN")}`
                     )}
                   </span>
                 </div>
 
-                {cartSubtotal < 50 && (
-                  <div className="alert alert-light border small text-muted mb-3 py-2 px-3">
-                    Add <strong>${(50 - cartSubtotal).toFixed(2)}</strong> more to qualify for <strong>Free Worldwide Shipping</strong>!
-                  </div>
-                )}
-
                 <div className="border-top pt-3 mb-4 d-flex justify-content-between align-items-center">
                   <span className="h5 fw-bold mb-0">Total</span>
                   <span className="h4 fw-bold mb-0" style={{ color: "var(--accent-color, #FA7EAA)" }}>
-                    ${cartTotal.toFixed(2)}
+                    ₹{Number(cartTotal).toLocaleString("en-IN")}
                   </span>
                 </div>
 
