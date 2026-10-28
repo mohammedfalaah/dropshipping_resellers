@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation, Navigate } from "react-router-dom";
 import Breadcrumb from "../components/Breadcrumb";
 import ProductCard from "../components/ProductCard";
 import QuickViewModal from "../components/QuickViewModal";
 import { useProducts } from "../context/ProductContext";
+import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import { useToast } from "../context/ToastContext";
 
 export default function ProductDetails() {
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const location = useLocation();
+
   const { slug } = useParams();
   const { products, getProductBySlug } = useProducts();
   const product = getProductBySlug(slug) || products.find((p) => p.slug === slug) || products[0] || {};
@@ -21,6 +25,20 @@ export default function ProductDetails() {
       setActiveImage(product.image || product.mainImage || "/images/product-earbuds.jpg");
     }
   }, [product]);
+
+  if (authLoading) {
+    return (
+      <div className="d-flex justify-content-center align-items-center py-5" style={{ minHeight: "60vh" }}>
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Checking authorization...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
   const [activeTab, setActiveTab] = useState("desc");
   const [reviewsList, setReviewsList] = useState([
     {

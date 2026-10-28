@@ -536,53 +536,7 @@ export default function Home() {
             </div>
 
             {/* Special Offer Item List */}
-            <div className="col-lg-12">
-              <div className="special-offer-item-list">
-                <div className="special-offer-item wow fadeInUp" data-wow-delay="0.2s">
-                  <div className="special-offer-item-image">
-                    <figure>
-                      <img src="/images/category-fashion.jpg" alt="Premium Streetwear Fashion" />
-                    </figure>
-                  </div>
-                  <div className="special-offer-item-body">
-                    <div className="section-title">
-                      <span className="section-sub-title">Fashion Wholesale</span>
-                      <h2>
-                        <Link to="/shop?category=fashion">Heavyweight Streetwear & Selvedge Denim</Link>
-                      </h2>
-                      <p>Heavyweight French Terry hoodies and Japanese selvedge denim tailored for modern boutiques.</p>
-                    </div>
-                    <div className="special-offer-item-btn">
-                      <Link to="/shop?category=fashion" className="btn-default btn-border">
-                        <span>Explore Fashion</span>
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="special-offer-item wow fadeInUp" data-wow-delay="0.4s">
-                  <div className="special-offer-item-image">
-                    <figure>
-                      <img src="/images/lifestyle-display.png" alt="Curated Lifestyle Display" />
-                    </figure>
-                  </div>
-                  <div className="special-offer-item-body">
-                    <div className="section-title">
-                      <span className="section-sub-title">Complete Catalog</span>
-                      <h2>
-                        <Link to="/shop">Curated Tech, Watches, Footwear & Apparel</Link>
-                      </h2>
-                      <p>Direct factory-sourced inventory with verified margins and expedited global logistics.</p>
-                    </div>
-                    <div className="special-offer-item-btn">
-                      <Link to="/shop" className="btn-default btn-border">
-                        <span>Browse Catalog</span>
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+        
           </div>
         </div>
       </div>

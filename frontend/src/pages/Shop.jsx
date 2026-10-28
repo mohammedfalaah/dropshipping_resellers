@@ -1,11 +1,15 @@
 import React, { useState, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useLocation, Navigate } from "react-router-dom";
 import Breadcrumb from "../components/Breadcrumb";
 import ProductCard from "../components/ProductCard";
 import QuickViewModal from "../components/QuickViewModal";
 import { useProducts } from "../context/ProductContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function Shop() {
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const location = useLocation();
+
   const { products, categories, loading } = useProducts();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentCategory = searchParams.get("category") || "all";
@@ -22,6 +26,21 @@ export default function Shop() {
   const [maxPrice, setMaxPrice] = useState(null);
   const effectiveMaxPrice = maxPrice ?? catalogMaxPrice;
   const [quickViewProduct, setQuickViewProduct] = useState(null);
+
+  // Protect Reseller Shop: Must be logged in to view catalog
+  if (authLoading) {
+    return (
+      <div className="d-flex justify-content-center align-items-center py-5" style={{ minHeight: "60vh" }}>
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Checking authorization...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
 
   const filteredProducts = useMemo(() => {
     let result = [...products];

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Breadcrumb from "../components/Breadcrumb";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
@@ -20,6 +20,10 @@ export default function Login() {
   const { addToast } = useToast();
   const { login, register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const redirectTarget = location.state?.from
+    ? (location.state.from.pathname + (location.state.from.search || ""))
+    : "/shop";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,7 +51,7 @@ export default function Login() {
       } else {
         const res = await login(formData.email, formData.password);
         addToast(`Welcome back, ${res.data.user.name}!`, "success");
-        navigate("/account");
+        navigate(redirectTarget, { replace: true });
       }
     } catch (err) {
       addToast(err.message || "Authentication error", "error");
@@ -96,6 +100,13 @@ export default function Login() {
                 ? "Register your business to access wholesale margins, live inventory, and dropship fulfillment."
                 : "Sign in with your reseller or administrator credentials to manage your account."}
             </p>
+
+            {location.state?.from && (
+              <div className="alert alert-warning border d-flex align-items-center mb-4 py-2 px-3 rounded-3" style={{ fontSize: "13px" }}>
+                <i className="fa-solid fa-lock me-2 text-warning fs-6"></i>
+                <span>Reseller login required to access wholesale pricing and products.</span>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit}>
               {isRegister && (
