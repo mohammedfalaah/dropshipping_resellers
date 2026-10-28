@@ -102,79 +102,11 @@ export default function Header() {
                         Home
                       </NavLink>
                     </li>
-                    <li className="nav-item mega-menu submenu position-static">
+                    <li className="nav-item mega-menu  position-static">
                       <NavLink className="nav-link" to="/shop">
-                        Shop <i className="fa-solid fa-angle-down ms-1" style={{ fontSize: "11px" }}></i>
+                        Shop 
                       </NavLink>
-                      <ul className="dropdown-menu">
-                        <li className="mega-menu-box">
-                          <div className="mega-menu-links-box">
-                            <div className="mega-menu-link">
-                              <h2>Core Categories</h2>
-                              <ul>
-                                <li><Link to="/shop?category=gadgets">Gadgets & Tech</Link></li>
-                                <li><Link to="/shop?category=watches">Watches & Horology</Link></li>
-                                <li><Link to="/shop?category=footwear">Footwear & Sneakers</Link></li>
-                                <li><Link to="/shop?category=fashion">Fashion & Streetwear</Link></li>
-                                <li><Link to="/shop">All Wholesale Products</Link></li>
-                              </ul>
-                            </div>
-                            <div className="mega-menu-link">
-                              <h2>Featured Collections</h2>
-                              <ul>
-                                <li><Link to="/shop?category=gadgets">Wireless Earbuds & Power</Link></li>
-                                <li><Link to="/shop?category=watches">Automatic Chronographs</Link></li>
-                                <li><Link to="/shop?category=watches">AMOLED Smartwatches</Link></li>
-                                <li><Link to="/shop?category=footwear">Athletic Runners & Boots</Link></li>
-                                <li><Link to="/shop?category=fashion">Heavyweight Hoodies & Denim</Link></li>
-                              </ul>
-                            </div>
-                          </div>
-
-                          <div className="mega-menu-items-list">
-                            <div className="mega-menu-item">
-                              <div className="mega-menu-item-image">
-                                <Link to="/shop?category=gadgets">
-                                  <figure className="image-anime">
-                                    <img src="/images/category-gadgets.jpg" alt="Gadgets Collection" />
-                                  </figure>
-                                </Link>
-                              </div>
-                              <div className="mega-menu-item-content">
-                                <h2><Link to="/shop?category=gadgets">Gadgets & Tech</Link></h2>
-                                <p>High-demand wireless audio, chargers, and tech accessories.</p>
-                              </div>
-                            </div>
-
-                            <div className="mega-menu-item">
-                              <div className="mega-menu-item-image">
-                                <Link to="/shop?category=watches">
-                                  <figure className="image-anime">
-                                    <img src="/images/category-watches.jpg" alt="Watches Collection" />
-                                  </figure>
-                                </Link>
-                              </div>
-                              <div className="mega-menu-item-content">
-                                <h2><Link to="/shop?category=watches">Watches & Wearables</Link></h2>
-                                <p>Automatic chronographs and high-spec AMOLED smartwatches.</p>
-                              </div>
-                            </div>
-
-                            <div className="mega-menu-item big-offer-box">
-                              <div className="mega-menu-item-image">
-                                <figure>
-                                  <img src="/images/lifestyle-display.png" alt="Wholesale Bulk Sale" />
-                                </figure>
-                              </div>
-                              <div className="mega-menu-item-content">
-                                <span>- wholesale pricing -</span>
-                                <h2>Bulk Deals</h2>
-                                <h3>Up to 50% Margin</h3>
-                              </div>
-                            </div>
-                          </div>
-                        </li>
-                      </ul>
+                      
                     </li>
                     <li className="nav-item">
                       <NavLink className="nav-link" to="/about">
