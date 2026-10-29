@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { blogPosts, testimonials } from "../data/productsData";
 import { useProducts } from "../context/ProductContext";
@@ -18,17 +18,6 @@ export default function Home() {
   const { products, categories } = useProducts();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [quickViewProduct, setQuickViewProduct] = useState(null);
-  const [viewMode, setViewMode] = useState("carousel"); // "carousel" | "grid"
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(true);
-  const [isDragging, setIsDragging] = useState(false);
-
-  const productScrollRef = useRef(null);
-  const isDownRef = useRef(false);
-  const startXRef = useRef(0);
-  const scrollLeftStartRef = useRef(0);
-  const hasDraggedRef = useRef(false);
 
   // Live countdown timer state
   const [timeLeft, setTimeLeft] = useState({
@@ -55,84 +44,6 @@ export default function Home() {
     selectedCategory === "all"
       ? products.slice(0, 8)
       : products.filter((p) => p.categorySlug === selectedCategory);
-
-  // Scroll position & progress updater
-  const updateScrollStatus = () => {
-    const el = productScrollRef.current;
-    if (!el) return;
-    const { scrollLeft, scrollWidth, clientWidth } = el;
-    const maxScroll = scrollWidth - clientWidth;
-
-    setCanScrollLeft(scrollLeft > 10);
-    setCanScrollRight(maxScroll > 10 && scrollLeft < maxScroll - 10);
-
-    const progress = maxScroll > 0 ? (scrollLeft / maxScroll) * 100 : 0;
-    setScrollProgress(Math.min(100, Math.max(0, progress)));
-  };
-
-  useEffect(() => {
-    updateScrollStatus();
-    const el = productScrollRef.current;
-    if (el) {
-      el.addEventListener("scroll", updateScrollStatus, { passive: true });
-      window.addEventListener("resize", updateScrollStatus);
-    }
-    return () => {
-      if (el) el.removeEventListener("scroll", updateScrollStatus);
-      window.removeEventListener("resize", updateScrollStatus);
-    };
-  }, [filteredProducts, viewMode]);
-
-  // When changing category, smoothly reset scroll to start
-  const handleCategoryChange = (cat) => {
-    setSelectedCategory(cat);
-    if (productScrollRef.current) {
-      productScrollRef.current.scrollTo({ left: 0, behavior: "smooth" });
-    }
-  };
-
-  const scrollByAmount = (amount) => {
-    if (productScrollRef.current) {
-      productScrollRef.current.scrollBy({ left: amount, behavior: "smooth" });
-    }
-  };
-
-  const scrollToProductIndex = (idx) => {
-    if (!productScrollRef.current) return;
-    const cards = productScrollRef.current.querySelectorAll(".product-item");
-    if (cards[idx]) {
-      cards[idx].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
-    }
-  };
-
-  // Drag-to-scroll handlers
-  const handleMouseDown = (e) => {
-    if (!productScrollRef.current) return;
-    isDownRef.current = true;
-    hasDraggedRef.current = false;
-    startXRef.current = e.pageX - productScrollRef.current.offsetLeft;
-    scrollLeftStartRef.current = productScrollRef.current.scrollLeft;
-    setIsDragging(true);
-  };
-
-  const handleMouseMove = (e) => {
-    if (!isDownRef.current || !productScrollRef.current) return;
-    e.preventDefault();
-    const x = e.pageX - productScrollRef.current.offsetLeft;
-    const walk = (x - startXRef.current) * 1.35;
-    if (Math.abs(walk) > 5) {
-      hasDraggedRef.current = true;
-    }
-    productScrollRef.current.scrollLeft = scrollLeftStartRef.current - walk;
-  };
-
-  const handleMouseUpOrLeave = () => {
-    isDownRef.current = false;
-    setIsDragging(false);
-    setTimeout(() => {
-      hasDraggedRef.current = false;
-    }, 70);
-  };
 
   return (
     <>
@@ -247,7 +158,7 @@ export default function Home() {
                   <button
                     type="button"
                     className={`product-category-tab ${selectedCategory === "all" ? "active" : ""}`}
-                    onClick={() => handleCategoryChange("all")}
+                    onClick={() => setSelectedCategory("all")}
                   >
                     All Products
                   </button>
@@ -256,163 +167,28 @@ export default function Home() {
                       key={cat.slug || cat.id}
                       type="button"
                       className={`product-category-tab ${selectedCategory === cat.slug ? "active" : ""}`}
-                      onClick={() => handleCategoryChange(cat.slug)}
+                      onClick={() => setSelectedCategory(cat.slug)}
                     >
                       {cat.name}
                     </button>
                   ))}
                 </div>
-
-                {/* Right Action Controls: View Mode & Carousel Nav Arrows */}
-                <div className="product-action-controls">
-                  <div className="view-mode-toggle">
-                    <button
-                      type="button"
-                      className={`view-mode-btn ${viewMode === "carousel" ? "active" : ""}`}
-                      onClick={() => setViewMode("carousel")}
-                      title="Horizontal Slider Mode"
-                    >
-                      <i className="fa-solid fa-arrows-left-right"></i>
-                      <span>Slider</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`view-mode-btn ${viewMode === "grid" ? "active" : ""}`}
-                      onClick={() => setViewMode("grid")}
-                      title="Grid Mode"
-                    >
-                      <i className="fa-solid fa-grip"></i>
-                      <span>Grid</span>
-                    </button>
-                  </div>
-
-                  {viewMode === "carousel" && (
-                    <div className="carousel-nav-arrows">
-                      <button
-                        type="button"
-                        className="carousel-nav-btn"
-                        onClick={() => scrollByAmount(-340)}
-                        disabled={!canScrollLeft}
-                        title="Previous Products"
-                        aria-label="Previous Products"
-                      >
-                        <i className="fa-solid fa-chevron-left"></i>
-                      </button>
-                      <button
-                        type="button"
-                        className="carousel-nav-btn"
-                        onClick={() => scrollByAmount(340)}
-                        disabled={!canScrollRight}
-                        title="Next Products"
-                        aria-label="Next Products"
-                      >
-                        <i className="fa-solid fa-chevron-right"></i>
-                      </button>
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
           </div>
 
-          {/* Product Showcase Viewport */}
+          {/* Product Grid Viewport */}
           <div className="row">
             <div className="col-lg-12">
-              {viewMode === "carousel" ? (
-                <div className="product-carousel-viewport">
-                  {canScrollLeft && <div className="carousel-edge-fade-left"></div>}
-                  {canScrollRight && <div className="carousel-edge-fade-right"></div>}
-
-                  {/* Floating Desktop Edge Navigation Buttons */}
-                  <button
-                    type="button"
-                    className="floating-nav-btn prev"
-                    onClick={() => scrollByAmount(-340)}
-                    disabled={!canScrollLeft}
-                    aria-label="Previous Products"
-                  >
-                    <i className="fa-solid fa-chevron-left"></i>
-                  </button>
-                  <button
-                    type="button"
-                    className="floating-nav-btn next"
-                    onClick={() => scrollByAmount(340)}
-                    disabled={!canScrollRight}
-                    aria-label="Next Products"
-                  >
-                    <i className="fa-solid fa-chevron-right"></i>
-                  </button>
-
-                  <div
-                    ref={productScrollRef}
-                    className={`product-scroll-track ${isDragging ? "is-dragging" : ""}`}
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUpOrLeave}
-                    onMouseLeave={handleMouseUpOrLeave}
-                  >
-                    {filteredProducts.map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        isDragging={hasDraggedRef.current}
-                        onQuickView={(p) => setQuickViewProduct(p)}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Live Progress Bar and Indicators */}
-                  <div className="product-scroll-footer">
-                    <div className="product-scroll-progress-track">
-                      <div
-                        className="product-scroll-progress-bar"
-                        style={{ width: `${Math.max(12, scrollProgress)}%` }}
-                      ></div>
-                    </div>
-
-                    <div className="product-scroll-indicator-text">
-                      <span>Showing {filteredProducts.length} Wholesale Essentials</span>
-                      <span>•</span>
-                      <span>
-                        <i className="fa-solid fa-hand-pointer me-1 text-muted"></i>
-                        Drag or click arrows to explore
-                      </span>
-                    </div>
-
-                    {filteredProducts.length > 3 && (
-                      <div className="product-scroll-dots">
-                        {filteredProducts.map((_, dotIdx) => {
-                          const activeDot = Math.round(
-                            (scrollProgress / 100) * (filteredProducts.length - 1)
-                          );
-                          return (
-                            <button
-                              key={dotIdx}
-                              type="button"
-                              className={`product-scroll-dot ${
-                                activeDot === dotIdx ? "active" : ""
-                              }`}
-                              onClick={() => scrollToProductIndex(dotIdx)}
-                              aria-label={`Scroll to product ${dotIdx + 1}`}
-                            />
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="product-item-list">
-                  {filteredProducts.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      className="fade-in-item"
-                      onQuickView={(p) => setQuickViewProduct(p)}
-                    />
-                  ))}
-                </div>
-              )}
+              <div className="product-item-list">
+                {filteredProducts.map((product) => (
+                  <ProductCard
+                    key={product.id || product._id}
+                    product={product}
+                    onQuickView={(p) => setQuickViewProduct(p)}
+                  />
+                ))}
+              </div>
             </div>
           </div>
 
