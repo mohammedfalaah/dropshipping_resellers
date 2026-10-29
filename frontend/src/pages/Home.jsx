@@ -444,102 +444,7 @@ export default function Home() {
       </div>
 
       {/* Trending Offers Section */}
-      <div className="trending-offers">
-        <div className="container">
-          <div className="row section-row">
-            <div className="col-lg-12">
-              <div className="section-title section-title-center">
-                <span className="section-sub-title wow fadeInUp">Trending Catalogs</span>
-                <h2 className="text-anime-style-3">Exclusive Wholesale Drops</h2>
-              </div>
-            </div>
-          </div>
-
-          <div className="row">
-            <div className="col-lg-12">
-              <div className="trending-offer-item-list">
-                {/* Box 1 - Gadgets */}
-                <div className="trending-offer-item box-1 wow fadeInUp">
-                  <div className="trending-offer-item-image">
-                    <figure>
-                      <img src="/images/category-gadgets.jpg" alt="Smart Audio & Mobile Accessories" />
-                    </figure>
-                  </div>
-                  <div className="trending-offer-item-body">
-                    <div className="trending-offer-item-title">
-                      <p>Smart Audio & Mobile Accessories</p>
-                    </div>
-                    <div className="trending-offer-item-content">
-                      <div className="trending-offer-item-info">
-                        <h3>Up to 50% Margin</h3>
-                        <p>Fast-Selling Tech Gear</p>
-                      </div>
-                      <div className="trending-offer-item-btn">
-                        <Link to="/shop?category=gadgets" className="btn-default btn-highlighted">
-                          <span>Shop Gadgets</span>
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Box 2 - Watches */}
-                <div className="trending-offer-item box-2 wow fadeInUp" data-wow-delay="0.2s">
-                  <div className="trending-offer-item-image">
-                    <figure>
-                      <img src="/images/category-watches.jpg" alt="Precision Automatic & Smartwatches" />
-                    </figure>
-                  </div>
-                  <div className="trending-offer-item-body">
-                    <div className="trending-offer-item-title">
-                      <p>Precision Automatic & Smartwatches</p>
-                    </div>
-                    <div className="trending-offer-item-content">
-                      <div className="trending-offer-item-info">
-                        <h3>Up to 60% Margin</h3>
-                        <p>Luxury & AMOLED Wearables</p>
-                      </div>
-                      <div className="trending-offer-item-btn">
-                        <Link to="/shop?category=watches" className="btn-default btn-highlighted">
-                          <span>Shop Watches</span>
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Box 3 - Footwear */}
-                <div className="trending-offer-item box-3 wow fadeInUp" data-wow-delay="0.4s">
-                  <div className="trending-offer-item-image">
-                    <figure>
-                      <img src="/images/category-footwear.jpg" alt="Urban Sneakers & Chelsea Boots" />
-                    </figure>
-                  </div>
-                  <div className="trending-offer-item-body">
-                    <div className="trending-offer-item-title">
-                      <p>Urban Sneakers & Chelsea Boots</p>
-                    </div>
-                    <div className="trending-offer-item-content">
-                      <div className="trending-offer-item-info">
-                        <h3>Volume Discounts</h3>
-                        <p>High-Demand Street Footwear</p>
-                      </div>
-                      <div className="trending-offer-item-btn">
-                        <Link to="/shop?category=footwear" className="btn-default btn-highlighted">
-                          <span>Shop Footwear</span>
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Special Offer Item List */}
-        
-          </div>
-        </div>
-      </div>
+    
 
       {/* Limited Time Countdown Offer */}
       <div className="limited-offer">
@@ -654,49 +559,7 @@ export default function Home() {
       </div>
 
       {/* Latest Blog Section */}
-      <div className="our-blog py-5 bg-light">
-        <div className="container">
-          <div className="row section-row text-center mb-5">
-            <div className="col-lg-12">
-              <div className="section-title section-title-center">
-                <span className="section-sub-title wow fadeInUp">Reseller Knowledge Base</span>
-                <h2 className="text-anime-style-3">Margins, Guides & Trends</h2>
-              </div>
-            </div>
-          </div>
-
-          <div className="row g-4">
-            {blogPosts.map((post, idx) => (
-              <div
-                key={post.id}
-                className="col-lg-4 col-md-6 wow fadeInUp"
-                data-wow-delay={`${idx * 0.15}s`}
-              >
-                <div className="card h-100 border-0 shadow-sm overflow-hidden rounded-4 bg-white">
-                  <Link to={`/blog/${post.slug}`}>
-                    <img src={post.image} alt={post.title} className="card-img-top" style={{ height: "240px", objectFit: "cover" }} />
-                  </Link>
-                  <div className="card-body p-4 d-flex flex-column">
-                    <div className="d-flex align-items-center gap-3 text-muted small mb-2">
-                      <span><i className="fa-regular fa-calendar me-1"></i> {post.date}</span>
-                      <span><i className="fa-regular fa-user me-1"></i> {post.author}</span>
-                    </div>
-                    <h5 className="card-title fw-bold mb-3">
-                      <Link to={`/blog/${post.slug}`} className="text-dark text-decoration-none">
-                        {post.title}
-                      </Link>
-                    </h5>
-                    <p className="card-text text-muted small mb-4 flex-grow-1">{post.excerpt}</p>
-                    <Link to={`/blog/${post.slug}`} className="fw-semibold text-decoration-none" style={{ color: "var(--accent-color, #FA7EAA)" }}>
-                      Read Article &rarr;
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+     
 
       {/* Quick View Modal */}
       {quickViewProduct && (
