@@ -183,8 +183,8 @@ const createProduct = async (req, res, next) => {
     });
 
     await AuditLog.create({
-      user: req.user._id,
-      userName: req.user.name,
+      user: req.user?._id || req.user?.id,
+      userName: req.user?.name || "Admin",
       userRole: "admin",
       action: "PRODUCT_CREATED",
       targetType: "PRODUCT",
@@ -260,8 +260,8 @@ const updateProduct = async (req, res, next) => {
     await product.save();
 
     await AuditLog.create({
-      user: req.user._id,
-      userName: req.user.name,
+      user: req.user?._id || req.user?.id,
+      userName: req.user?.name || "Admin",
       userRole: "admin",
       action: "PRODUCT_UPDATED",
       targetType: "PRODUCT",

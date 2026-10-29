@@ -45,6 +45,14 @@ router.post(
   productController.createProduct
 );
 
+router.put(
+  "/:id",
+  protect,
+  restrictTo("admin"),
+  validate(updateProductSchema),
+  productController.updateProduct
+);
+
 router.patch(
   "/:id",
   protect,

@@ -48,7 +48,13 @@ export const productsApi = {
   getBySlug: (slug) => api.get(`/products/${slug}`),
   getCategories: () => api.get("/products/categories/list"),
   create: (data) => api.post("/products", data),
-  update: (id, data) => api.put(`/products/${id}`, data),
+  update: (id, data) =>
+    api.patch(`/products/${id}`, data).catch((err) => {
+      if (err?.status === 404 || err?.status === 405) {
+        return api.put(`/products/${id}`, data);
+      }
+      return Promise.reject(err);
+    }),
   delete: (id) => api.delete(`/products/${id}`),
   uploadImage: (formData) =>
     api.post("/products/upload-image", formData, {
