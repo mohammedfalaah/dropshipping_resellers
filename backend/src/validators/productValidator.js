@@ -3,9 +3,7 @@ const { z } = require("zod");
 const createProductSchema = z.object({
   name: z.string().min(2, "Product name must be at least 2 characters").max(200),
   sku: z.string().min(3, "SKU is required").max(50),
-  category: z.enum(["Gadgets", "Watches", "Footwear", "Fashion"], {
-    errorMap: () => ({ message: "Category must be one of: Gadgets, Watches, Footwear, Fashion" }),
-  }),
+  category: z.string().min(1, "Category is required").max(100),
   description: z.string().min(10, "Description must be at least 10 characters"),
   shortDescription: z.string().optional().default(""),
   mainImage: z.string().min(1, "Main image is required"),

@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const productController = require("../controllers/productController");
+const categoryController = require("../controllers/categoryController");
 const { protect, restrictTo } = require("../middleware/auth");
 const validate = require("../middleware/validate");
 const upload = require("../middleware/upload");
@@ -30,7 +31,8 @@ const optionalAuth = async (req, res, next) => {
 };
 
 // Public / Reseller endpoints
-router.get("/categories", productController.getCategories);
+router.get("/categories", categoryController.getCategories);
+router.get("/categories/list", categoryController.getCategories);
 router.get("/", optionalAuth, productController.getProducts);
 router.get("/:slug", optionalAuth, productController.getProductBySlug);
 

@@ -253,6 +253,65 @@ export const products = [
       "Care": "Cold wash, hang dry inside out",
       "Target Market": "Vintage, Heritage, and Urban Streetwear Stores"
     }
+  },
+  // --- SUNGLASSES ---
+  {
+    id: 9,
+    name: "Aviator Classic Polarized Sunglasses",
+    slug: "aviator-classic-polarized-sunglasses",
+    category: "Sunglasses",
+    categorySlug: "sunglasses",
+    price: 24.99,
+    originalPrice: 49.99,
+    rating: 5,
+    ratingCount: 56,
+    image: "/images/category-sunglasses.jpg",
+    thumbnails: [
+      "/images/category-sunglasses.jpg"
+    ],
+    badge: "Hot Deal",
+    featured: true,
+    trending: true,
+    inStock: true,
+    stockCount: 180,
+    sku: "RES-SUN-001",
+    shortDescription: "Ultra-lightweight titanium alloy polarized aviators with UV400 anti-glare protection and scratch-resistant lenses.",
+    description: "Designed for premium aesthetic appeal and all-day comfort. Features 9-layer TAC polarized lenses that eliminate 99.9% of reflective glare while maintaining sharp color fidelity. Comes with protective hard-shell case and microfiber cleaning cloth.",
+    additionalInfo: {
+      "Frame Material": "Corrosion-Resistant Titanium Alloy",
+      "Lens Technology": "UV400 Polarized TAC 9-Layer",
+      "Weight": "22g Ultra Lightweight",
+      "Reseller Margin": "Up to 58% Estimated Retail Margin"
+    }
+  },
+  {
+    id: 10,
+    name: "Retro Matte Black Wayfarer Shades",
+    slug: "retro-matte-black-wayfarer-shades",
+    category: "Sunglasses",
+    categorySlug: "sunglasses",
+    price: 19.50,
+    originalPrice: 39.99,
+    rating: 5,
+    ratingCount: 38,
+    image: "/images/category-sunglasses.jpg",
+    thumbnails: [
+      "/images/category-sunglasses.jpg"
+    ],
+    badge: "Best Seller",
+    featured: true,
+    trending: true,
+    inStock: true,
+    stockCount: 140,
+    sku: "RES-SUN-002",
+    shortDescription: "Timeless matte acetate square-frame sunglasses with dark gradient UV400 lenses and reinforced 5-barrel steel hinges.",
+    description: "The universally flattering wayfarer silhouette crafted from handcrafted bio-acetate. Offers superior optical clarity, smudge-proof hydrophobic coating, and impact-resistant construction.",
+    additionalInfo: {
+      "Frame Material": "Handcrafted Matte Bio-Acetate",
+      "Hinge Type": "5-Barrel Stainless Steel Hinges",
+      "UV Rating": "100% UVA/UVB Category 3 Protection",
+      "Reseller Margin": "Up to 52% Resale Margin"
+    }
   }
 ];
 
@@ -288,6 +347,14 @@ export const categories = [
     count: 35,
     image: "/images/category-fashion.jpg",
     description: "Premium streetwear hoodies, raw denim jackets, cargo trousers, and modern apparel."
+  },
+  {
+    id: 5,
+    name: "Sunglasses",
+    slug: "sunglasses",
+    count: 16,
+    image: "/images/category-sunglasses.jpg",
+    description: "Premium polarized sunglasses, UV400 aviators, acetate designer frames, and luxury eyewear."
   }
 ];
 

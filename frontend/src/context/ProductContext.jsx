@@ -39,14 +39,30 @@ export const ProductProvider = ({ children }) => {
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await productsApi.getAll({ limit: 100 });
-      // res is response.data from axios interceptor
-      const rawProducts = res?.data?.products || res?.products || [];
+      // Parallel fetch products and categories
+      const [prodRes, catRes] = await Promise.allSettled([
+        productsApi.getAll({ limit: 100 }),
+        productsApi.getCategories(),
+      ]);
 
-      if (Array.isArray(rawProducts)) {
-        const normalizedDbProducts = rawProducts.map(normalizeProduct);
-        setProducts(normalizedDbProducts);
+      if (prodRes.status === "fulfilled") {
+        const rawProducts = prodRes.value?.data?.products || prodRes.value?.products || [];
+        if (Array.isArray(rawProducts) && rawProducts.length > 0) {
+          const normalizedDbProducts = rawProducts.map(normalizeProduct);
+          setProducts(normalizedDbProducts);
+        } else {
+          // Fallback to initialProducts if backend has no products yet
+          setProducts(initialProducts.map(normalizeProduct));
+        }
       }
+
+      if (catRes.status === "fulfilled") {
+        const rawCategories = catRes.value?.data?.categories || catRes.value?.categories || [];
+        if (Array.isArray(rawCategories) && rawCategories.length > 0) {
+          setCategories(rawCategories);
+        }
+      }
+
       setError(null);
     } catch (err) {
       console.warn("Could not fetch live products from API:", err.message);

@@ -19,6 +19,7 @@ const codRoutes = require("./routes/codRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const wishlistRoutes = require("./routes/wishlistRoutes");
+const categoryRoutes = require("./routes/categoryRoutes");
 
 const app = express();
 
@@ -124,6 +125,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/cod", codRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/wishlist", wishlistRoutes);
+app.use("/api/categories", categoryRoutes);
 
 // 404 Handler
 app.use("*", (req, res) => {

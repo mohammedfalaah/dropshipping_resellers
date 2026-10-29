@@ -28,13 +28,14 @@ const ProductSchema = new mongoose.Schema(
     category: {
       type: String,
       required: [true, "Category is required"],
-      enum: ["Gadgets", "Watches", "Footwear", "Fashion"],
+      trim: true,
       index: true,
     },
     categorySlug: {
       type: String,
       required: true,
-      enum: ["gadgets", "watches", "footwear", "fashion"],
+      trim: true,
+      lowercase: true,
       index: true,
     },
     description: {

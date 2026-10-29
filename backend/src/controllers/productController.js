@@ -367,7 +367,10 @@ const bulkImportProducts = async (req, res, next) => {
       return errorResponse(res, "Please provide an array of products to import.", "INVALID_DATA", 400);
     }
 
-    const validCategories = ["Gadgets", "Watches", "Footwear", "Fashion"];
+    const dbCategories = await Category.find({}, "name");
+    const validCategories = dbCategories.length > 0 
+      ? dbCategories.map((c) => c.name) 
+      : ["Gadgets", "Watches", "Footwear", "Fashion", "Sunglasses"];
     const preparedProducts = [];
     const errors = [];
 

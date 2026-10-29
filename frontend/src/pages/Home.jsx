@@ -251,34 +251,16 @@ export default function Home() {
                   >
                     All Products
                   </button>
-                  <button
-                    type="button"
-                    className={`product-category-tab ${selectedCategory === "gadgets" ? "active" : ""}`}
-                    onClick={() => handleCategoryChange("gadgets")}
-                  >
-                    Gadgets
-                  </button>
-                  <button
-                    type="button"
-                    className={`product-category-tab ${selectedCategory === "watches" ? "active" : ""}`}
-                    onClick={() => handleCategoryChange("watches")}
-                  >
-                    Watches
-                  </button>
-                  <button
-                    type="button"
-                    className={`product-category-tab ${selectedCategory === "footwear" ? "active" : ""}`}
-                    onClick={() => handleCategoryChange("footwear")}
-                  >
-                    Footwear
-                  </button>
-                  <button
-                    type="button"
-                    className={`product-category-tab ${selectedCategory === "fashion" ? "active" : ""}`}
-                    onClick={() => handleCategoryChange("fashion")}
-                  >
-                    Fashion
-                  </button>
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.slug || cat.id}
+                      type="button"
+                      className={`product-category-tab ${selectedCategory === cat.slug ? "active" : ""}`}
+                      onClick={() => handleCategoryChange(cat.slug)}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
                 </div>
 
                 {/* Right Action Controls: View Mode & Carousel Nav Arrows */}

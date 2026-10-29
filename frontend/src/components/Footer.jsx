@@ -114,6 +114,7 @@ export default function Footer() {
                     <li><Link to="/shop?category=watches">Watches</Link></li>
                     <li><Link to="/shop?category=footwear">Footwear</Link></li>
                     <li><Link to="/shop?category=fashion">Fashion</Link></li>
+                    <li><Link to="/shop?category=sunglasses">Sunglasses</Link></li>
                     <li><Link to="/shop">All Products</Link></li>
                   </ul>
                 </div>

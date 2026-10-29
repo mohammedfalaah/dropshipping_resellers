@@ -3,6 +3,7 @@ const router = express.Router();
 const adminController = require("../controllers/adminController");
 const orderController = require("../controllers/orderController");
 const productController = require("../controllers/productController");
+const categoryController = require("../controllers/categoryController");
 const codController = require("../controllers/codController");
 const paymentController = require("../controllers/paymentController");
 const reportController = require("../controllers/reportController");
@@ -45,7 +46,11 @@ router.patch("/products/:id", validate(updateProductSchema), productController.u
 router.put("/products/:id", validate(updateProductSchema), productController.updateProduct);
 router.patch("/products/:id/stock", validate(updateStockSchema), productController.updateStock);
 router.delete("/products/:id", productController.deleteProduct);
-router.get("/categories", productController.getCategories);
+router.get("/categories", categoryController.getCategories);
+router.post("/categories", categoryController.createCategory);
+router.put("/categories/:id", categoryController.updateCategory);
+router.patch("/categories/:id", categoryController.updateCategory);
+router.delete("/categories/:id", categoryController.deleteCategory);
 
 // Orders Management
 router.get("/orders", orderController.getAllOrders);
