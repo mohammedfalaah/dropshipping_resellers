@@ -228,7 +228,33 @@ header.main-header .header-sticky.active {
 }
 
 .page-header {
+  position: relative !important;
   padding-top: 215px !important;
+  padding-bottom: 110px !important;
+  background-color: #0f1013 !important;
+  background-image: url('/images/page-header-bg-image.png') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+.page-header::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: linear-gradient(180deg, rgba(15, 16, 19, 0.35) 0%, rgba(15, 16, 19, 0.75) 100%) !important;
+  z-index: 1 !important;
+  pointer-events: none !important;
+}
+
+.page-header .container {
+  position: relative !important;
+  z-index: 2 !important;
 }
 
 /* Dropdown Menu Glassmorphism */
