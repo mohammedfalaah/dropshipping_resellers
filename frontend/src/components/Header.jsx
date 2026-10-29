@@ -113,26 +113,8 @@ export default function Header() {
                         About Us
                       </NavLink>
                     </li>
-                    <li className="nav-item">
-                      <NavLink className="nav-link" to="/blog">
-                        Blog
-                      </NavLink>
-                    </li>
-                    <li className="nav-item submenu">
-                      <span className="nav-link cursor-pointer" role="button">
-                        Pages <i className="fa-solid fa-angle-down ms-1" style={{ fontSize: "11px" }}></i>
-                      </span>
-                      <ul>
-                        <li className="nav-item"><Link className="nav-link" to="/wishlist">Wishlist</Link></li>
-                        <li className="nav-item"><Link className="nav-link" to="/cart">Cart</Link></li>
-                        <li className="nav-item"><Link className="nav-link" to="/checkout">Checkout</Link></li>
-                        <li className="nav-item"><Link className="nav-link" to="/testimonials">Testimonials</Link></li>
-                        <li className="nav-item"><Link className="nav-link" to="/faqs">FAQs</Link></li>
-                        <li className="nav-item"><Link className="nav-link" to="/privacy-policy">Privacy Policy</Link></li>
-                        <li className="nav-item"><Link className="nav-link" to="/terms-conditions">Terms & Conditions</Link></li>
-                        <li className="nav-item"><Link className="nav-link" to="/404">404 Error Page</Link></li>
-                      </ul>
-                    </li>
+                   
+                   
                     <li className="nav-item">
                       <NavLink className="nav-link" to="/contact">
                         Contact

@@ -209,7 +209,6 @@ export default function Home() {
                     key={cat.id}
                     className="category-item wow fadeInUp"
                     data-wow-delay={`${idx * 0.15}s`}
-                    style={{ width: "calc(25% - 15px)" }}
                   >
                     <div className="category-item-image">
                       <Link to={`/shop?category=${cat.slug}`}>

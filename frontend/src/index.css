@@ -307,30 +307,35 @@ header.main-header .header-sticky.active {
 /* ========================================================
    CATEGORY & PRODUCT GRID FIXES
    ======================================================== */
-/* Category Item List - 6 items per row */
+/* Category Item List - Centered items */
 .category-item-list {
   display: flex !important;
   flex-wrap: wrap !important;
-  gap: 30px 20px !important;
+  justify-content: center !important;
+  align-items: flex-start !important;
+  gap: 30px 24px !important;
 }
 
 .category-item-list .category-item {
-  width: calc(16.66% - 16.66px) !important;
-  max-width: calc(16.66% - 16.66px) !important;
+  width: calc(16.66% - 20px) !important;
+  min-width: 170px !important;
+  max-width: 220px !important;
   text-align: center;
 }
 
 @media (max-width: 991px) {
   .category-item-list .category-item {
-    width: calc(33.33% - 13.33px) !important;
-    max-width: calc(33.33% - 13.33px) !important;
+    width: calc(33.33% - 16px) !important;
+    min-width: 140px !important;
+    max-width: 200px !important;
   }
 }
 
 @media (max-width: 575px) {
   .category-item-list .category-item {
-    width: calc(50% - 10px) !important;
-    max-width: calc(50% - 10px) !important;
+    width: calc(50% - 14px) !important;
+    min-width: 130px !important;
+    max-width: 170px !important;
   }
 }
 

@@ -88,47 +88,9 @@ export default function Footer() {
                 </div>
 
                 {/* Newsletter Box */}
-                <div className="footer-newsletter mb-4">
-                  <h6 className="text-white mb-2" style={{ fontSize: "15px", fontWeight: "600" }}>
-                    Subscribe to get 15% off your first order:
-                  </h6>
-                  <form onSubmit={handleSubscribe} className="d-flex gap-2">
-                    <input
-                      type="email"
-                      className="form-control"
-                      placeholder="Enter your email"
-                      value={newsletterEmail}
-                      onChange={(e) => setNewsletterEmail(e.target.value)}
-                      style={{
-                        backgroundColor: "rgba(255,255,255,0.1)",
-                        border: "1px solid rgba(255,255,255,0.2)",
-                        color: "#fff",
-                        borderRadius: "8px",
-                        fontSize: "14px"
-                      }}
-                    />
-                    <button
-                      type="submit"
-                      className="btn px-4 fw-semibold text-white"
-                      style={{
-                        backgroundColor: "var(--accent-color, #FA7EAA)",
-                        borderRadius: "8px",
-                        whiteSpace: "nowrap"
-                      }}
-                    >
-                      Subscribe
-                    </button>
-                  </form>
-                </div>
+               
 
-                <div className="footer-social-links">
-                  <ul className="d-flex gap-2 list-unstyled mb-0">
-                    <li><a href="#" aria-label="Pinterest"><i className="fa-brands fa-pinterest-p"></i></a></li>
-                    <li><a href="#" aria-label="Twitter"><i className="fa-brands fa-x-twitter"></i></a></li>
-                    <li><a href="#" aria-label="Facebook"><i className="fa-brands fa-facebook-f"></i></a></li>
-                    <li><a href="#" aria-label="Instagram"><i className="fa-brands fa-instagram"></i></a></li>
-                  </ul>
-                </div>
+               
               </div>
             </div>
 
@@ -181,16 +143,7 @@ export default function Footer() {
                     <p>Copyright © {new Date().getFullYear()} SPARE PRO. All Rights Reserved.</p>
                   </div>
 
-                  <div className="footer-payment-options">
-                    <ul>
-                      <li><img src="/images/icon-payment-option-1.svg" alt="Visa" /></li>
-                      <li><img src="/images/icon-payment-option-2.svg" alt="Mastercard" /></li>
-                      <li><img src="/images/icon-payment-option-3.svg" alt="Amex" /></li>
-                      <li><img src="/images/icon-payment-option-4.svg" alt="Apple Pay" /></li>
-                      <li><img src="/images/icon-payment-option-5.svg" alt="PayPal" /></li>
-                      <li><img src="/images/icon-payment-option-6.svg" alt="Google Pay" /></li>
-                    </ul>
-                  </div>
+                 
                 </div>
               </div>
             </div>
