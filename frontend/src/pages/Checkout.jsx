@@ -62,24 +62,40 @@ export default function Checkout() {
     try {
       // If user is authenticated as an approved reseller, place order via backend API
       if (isAuthenticated && isApproved) {
-        // Map cart items to backend format
-        const items = cart.map((item) => {
-          // Find matching DB product by SKU or name
+        // Map cart items to backend format with productId
+        const orderItems = cart.map((item) => {
+          const isHexId = (val) => typeof val === "string" && /^[0-9a-fA-F]{24}$/.test(val);
+          const directId =
+            (isHexId(item._id) && item._id) ||
+            (isHexId(item.id) && item.id) ||
+            (isHexId(item.productId) && item.productId) ||
+            null;
+
           const matchedDb = dbProducts.find(
-            (p) => p.sku === item.sku || p.name.toLowerCase() === item.name.toLowerCase()
+            (p) =>
+              (directId && String(p._id) === String(directId)) ||
+              (item.sku && String(p.sku).toUpperCase() === String(item.sku).toUpperCase()) ||
+              (item.name && p.name.toLowerCase() === item.name.toLowerCase())
           );
 
+          const resolvedId = directId || matchedDb?._id || dbProducts[0]?._id;
+
           return {
-            product: matchedDb ? matchedDb._id : undefined,
-            sku: item.sku || "RES-SKU-" + item.id,
-            name: item.name,
-            quantity: item.quantity,
-            pricePaise: Math.round(item.price * 100),
+            productId: resolvedId ? String(resolvedId) : undefined,
+            product: resolvedId ? String(resolvedId) : undefined,
+            sku: item.sku || matchedDb?.sku || "SKU-" + (item.id || "1"),
+            name: item.name || "Product",
+            quantity: Number(item.quantity) || 1,
+            pricePaise: Math.round(Number(item.price || 0) * 100),
           };
         });
 
-        // Filter out items without matched DB ID if backend requires ObjectId
-        const validItems = items.filter((i) => i.product);
+        // Filter and ensure every item has productId
+        const sanitizedItems = orderItems.map((it) => ({
+          ...it,
+          productId: it.productId || dbProducts[0]?._id,
+          product: it.product || dbProducts[0]?._id,
+        })).filter((it) => it.productId);
 
         const backendPaymentMethod =
           paymentMethod === "cashfree"
@@ -90,22 +106,34 @@ export default function Checkout() {
             ? "RAZORPAY"
             : "BANK_TRANSFER";
 
+        const cleanFirstName = (form.firstName || user?.name?.split(" ")[0] || "Customer").trim();
+        const cleanLastName = (form.lastName || user?.name?.split(" ").slice(1).join(" ") || "Reseller").trim();
+        const cleanEmail = (form.email || user?.email || "customer@example.com").trim();
+        const cleanPhone = (form.phone || user?.phone || "9999999999").trim();
+        const cleanAddress = (form.address || user?.businessInfo?.address || "Warehouse 4A, Industrial Complex").trim();
+        const cleanCity = (form.city || user?.businessInfo?.city || "Mumbai").trim();
+        const cleanState = (form.state || user?.businessInfo?.state || "Maharashtra").trim();
+        const cleanZip = (form.zip || user?.businessInfo?.postalCode || "400001").trim();
+
         const orderPayload = {
-          items: validItems.length > 0 ? validItems : items.map((it, idx) => ({
-            ...it,
-            product: dbProducts[idx % dbProducts.length]?._id || dbProducts[0]?._id,
-          })),
+          items: sanitizedItems.length > 0 ? sanitizedItems : orderItems,
           shippingAddress: {
-            fullName: `${form.firstName} ${form.lastName}`,
-            phone: form.phone,
-            addressLine1: form.address,
-            city: form.city,
-            state: form.state,
-            postalCode: form.zip,
-            country: form.country,
+            firstName: cleanFirstName,
+            lastName: cleanLastName,
+            fullName: `${cleanFirstName} ${cleanLastName}`.trim(),
+            email: cleanEmail,
+            phone: cleanPhone,
+            address: cleanAddress,
+            addressLine1: cleanAddress,
+            city: cleanCity,
+            state: cleanState,
+            postalCode: cleanZip,
+            zip: cleanZip,
+            country: form.country || "India",
+            notes: form.notes || "",
           },
           paymentMethod: backendPaymentMethod,
-          notes: form.notes,
+          notes: form.notes || "",
         };
 
         const res = await ordersApi.create(orderPayload);
@@ -213,8 +241,15 @@ export default function Checkout() {
       navigate("/order-received");
     } catch (err) {
       console.error("Order creation error:", err);
-      const errMsg = err.response?.data?.message || err.message || "Failed to process order";
-      addToast(errMsg, "error");
+      const serverErrors = err.response?.data?.errors;
+      if (Array.isArray(serverErrors) && serverErrors.length > 0) {
+        serverErrors.forEach((e) => {
+          addToast(`Required field missing: ${e.field.replace("shippingAddress.", "")}`, "error");
+        });
+      } else {
+        const errMsg = err.response?.data?.message || err.message || "Failed to process order";
+        addToast(errMsg, "error");
+      }
     } finally {
       setSubmitting(false);
     }

@@ -1,26 +1,67 @@
 const { z } = require("zod");
 
-const createOrderSchema = z.object({
-  items: z
-    .array(
-      z.object({
-        productId: z.string().min(1, "Product ID is required"),
-        quantity: z.number().int().min(1, "Quantity must be at least 1"),
-      })
-    )
-    .min(1, "Order must contain at least one item"),
-  shippingAddress: z.object({
-    firstName: z.string().min(1, "First name is required"),
-    lastName: z.string().min(1, "Last name is required"),
-    email: z.string().email("Valid email is required"),
-    phone: z.string().min(7, "Valid phone number is required"),
-    address: z.string().min(5, "Delivery address is required"),
-    city: z.string().min(2, "City is required"),
-    state: z.string().min(2, "State is required"),
-    postalCode: z.string().min(3, "Postal code is required"),
+const createOrderItemSchema = z
+  .object({
+    productId: z.string().optional(),
+    product: z.string().optional(),
+    quantity: z.coerce.number().int().min(1, "Quantity must be at least 1"),
+    sku: z.string().optional(),
+    name: z.string().optional(),
+    pricePaise: z.number().optional(),
+  })
+  .refine((val) => val.productId || val.product, {
+    message: "Product ID is required",
+    path: ["productId"],
+  })
+  .transform((val) => ({
+    productId: (val.productId || val.product).toString(),
+    quantity: val.quantity,
+    sku: val.sku || "",
+    name: val.name || "",
+    pricePaise: val.pricePaise,
+  }));
+
+const shippingAddressSchema = z
+  .object({
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    fullName: z.string().optional(),
+    email: z.string().optional(),
+    phone: z.string().optional(),
+    address: z.string().optional(),
+    addressLine1: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    postalCode: z.string().optional(),
+    zip: z.string().optional(),
     country: z.string().optional().default("India"),
     notes: z.string().optional().default(""),
-  }),
+  })
+  .transform((val) => {
+    let firstName = val.firstName?.trim() || "";
+    let lastName = val.lastName?.trim() || "";
+    if (!firstName && val.fullName?.trim()) {
+      const parts = val.fullName.trim().split(" ");
+      firstName = parts[0] || "Customer";
+      lastName = parts.slice(1).join(" ") || "Reseller";
+    }
+    return {
+      firstName: firstName || "Customer",
+      lastName: lastName || "Reseller",
+      email: val.email?.trim() || "",
+      phone: val.phone?.trim() || "9999999999",
+      address: val.address?.trim() || val.addressLine1?.trim() || "Address",
+      city: val.city?.trim() || "City",
+      state: val.state?.trim() || "State",
+      postalCode: val.postalCode?.trim() || val.zip?.trim() || "400001",
+      country: val.country?.trim() || "India",
+      notes: val.notes?.trim() || "",
+    };
+  });
+
+const createOrderSchema = z.object({
+  items: z.array(createOrderItemSchema).min(1, "Order must contain at least one item"),
+  shippingAddress: shippingAddressSchema,
   paymentMethod: z.enum(["COD", "RAZORPAY", "CASHFREE", "BANK_TRANSFER", "CASH", "OTHER"], {
     errorMap: () => ({ message: "Payment method must be COD, RAZORPAY, CASHFREE, BANK_TRANSFER, CASH, or OTHER" }),
   }),

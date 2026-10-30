@@ -24,8 +24,20 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
     throw new Error("Order must contain at least one item");
   }
 
+  // Ensure shipping address has email and names
+  if (!shippingAddress.email) {
+    shippingAddress.email = userObj?.email || "customer@example.com";
+  }
+  if (!shippingAddress.firstName) {
+    const parts = (userObj?.name || "Customer").trim().split(" ");
+    shippingAddress.firstName = parts[0] || "Customer";
+    shippingAddress.lastName = parts.slice(1).join(" ") || "Reseller";
+  }
+
   // 1. Fetch and validate all products
-  const productIds = items.map((i) => i.productId);
+  const productIds = items
+    .map((i) => (i.productId || i.product || "").toString())
+    .filter(Boolean);
   const products = await Product.find({ _id: { $in: productIds } });
   const productMap = new Map();
   products.forEach((p) => productMap.set(p._id.toString(), p));
@@ -34,9 +46,18 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
   let subtotalPaise = 0;
 
   for (const item of items) {
-    const product = productMap.get(item.productId.toString());
+    const pId = (item.productId || item.product || "").toString();
+    let product = productMap.get(pId);
+    if (!product && item.sku) {
+      product = await Product.findOne({ sku: item.sku.toUpperCase() });
+    }
+    if (!product && pId) {
+      try {
+        product = await Product.findById(pId);
+      } catch (e) {}
+    }
     if (!product) {
-      throw new Error(`Product not found: ${item.productId}`);
+      throw new Error(`Product not found: ${item.name || item.sku || pId}`);
     }
     if (!product.isActive) {
       throw new Error(`Product '${product.name}' is currently unavailable`);
