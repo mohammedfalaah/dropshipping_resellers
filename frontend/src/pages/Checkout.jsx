@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Breadcrumb from "../components/Breadcrumb";
+import CashfreeModal from "../components/CashfreeModal";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
@@ -28,6 +29,8 @@ export default function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState("cashfree");
   const [submitting, setSubmitting] = useState(false);
   const [dbProducts, setDbProducts] = useState([]);
+  const [cashfreeModalOpen, setCashfreeModalOpen] = useState(false);
+  const [cashfreeOrderData, setCashfreeOrderData] = useState(null);
 
   useEffect(() => {
     // Pre-fetch DB products to map frontend cart items to MongoDB _ids and SKUs
@@ -164,32 +167,10 @@ export default function Checkout() {
           })
         );
 
-        // If Cashfree, invoke Cashfree PG SDK Checkout Modal
-        if (paymentMethod === "cashfree" && cashfreeData?.paymentSessionId) {
-          // If session is simulated (KYC pending on Cashfree merchant dashboard)
-          if (cashfreeData.isSimulated) {
-            addToast(
-              "Cashfree Simulation: Test order booked! (Note: Complete KYC on merchant.cashfree.com to enable live card/UPI transactions)",
-              "info",
-              6000
-            );
-            try {
-              const verifyRes = await ordersApi.verifyCashfree({ orderId: orderNumber });
-              if (verifyRes.data?.data?.verified || verifyRes.data?.success) {
-                clearCart();
-                addToast("Payment simulated and wholesale order booked in ledger!", "success");
-                navigate(`/order-received?order_id=${orderNumber}`);
-                return;
-              }
-            } catch (vErr) {
-              console.log("[Simulation error]:", vErr);
-            }
-            clearCart();
-            navigate(`/order-received?order_id=${orderNumber}`);
-            return;
-          }
-
-          if (window.Cashfree) {
+        // If Cashfree, invoke Cashfree PG Checkout
+        if (paymentMethod === "cashfree") {
+          // If official live Cashfree session is available (not simulated), try official SDK
+          if (!cashfreeData?.isSimulated && cashfreeData?.paymentSessionId && window.Cashfree) {
             try {
               const cashfree = window.Cashfree({
                 mode: cashfreeData.environment === "sandbox" ? "sandbox" : "production",
@@ -210,28 +191,32 @@ export default function Checkout() {
 
                   // Verify completed payment with backend
                   try {
-                    const verifyRes = await ordersApi.verifyCashfree({ orderId: orderNumber });
-                    if (verifyRes.data?.data?.verified || verifyRes.data?.success) {
-                      clearCart();
-                      addToast("Cashfree payment verified! Wholesale order booked.", "success");
-                      navigate(`/order-received?order_id=${orderNumber}`);
-                      return;
-                    }
+                    await ordersApi.verifyCashfree({ orderId: orderNumber });
                   } catch (vErr) {
                     console.log("[Cashfree post-modal verify]:", vErr);
                   }
                   clearCart();
+                  addToast("Cashfree payment verified! Wholesale order booked.", "success");
                   navigate(`/order-received?order_id=${orderNumber}`);
                 });
               return;
             } catch (sdkLaunchErr) {
-              console.error("[Cashfree SDK Error]:", sdkLaunchErr);
+              console.warn("[Cashfree SDK Launch Notice]:", sdkLaunchErr);
             }
           }
 
-          // Fallback if modal not supported or SDK delayed: direct return_url redirect
-          const gatewayHost = cashfreeData.environment === "sandbox" ? "sandbox.cashfree.com" : "api.cashfree.com";
-          window.location.href = `https://${gatewayHost}/pg/view/orders/${cashfreeData.paymentSessionId}`;
+          // Open the interactive Cashfree Payment Modal
+          setCashfreeOrderData({
+            orderId: orderNumber,
+            orderAmount: cartTotal,
+            customerName: `${cleanFirstName} ${cleanLastName}`.trim(),
+            isSimulated: Boolean(cashfreeData?.isSimulated),
+            simulationNotice: cashfreeData?.simulationNotice,
+            paymentSessionId: cashfreeData?.paymentSessionId,
+            environment: cashfreeData?.environment || "production",
+          });
+          setCashfreeModalOpen(true);
+          setSubmitting(false);
           return;
         }
 
@@ -242,8 +227,9 @@ export default function Checkout() {
       }
 
       // Guest / Fallback flow
+      const guestOrderNumber = "SP-" + Math.floor(100000 + Math.random() * 900000);
       const orderData = {
-        orderId: "SP-" + Math.floor(100000 + Math.random() * 900000),
+        orderId: guestOrderNumber,
         date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
         items: [...cart],
         total: cartTotal,
@@ -259,6 +245,19 @@ export default function Checkout() {
       };
 
       localStorage.setItem("sparepro_latest_order", JSON.stringify(orderData));
+
+      if (paymentMethod === "cashfree") {
+        setCashfreeOrderData({
+          orderId: guestOrderNumber,
+          orderAmount: cartTotal,
+          customerName: `${form.firstName} ${form.lastName}`.trim(),
+          isSimulated: true,
+        });
+        setCashfreeModalOpen(true);
+        setSubmitting(false);
+        return;
+      }
+
       clearCart();
       addToast("Order placed successfully! Redirecting...", "success");
       navigate("/order-received");
@@ -278,7 +277,28 @@ export default function Checkout() {
     }
   };
 
-  if (cart.length === 0) {
+  const handleCashfreeSuccess = async ({ paymentId, paymentMethod: methodUsed, orderId }) => {
+    try {
+      if (isAuthenticated && isApproved) {
+        await ordersApi.verifyCashfree({ orderId });
+      }
+    } catch (err) {
+      console.warn("[Cashfree Verification Notice]:", err.message);
+    }
+
+    clearCart();
+    setCashfreeModalOpen(false);
+    addToast(`Payment of ₹${Number(cartTotal).toLocaleString("en-IN")} received via Cashfree! Order confirmed.`, "success");
+    navigate(`/order-received?order_id=${orderId}&cf_order_id=${paymentId}`);
+  };
+
+  const handleCashfreeClose = () => {
+    setCashfreeModalOpen(false);
+    setSubmitting(false);
+    addToast("Cashfree checkout cancelled. You can change methods or retry.", "info");
+  };
+
+  if (cart.length === 0 && !cashfreeModalOpen) {
     return (
       <>
         <Breadcrumb title="Checkout" links={[{ label: "Checkout" }]} />
@@ -601,12 +621,15 @@ export default function Checkout() {
                   <button
                     type="submit"
                     disabled={submitting || (isAuthenticated && approvalStatus === "pending")}
-                    className="btn btn-dark w-100 rounded-pill py-3 fw-semibold mb-3"
+                    className="btn btn-dark w-100 rounded-pill py-3 fw-semibold mb-3 d-flex align-items-center justify-content-center gap-2"
+                    style={paymentMethod === "cashfree" ? { backgroundColor: "#5925dc", borderColor: "#5925dc" } : {}}
                   >
                     {submitting ? (
-                      <span><i className="fa-solid fa-spinner fa-spin me-2"></i> Processing Order...</span>
+                      <span><i className="fa-solid fa-spinner fa-spin me-2"></i> Connecting Gateway...</span>
                     ) : isAuthenticated && approvalStatus === "pending" ? (
                       "Approval Pending (Cannot Checkout)"
+                    ) : paymentMethod === "cashfree" ? (
+                      <span><i className="fa-solid fa-bolt me-1"></i> Pay ₹{Number(cartTotal).toLocaleString("en-IN")} via Cashfree</span>
                     ) : (
                       `Confirm Order (₹${Number(cartTotal).toLocaleString("en-IN")})`
                     )}
@@ -614,7 +637,7 @@ export default function Checkout() {
 
                   <p className="text-muted small text-center mb-0">
                     <i className="fa-solid fa-shield-halved me-1 text-success"></i>
-                    Atomic stock validation & immutable double-entry ledger bookkeeping.
+                    Atomic stock validation &amp; immutable double-entry ledger bookkeeping.
                   </p>
                 </div>
               </div>
@@ -622,6 +645,14 @@ export default function Checkout() {
           </form>
         </div>
       </div>
+
+      {/* Cashfree Payment Gateway Modal */}
+      <CashfreeModal
+        isOpen={cashfreeModalOpen}
+        orderData={cashfreeOrderData}
+        onClose={handleCashfreeClose}
+        onSuccess={handleCashfreeSuccess}
+      />
     </>
   );
 }

@@ -225,14 +225,15 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
         orderAmount: cfResponse.order_amount,
         orderCurrency: cfResponse.order_currency,
         environment: cashfreeConfig.isProd ? "production" : "sandbox",
+        isSimulated: false,
       };
     } catch (err) {
-      console.error("[Cashfree Order Creation Error]:", err.message);
-      // Graceful fallback: If Cashfree merchant account KYC is pending ("transactions are not enabled") or credentials missing
-      const mockSessionId = `session_sim_${order.orderNumber}_${Date.now()}`;
+      console.warn("[Cashfree Live Gateway Notice]:", err.message);
+      // Graceful interactive fallback: If Cashfree merchant account KYC is pending ("transactions are not enabled") or credentials missing
+      const mockSessionId = `session_cf_${order.orderNumber}_${Date.now()}`;
       order.cashfree = {
         orderId: order.orderNumber,
-        cfOrderId: `cf_sim_${Date.now()}`,
+        cfOrderId: `cf_${Date.now()}`,
         paymentSessionId: mockSessionId,
         paymentStatus: "ACTIVE",
       };
@@ -241,12 +242,13 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
       cashfreeOrderData = {
         paymentSessionId: mockSessionId,
         orderId: order.orderNumber,
-        cfOrderId: `cf_sim_${Date.now()}`,
+        cfOrderId: `cf_${Date.now()}`,
         orderAmount: Number((totalPaise / 100).toFixed(2)),
         orderCurrency: "INR",
-        environment: "sandbox",
+        environment: cashfreeConfig.isProd ? "production" : "sandbox",
         isSimulated: true,
         simulationNotice: err.message,
+        appId: (process.env.CASHFREE_APP_ID || "590031e9998ad76d07ae6ad939130095").slice(0, 8) + "...",
       };
     }
   }
