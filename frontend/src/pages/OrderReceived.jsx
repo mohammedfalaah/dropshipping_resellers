@@ -1,20 +1,51 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import Breadcrumb from "../components/Breadcrumb";
+import { ordersApi } from "../services/api";
 
 export default function OrderReceived() {
   const [order, setOrder] = useState(null);
+  const [searchParams] = useSearchParams();
+  const [verifying, setVerifying] = useState(false);
+  const [isPaidVerified, setIsPaidVerified] = useState(false);
 
   useEffect(() => {
+    let orderData = null;
     try {
       const saved = localStorage.getItem("sparepro_latest_order") || localStorage.getItem("lumixa_latest_order");
       if (saved) {
-        setOrder(JSON.parse(saved));
+        orderData = JSON.parse(saved);
+        setOrder(orderData);
       }
     } catch (e) {
       console.error(e);
     }
-  }, []);
+
+    // Check if user returned from Cashfree with query params (order_id)
+    const queryOrderId = searchParams.get("order_id") || orderData?.orderId;
+    if (queryOrderId) {
+      setVerifying(true);
+      ordersApi
+        .verifyCashfree({ orderId: queryOrderId })
+        .then((res) => {
+          if (res.data?.data?.verified || res.data?.data?.order?.paymentStatus === "PAID") {
+            setIsPaidVerified(true);
+            setOrder((prev) => ({
+              ...(prev || {}),
+              orderId: queryOrderId,
+              paymentStatus: "PAID",
+              paymentMethod: "Cashfree Online (Verified)",
+            }));
+          }
+        })
+        .catch((err) => {
+          console.log("[Cashfree verification query]:", err?.message);
+        })
+        .finally(() => {
+          setVerifying(false);
+        });
+    }
+  }, [searchParams]);
 
   const fallbackOrder = {
     orderId: "SP-849201",
@@ -73,13 +104,20 @@ export default function OrderReceived() {
                 </div>
                 <div className="col-sm-3 col-6">
                   <span className="text-muted small d-block">Total:</span>
-                  <strong style={{ color: "var(--accent-color, #FA7EAA)" }}>
-                    ${Number(currentOrder.total).toFixed(2)}
+                  <strong className="text-dark">
+                    ₹{Number(currentOrder.total).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </strong>
                 </div>
                 <div className="col-sm-3 col-6">
                   <span className="text-muted small d-block">Payment:</span>
-                  <strong className="text-dark">{currentOrder.paymentMethod}</strong>
+                  <div className="d-flex align-items-center justify-content-center gap-1">
+                    <strong className="text-dark">{currentOrder.paymentMethod}</strong>
+                    {isPaidVerified && (
+                      <span className="badge bg-success-subtle text-success p-1" title="Verified Online">
+                        <i className="fa-solid fa-check"></i>
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -101,14 +139,14 @@ export default function OrderReceived() {
                     </div>
                   </div>
                   <span className="fw-semibold">
-                    ${(item.price * item.quantity).toFixed(2)}
+                    ₹{(item.price * item.quantity).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
               ))}
               <div className="d-flex justify-content-between pt-3">
-                <span className="fw-bold">Total Paid</span>
-                <span className="fw-bold h5 mb-0" style={{ color: "var(--accent-color, #FA7EAA)" }}>
-                  ${Number(currentOrder.total).toFixed(2)}
+                <span className="fw-bold">Total Amount</span>
+                <span className="fw-bold h5 mb-0 text-dark">
+                  ₹{Number(currentOrder.total).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </span>
               </div>
             </div>

@@ -70,6 +70,7 @@ export const ordersApi = {
   getAll: (params) => api.get("/orders", { params }),
   getMyOrders: (params) => api.get("/orders", { params }),
   getById: (id) => api.get(`/orders/${id}`),
+  verifyCashfree: (data) => api.post("/orders/verify-cashfree", data),
 };
 
 // Payments & Ledger APIs
@@ -78,6 +79,7 @@ export const paymentsApi = {
   getResellerLedger: (params) => api.get("/payments/reseller-ledger", { params }),
   createRazorpayOrder: (data) => api.post("/payments/create-razorpay-order", data),
   verifyRazorpay: (data) => api.post("/payments/verify-razorpay", data),
+  verifyCashfree: (data) => api.post("/orders/verify-cashfree", data),
   recordManual: (data) => api.post("/payments/record-manual", data),
   recordAdjustment: (data) => api.post("/payments/adjustment", data),
 };

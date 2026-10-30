@@ -25,7 +25,7 @@ export default function Checkout() {
     notes: "",
   });
 
-  const [paymentMethod, setPaymentMethod] = useState("cash_on_delivery");
+  const [paymentMethod, setPaymentMethod] = useState("cashfree");
   const [submitting, setSubmitting] = useState(false);
   const [dbProducts, setDbProducts] = useState([]);
 
@@ -81,6 +81,15 @@ export default function Checkout() {
         // Filter out items without matched DB ID if backend requires ObjectId
         const validItems = items.filter((i) => i.product);
 
+        const backendPaymentMethod =
+          paymentMethod === "cashfree"
+            ? "CASHFREE"
+            : paymentMethod === "cash_on_delivery"
+            ? "COD"
+            : paymentMethod === "razorpay"
+            ? "RAZORPAY"
+            : "BANK_TRANSFER";
+
         const orderPayload = {
           items: validItems.length > 0 ? validItems : items.map((it, idx) => ({
             ...it,
@@ -95,26 +104,85 @@ export default function Checkout() {
             postalCode: form.zip,
             country: form.country,
           },
-          paymentMethod: paymentMethod === "cash_on_delivery" ? "cash_on_delivery" : paymentMethod === "razorpay" ? "razorpay" : "bank_transfer",
+          paymentMethod: backendPaymentMethod,
           notes: form.notes,
         };
 
         const res = await ordersApi.create(orderPayload);
         const createdOrder = res.data?.data?.order;
+        const cashfreeData = res.data?.data?.cashfree;
+        const orderNumber = createdOrder?.orderNumber || cashfreeData?.orderId || "SP-" + Date.now().toString().slice(-6);
 
+        // Save order details to local storage
         localStorage.setItem(
           "sparepro_latest_order",
           JSON.stringify({
-            orderId: createdOrder?.orderNumber || "SP-" + Date.now().toString().slice(-6),
+            orderId: orderNumber,
             date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
             items: [...cart],
             total: cartTotal,
             subtotal: cartSubtotal,
             shipping: shipping,
-            paymentMethod: paymentMethod === "cash_on_delivery" ? "Cash on Delivery (COD)" : "Razorpay Online",
+            paymentMethod:
+              paymentMethod === "cashfree"
+                ? "Cashfree Online (UPI, Cards, NetBanking)"
+                : paymentMethod === "cash_on_delivery"
+                ? "Cash on Delivery (COD)"
+                : paymentMethod === "razorpay"
+                ? "Razorpay Online"
+                : "Bank Transfer",
             customer: form,
+            paymentStatus: paymentMethod === "cashfree" ? "PENDING" : "CONFIRMED",
           })
         );
+
+        // If Cashfree, invoke Cashfree PG SDK Checkout Modal
+        if (paymentMethod === "cashfree" && cashfreeData?.paymentSessionId) {
+          if (window.Cashfree) {
+            try {
+              const cashfree = window.Cashfree({
+                mode: cashfreeData.environment === "sandbox" ? "sandbox" : "production",
+              });
+
+              cashfree
+                .checkout({
+                  paymentSessionId: cashfreeData.paymentSessionId,
+                  redirectTarget: "_modal",
+                })
+                .then(async (result) => {
+                  if (result.error) {
+                    console.warn("[Cashfree Checkout Error/Dismissal]:", result.error);
+                    addToast(result.error.message || "Payment modal closed.", "error");
+                    setSubmitting(false);
+                    return;
+                  }
+
+                  // Verify completed payment with backend
+                  try {
+                    const verifyRes = await ordersApi.verifyCashfree({ orderId: orderNumber });
+                    if (verifyRes.data?.data?.verified || verifyRes.data?.success) {
+                      clearCart();
+                      addToast("Cashfree payment verified! Wholesale order booked.", "success");
+                      navigate(`/order-received?order_id=${orderNumber}`);
+                      return;
+                    }
+                  } catch (vErr) {
+                    console.log("[Cashfree post-modal verify]:", vErr);
+                  }
+                  clearCart();
+                  navigate(`/order-received?order_id=${orderNumber}`);
+                });
+              return;
+            } catch (sdkLaunchErr) {
+              console.error("[Cashfree SDK Error]:", sdkLaunchErr);
+            }
+          }
+
+          // Fallback if modal not supported or SDK delayed: direct return_url redirect
+          const gatewayHost = cashfreeData.environment === "sandbox" ? "sandbox.cashfree.com" : "api.cashfree.com";
+          window.location.href = `https://${gatewayHost}/pg/view/orders/${cashfreeData.paymentSessionId}`;
+          return;
+        }
 
         clearCart();
         addToast(`Order ${createdOrder?.orderNumber || ""} confirmed and booked in ledger!`, "success");
@@ -130,7 +198,12 @@ export default function Checkout() {
         total: cartTotal,
         subtotal: cartSubtotal,
         shipping: shipping,
-        paymentMethod: paymentMethod === "cash_on_delivery" ? "Cash on Delivery" : paymentMethod === "razorpay" ? "Razorpay" : "Credit Card",
+        paymentMethod:
+          paymentMethod === "cashfree"
+            ? "Cashfree Online (UPI, Cards, NetBanking)"
+            : paymentMethod === "cash_on_delivery"
+            ? "Cash on Delivery"
+            : "Bank Transfer",
         customer: form,
       };
 
@@ -319,8 +392,50 @@ export default function Checkout() {
                   <h4 className="fw-bold mb-4">Payment Method</h4>
 
                   <div className="mb-3">
+                    {/* Cashfree Payment Gateway (Official Instant Payment) */}
+                    <div
+                      className={`form-check p-3 border rounded-3 mb-3 cursor-pointer ${
+                        paymentMethod === "cashfree" ? "border-primary bg-primary-subtle bg-opacity-10" : ""
+                      }`}
+                      style={{ transition: "all 0.2s ease" }}
+                    >
+                      <input
+                        className="form-check-input"
+                        type="radio"
+                        name="paymentRadio"
+                        id="paymentCashfree"
+                        checked={paymentMethod === "cashfree"}
+                        onChange={() => setPaymentMethod("cashfree")}
+                      />
+                      <label
+                        className="form-check-label fw-semibold ms-2 d-flex flex-column gap-1 w-100"
+                        htmlFor="paymentCashfree"
+                        style={{ cursor: "pointer" }}
+                      >
+                        <div className="d-flex justify-content-between align-items-center">
+                          <span className="text-dark fw-bold d-flex align-items-center gap-2">
+                            <span>Cashfree Payment Gateway</span>
+                            <span className="badge bg-primary text-white" style={{ fontSize: "11px" }}>
+                              Official
+                            </span>
+                          </span>
+                          <span className="badge bg-success-subtle text-success">
+                            <i className="fa-solid fa-bolt me-1"></i> Instant Verification
+                          </span>
+                        </div>
+                        <span className="text-muted small fw-normal">
+                          Instant UPI (GPay, PhonePe, Paytm, QR), Debit/Credit Cards (Visa, Mastercard, RuPay), NetBanking & Wallets
+                        </span>
+                      </label>
+                    </div>
+
                     {/* Cash On Delivery */}
-                    <div className="form-check p-3 border rounded-3 mb-2">
+                    <div
+                      className={`form-check p-3 border rounded-3 mb-2 cursor-pointer ${
+                        paymentMethod === "cash_on_delivery" ? "border-dark bg-light" : ""
+                      }`}
+                      style={{ transition: "all 0.2s ease" }}
+                    >
                       <input
                         className="form-check-input"
                         type="radio"
@@ -329,30 +444,26 @@ export default function Checkout() {
                         checked={paymentMethod === "cash_on_delivery"}
                         onChange={() => setPaymentMethod("cash_on_delivery")}
                       />
-                      <label className="form-check-label fw-semibold ms-2 d-flex justify-content-between align-items-center w-100" htmlFor="paymentCod">
-                        <span>Cash on Delivery (COD)</span>
-                        <span className="badge bg-success-subtle text-success">Reseller Favorite</span>
-                      </label>
-                    </div>
-
-                    {/* Razorpay Online */}
-                    <div className="form-check p-3 border rounded-3 mb-2">
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        name="paymentRadio"
-                        id="paymentRazorpay"
-                        checked={paymentMethod === "razorpay"}
-                        onChange={() => setPaymentMethod("razorpay")}
-                      />
-                      <label className="form-check-label fw-semibold ms-2 d-flex justify-content-between align-items-center w-100" htmlFor="paymentRazorpay">
-                        <span>Razorpay Online (UPI, Cards, NetBanking)</span>
-                        <span className="badge bg-primary-subtle text-primary">Instant Verification</span>
+                      <label
+                        className="form-check-label fw-semibold ms-2 d-flex justify-content-between align-items-center w-100"
+                        htmlFor="paymentCod"
+                        style={{ cursor: "pointer" }}
+                      >
+                        <div>
+                          <div className="text-dark">Cash on Delivery (COD)</div>
+                          <div className="text-muted small fw-normal">Pay upon receipt at your delivery address</div>
+                        </div>
+                        <span className="badge bg-secondary-subtle text-secondary">Reseller Standard</span>
                       </label>
                     </div>
 
                     {/* Bank Transfer */}
-                    <div className="form-check p-3 border rounded-3">
+                    <div
+                      className={`form-check p-3 border rounded-3 cursor-pointer ${
+                        paymentMethod === "bank_transfer" ? "border-dark bg-light" : ""
+                      }`}
+                      style={{ transition: "all 0.2s ease" }}
+                    >
                       <input
                         className="form-check-input"
                         type="radio"
@@ -361,8 +472,16 @@ export default function Checkout() {
                         checked={paymentMethod === "bank_transfer"}
                         onChange={() => setPaymentMethod("bank_transfer")}
                       />
-                      <label className="form-check-label fw-semibold ms-2" htmlFor="paymentBank">
-                        Direct Bank Transfer (NEFT / RTGS / IMPS)
+                      <label
+                        className="form-check-label fw-semibold ms-2 d-flex justify-content-between align-items-center w-100"
+                        htmlFor="paymentBank"
+                        style={{ cursor: "pointer" }}
+                      >
+                        <div>
+                          <div className="text-dark">Direct Bank Transfer (NEFT / RTGS / IMPS)</div>
+                          <div className="text-muted small fw-normal">Manual remittance to current account</div>
+                        </div>
+                        <span className="badge bg-light text-muted border">Manual Audit</span>
                       </label>
                     </div>
                   </div>

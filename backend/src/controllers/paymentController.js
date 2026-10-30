@@ -1,5 +1,6 @@
 const Payment = require("../models/Payment");
 const paymentService = require("../services/paymentService");
+const cashfreeConfig = require("../config/cashfree");
 const { successResponse, errorResponse } = require("../utils/response");
 const { rupeesToPaise } = require("../utils/currency");
 
@@ -140,10 +141,47 @@ const recordAdjustment = async (req, res, next) => {
   }
 };
 
+/**
+ * Handle Cashfree Payment Gateway Webhook
+ */
+const handleCashfreeWebhook = async (req, res, next) => {
+  try {
+    const signature = req.headers["x-webhook-signature"];
+    const timestamp = req.headers["x-webhook-timestamp"];
+    const rawBody = req.rawBody || JSON.stringify(req.body);
+
+    const isValid = cashfreeConfig.verifyWebhookSignature(rawBody, signature, timestamp);
+    if (!isValid && process.env.NODE_ENV === "production") {
+      console.warn("[Cashfree Webhook] Invalid signature rejected");
+      return res.status(400).json({ status: "FAILED", message: "Invalid signature" });
+    }
+
+    const event = req.body;
+    console.log("[Cashfree Webhook Event received]:", event?.type, event?.data?.order?.order_id);
+
+    // If order was marked PAID or payment succeeded, verify and confirm order
+    const orderId = event?.data?.order?.order_id;
+    if (orderId) {
+      await paymentService
+        .verifyCashfreePayment({
+          orderId,
+          user: null,
+        })
+        .catch((err) => console.log("[Cashfree Webhook Processing Error]:", err.message));
+    }
+
+    return res.status(200).json({ status: "OK", message: "Webhook processed" });
+  } catch (err) {
+    console.error("[Cashfree Webhook Error]:", err);
+    return res.status(200).json({ status: "ERROR", message: err.message });
+  }
+};
+
 module.exports = {
   recordPayment,
   getAllPayments,
   getMyPayments,
   reversePayment,
   recordAdjustment,
+  handleCashfreeWebhook,
 };

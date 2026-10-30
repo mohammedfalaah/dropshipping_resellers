@@ -21,8 +21,8 @@ const createOrderSchema = z.object({
     country: z.string().optional().default("India"),
     notes: z.string().optional().default(""),
   }),
-  paymentMethod: z.enum(["COD", "RAZORPAY", "BANK_TRANSFER", "CASH", "OTHER"], {
-    errorMap: () => ({ message: "Payment method must be COD, RAZORPAY, BANK_TRANSFER, CASH, or OTHER" }),
+  paymentMethod: z.enum(["COD", "RAZORPAY", "CASHFREE", "BANK_TRANSFER", "CASH", "OTHER"], {
+    errorMap: () => ({ message: "Payment method must be COD, RAZORPAY, CASHFREE, BANK_TRANSFER, CASH, or OTHER" }),
   }),
 });
 
@@ -40,8 +40,14 @@ const verifyRazorpayPaymentSchema = z.object({
   razorpaySignature: z.string().min(1, "Razorpay Signature is required"),
 });
 
+const verifyCashfreePaymentSchema = z.object({
+  orderId: z.string().min(1, "Order ID is required"),
+  cfOrderId: z.string().optional(),
+});
+
 module.exports = {
   createOrderSchema,
   updateOrderStatusSchema,
   verifyRazorpayPaymentSchema,
+  verifyCashfreePaymentSchema,
 };

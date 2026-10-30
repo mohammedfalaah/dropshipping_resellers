@@ -5,7 +5,8 @@ const Cart = require("../models/Cart");
 const AuditLog = require("../models/AuditLog");
 const ledgerService = require("./ledgerService");
 const { razorpayInstance } = require("../config/razorpay");
-const { RAZORPAY_KEY_ID } = require("../config/env");
+const cashfreeConfig = require("../config/cashfree");
+const { RAZORPAY_KEY_ID, FRONTEND_URL } = require("../config/env");
 
 /**
  * Generate unique order number (e.g. SP-849201)
@@ -75,8 +76,8 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
     });
   }
 
-  // Initial order status: COD and others -> CONFIRMED, Razorpay -> PENDING until verified
-  const orderStatus = paymentMethod === "RAZORPAY" ? "PENDING" : "CONFIRMED";
+  // Initial order status: COD and others -> CONFIRMED, Razorpay/Cashfree -> PENDING until verified
+  const orderStatus = (paymentMethod === "RAZORPAY" || paymentMethod === "CASHFREE") ? "PENDING" : "CONFIRMED";
   const paymentStatus = "PENDING";
 
   // 3. Create Order document
@@ -170,6 +171,46 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
     }
   }
 
+  // 5b. If Cashfree, initiate Cashfree PG Order
+  let cashfreeOrderData = null;
+  if (paymentMethod === "CASHFREE") {
+    try {
+      const returnUrl = `${FRONTEND_URL}/order-received?order_id=${order.orderNumber}&cf_order_id={order_id}`;
+      const cfResponse = await cashfreeConfig.createOrder({
+        orderId: order.orderNumber,
+        orderAmount: Number((totalPaise / 100).toFixed(2)),
+        customerDetails: {
+          customerId: resellerId.toString(),
+          customerName: userObj.name || `${shippingAddress.firstName} ${shippingAddress.lastName}`,
+          customerEmail: userObj.email || shippingAddress.email,
+          customerPhone: userObj.phone || shippingAddress.phone || "9999999999",
+        },
+        returnUrl,
+        orderNote: `Order ${order.orderNumber} placed on Lumixa Wholesale`,
+      });
+
+      order.cashfree = {
+        orderId: cfResponse.order_id,
+        cfOrderId: String(cfResponse.cf_order_id || ""),
+        paymentSessionId: cfResponse.payment_session_id || "",
+        paymentStatus: cfResponse.order_status || "ACTIVE",
+      };
+      await order.save();
+
+      cashfreeOrderData = {
+        paymentSessionId: cfResponse.payment_session_id,
+        orderId: cfResponse.order_id,
+        cfOrderId: cfResponse.cf_order_id,
+        orderAmount: cfResponse.order_amount,
+        orderCurrency: cfResponse.order_currency,
+        environment: cashfreeConfig.isProd ? "production" : "sandbox",
+      };
+    } catch (err) {
+      console.error("[Cashfree Order Creation Error]:", err.message);
+      throw new Error(`Failed to initialize Cashfree payment: ${err.message}`);
+    }
+  }
+
   // 6. Record DEBIT in Ledger (Reseller's balance increases by order amount)
   if (orderStatus === "CONFIRMED") {
     await ledgerService.recordEntry({
@@ -202,6 +243,7 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
   return {
     order,
     razorpay: razorpayOrderData,
+    cashfree: cashfreeOrderData,
   };
 };
 
