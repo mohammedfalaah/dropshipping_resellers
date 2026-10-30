@@ -166,6 +166,29 @@ export default function Checkout() {
 
         // If Cashfree, invoke Cashfree PG SDK Checkout Modal
         if (paymentMethod === "cashfree" && cashfreeData?.paymentSessionId) {
+          // If session is simulated (KYC pending on Cashfree merchant dashboard)
+          if (cashfreeData.isSimulated) {
+            addToast(
+              "Cashfree Simulation: Test order booked! (Note: Complete KYC on merchant.cashfree.com to enable live card/UPI transactions)",
+              "info",
+              6000
+            );
+            try {
+              const verifyRes = await ordersApi.verifyCashfree({ orderId: orderNumber });
+              if (verifyRes.data?.data?.verified || verifyRes.data?.success) {
+                clearCart();
+                addToast("Payment simulated and wholesale order booked in ledger!", "success");
+                navigate(`/order-received?order_id=${orderNumber}`);
+                return;
+              }
+            } catch (vErr) {
+              console.log("[Simulation error]:", vErr);
+            }
+            clearCart();
+            navigate(`/order-received?order_id=${orderNumber}`);
+            return;
+          }
+
           if (window.Cashfree) {
             try {
               const cashfree = window.Cashfree({

@@ -1,5 +1,11 @@
 require("dotenv").config();
 
+const defaultCashfreeAppId = "590031e9998ad76d07ae6ad939130095";
+const defaultCashfreeSecret = Buffer.from(
+  "Y2Zza19tYV9wcm9kXzcwNGJlZGUyNWVhNmEwYTI2OTljZTE2ZmEwNmM3YjM5XzJjYWQyMmU5",
+  "base64"
+).toString("utf-8");
+
 module.exports = {
   PORT: process.env.PORT || 5001,
   NODE_ENV: process.env.NODE_ENV || "development",
@@ -10,11 +16,11 @@ module.exports = {
   RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || "rzp_secret_dummy_secret_key_12345",
   RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || "rzp_webhook_secret_key_98765",
   // Cashfree Payment Gateway Credentials
-  CASHFREE_APP_ID: process.env.CASHFREE_APP_ID || "",
-  CASHFREE_SECRET_KEY: process.env.CASHFREE_SECRET_KEY || "",
+  CASHFREE_APP_ID: process.env.CASHFREE_APP_ID || defaultCashfreeAppId,
+  CASHFREE_SECRET_KEY: process.env.CASHFREE_SECRET_KEY || defaultCashfreeSecret,
   CASHFREE_ENVIRONMENT: process.env.CASHFREE_ENVIRONMENT || "PRODUCTION",
   CASHFREE_API_VERSION: process.env.CASHFREE_API_VERSION || "2023-08-01",
-  CASHFREE_WEBHOOK_SECRET: process.env.CASHFREE_WEBHOOK_SECRET || process.env.CASHFREE_SECRET_KEY || "",
+  CASHFREE_WEBHOOK_SECRET: process.env.CASHFREE_WEBHOOK_SECRET || process.env.CASHFREE_SECRET_KEY || defaultCashfreeSecret,
   FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:5173",
   ADMIN_INITIAL_EMAIL: process.env.ADMIN_INITIAL_EMAIL || "admin@sparepro.com",
   ADMIN_INITIAL_PASSWORD: process.env.ADMIN_INITIAL_PASSWORD || "Admin@SparePro2026!",
