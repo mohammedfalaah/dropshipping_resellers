@@ -181,33 +181,6 @@ const verifyRazorpayPayment = async (req, res, next) => {
   }
 };
 
-/**
- * Verify Cashfree Online Payment
- */
-const verifyCashfreePayment = async (req, res, next) => {
-  try {
-    const { orderId } = req.body;
-    const result = await paymentService.verifyCashfreePayment({
-      orderId,
-      user: req.user,
-    });
-
-    if (!result.verified) {
-      return errorResponse(
-        res,
-        result.message || "Cashfree payment is pending or incomplete.",
-        "PAYMENT_PENDING",
-        400,
-        result
-      );
-    }
-
-    return successResponse(res, "Cashfree payment verified and order confirmed successfully!", result);
-  } catch (err) {
-    next(err);
-  }
-};
-
 module.exports = {
   createOrder,
   getMyOrders,
@@ -215,5 +188,4 @@ module.exports = {
   getAllOrders,
   updateOrderStatus,
   verifyRazorpayPayment,
-  verifyCashfreePayment,
 };

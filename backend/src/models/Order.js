@@ -37,7 +37,7 @@ const OrderSchema = new mongoose.Schema(
     currency: { type: String, default: "INR" },
     paymentMethod: {
       type: String,
-      enum: ["COD", "RAZORPAY", "CASHFREE", "BANK_TRANSFER", "CASH", "OTHER"],
+      enum: ["COD", "RAZORPAY", "BANK_TRANSFER", "CASH", "OTHER"],
       required: true,
       index: true,
     },
@@ -76,16 +76,6 @@ const OrderSchema = new mongoose.Schema(
       orderId: { type: String, default: "" },
       paymentId: { type: String, default: "" },
       signature: { type: String, default: "" },
-    },
-    // Cashfree specific metadata
-    cashfree: {
-      orderId: { type: String, default: "" },
-      cfOrderId: { type: String, default: "" },
-      paymentSessionId: { type: String, default: "" },
-      paymentStatus: { type: String, default: "" },
-      cfPaymentId: { type: String, default: "" },
-      paymentMethod: { type: String, default: "" },
-      paymentCompletionTime: { type: Date, default: null },
     },
     // COD specific metadata
     cod: {

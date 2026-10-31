@@ -20,31 +20,6 @@ export default function OrderReceived() {
     } catch (e) {
       console.error(e);
     }
-
-    // Check if user returned from Cashfree with query params (order_id)
-    const queryOrderId = searchParams.get("order_id") || orderData?.orderId;
-    if (queryOrderId) {
-      setVerifying(true);
-      ordersApi
-        .verifyCashfree({ orderId: queryOrderId })
-        .then((res) => {
-          if (res.data?.data?.verified || res.data?.data?.order?.paymentStatus === "PAID") {
-            setIsPaidVerified(true);
-            setOrder((prev) => ({
-              ...(prev || {}),
-              orderId: queryOrderId,
-              paymentStatus: "PAID",
-              paymentMethod: "Cashfree Online (Verified)",
-            }));
-          }
-        })
-        .catch((err) => {
-          console.log("[Cashfree verification query]:", err?.message);
-        })
-        .finally(() => {
-          setVerifying(false);
-        });
-    }
   }, [searchParams]);
 
   const fallbackOrder = {

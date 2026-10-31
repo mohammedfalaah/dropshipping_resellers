@@ -32,7 +32,7 @@ const PaymentSchema = new mongoose.Schema(
     },
     method: {
       type: String,
-      enum: ["COD", "RAZORPAY", "CASHFREE", "BANK_TRANSFER", "CASH", "OTHER"],
+      enum: ["COD", "RAZORPAY", "BANK_TRANSFER", "CASH", "OTHER"],
       required: true,
       index: true,
     },
@@ -53,16 +53,6 @@ const PaymentSchema = new mongoose.Schema(
       default: "",
     },
     razorpayPaymentId: {
-      type: String,
-      trim: true,
-      default: "",
-    },
-    cashfreeOrderId: {
-      type: String,
-      trim: true,
-      default: "",
-    },
-    cashfreePaymentId: {
       type: String,
       trim: true,
       default: "",

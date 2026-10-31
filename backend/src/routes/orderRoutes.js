@@ -8,7 +8,6 @@ const {
   createOrderSchema,
   updateOrderStatusSchema,
   verifyRazorpayPaymentSchema,
-  verifyCashfreePaymentSchema,
 } = require("../validators/orderValidator");
 
 // Reseller placing order (must be approved and active)
@@ -29,14 +28,6 @@ router.post(
   protect,
   validate(verifyRazorpayPaymentSchema),
   orderController.verifyRazorpayPayment
-);
-
-// Verify Cashfree payment
-router.post(
-  "/verify-cashfree",
-  protect,
-  validate(verifyCashfreePaymentSchema),
-  orderController.verifyCashfreePayment
 );
 
 // Single order details (Reseller own or Admin)

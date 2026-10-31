@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Breadcrumb from "../components/Breadcrumb";
-import CashfreeModal from "../components/CashfreeModal";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
@@ -26,11 +25,9 @@ export default function Checkout() {
     notes: "",
   });
 
-  const [paymentMethod, setPaymentMethod] = useState("cashfree");
+  const [paymentMethod, setPaymentMethod] = useState("cash_on_delivery");
   const [submitting, setSubmitting] = useState(false);
   const [dbProducts, setDbProducts] = useState([]);
-  const [cashfreeModalOpen, setCashfreeModalOpen] = useState(false);
-  const [cashfreeOrderData, setCashfreeOrderData] = useState(null);
 
   useEffect(() => {
     // Pre-fetch DB products to map frontend cart items to MongoDB _ids and SKUs
@@ -101,9 +98,7 @@ export default function Checkout() {
         })).filter((it) => it.productId);
 
         const backendPaymentMethod =
-          paymentMethod === "cashfree"
-            ? "CASHFREE"
-            : paymentMethod === "cash_on_delivery"
+          paymentMethod === "cash_on_delivery"
             ? "COD"
             : paymentMethod === "razorpay"
             ? "RAZORPAY"
@@ -141,8 +136,7 @@ export default function Checkout() {
 
         const res = await ordersApi.create(orderPayload);
         const createdOrder = res.data?.data?.order;
-        const cashfreeData = res.data?.data?.cashfree;
-        const orderNumber = createdOrder?.orderNumber || cashfreeData?.orderId || "SP-" + Date.now().toString().slice(-6);
+        const orderNumber = createdOrder?.orderNumber || "SP-" + Date.now().toString().slice(-6);
 
         // Save order details to local storage
         localStorage.setItem(
@@ -155,74 +149,19 @@ export default function Checkout() {
             subtotal: cartSubtotal,
             shipping: shipping,
             paymentMethod:
-              paymentMethod === "cashfree"
-                ? "Cashfree Online (UPI, Cards, NetBanking)"
-                : paymentMethod === "cash_on_delivery"
+              paymentMethod === "cash_on_delivery"
                 ? "Cash on Delivery (COD)"
                 : paymentMethod === "razorpay"
                 ? "Razorpay Online"
                 : "Bank Transfer",
             customer: form,
-            paymentStatus: paymentMethod === "cashfree" ? "PENDING" : "CONFIRMED",
+            paymentStatus: "CONFIRMED",
           })
         );
 
-        // If Cashfree, invoke Cashfree PG Checkout
-        if (paymentMethod === "cashfree") {
-          // If official live Cashfree session is available (not simulated), try official SDK
-          if (!cashfreeData?.isSimulated && cashfreeData?.paymentSessionId && window.Cashfree) {
-            try {
-              const cashfree = window.Cashfree({
-                mode: cashfreeData.environment === "sandbox" ? "sandbox" : "production",
-              });
-
-              cashfree
-                .checkout({
-                  paymentSessionId: cashfreeData.paymentSessionId,
-                  redirectTarget: "_modal",
-                })
-                .then(async (result) => {
-                  if (result.error) {
-                    console.warn("[Cashfree Checkout Error/Dismissal]:", result.error);
-                    addToast(result.error.message || "Payment modal closed.", "error");
-                    setSubmitting(false);
-                    return;
-                  }
-
-                  // Verify completed payment with backend
-                  try {
-                    await ordersApi.verifyCashfree({ orderId: orderNumber });
-                  } catch (vErr) {
-                    console.log("[Cashfree post-modal verify]:", vErr);
-                  }
-                  clearCart();
-                  addToast("Cashfree payment verified! Wholesale order booked.", "success");
-                  navigate(`/order-received?order_id=${orderNumber}`);
-                });
-              return;
-            } catch (sdkLaunchErr) {
-              console.warn("[Cashfree SDK Launch Notice]:", sdkLaunchErr);
-            }
-          }
-
-          // Open the interactive Cashfree Payment Modal
-          setCashfreeOrderData({
-            orderId: orderNumber,
-            orderAmount: cartTotal,
-            customerName: `${cleanFirstName} ${cleanLastName}`.trim(),
-            isSimulated: Boolean(cashfreeData?.isSimulated),
-            simulationNotice: cashfreeData?.simulationNotice,
-            paymentSessionId: cashfreeData?.paymentSessionId,
-            environment: cashfreeData?.environment || "production",
-          });
-          setCashfreeModalOpen(true);
-          setSubmitting(false);
-          return;
-        }
-
         clearCart();
         addToast(`Order ${createdOrder?.orderNumber || ""} confirmed and booked in ledger!`, "success");
-        navigate("/order-received");
+        navigate(`/order-received?order_id=${orderNumber}`);
         return;
       }
 
@@ -236,28 +175,13 @@ export default function Checkout() {
         subtotal: cartSubtotal,
         shipping: shipping,
         paymentMethod:
-          paymentMethod === "cashfree"
-            ? "Cashfree Online (UPI, Cards, NetBanking)"
-            : paymentMethod === "cash_on_delivery"
+          paymentMethod === "cash_on_delivery"
             ? "Cash on Delivery"
             : "Bank Transfer",
         customer: form,
       };
 
       localStorage.setItem("sparepro_latest_order", JSON.stringify(orderData));
-
-      if (paymentMethod === "cashfree") {
-        setCashfreeOrderData({
-          orderId: guestOrderNumber,
-          orderAmount: cartTotal,
-          customerName: `${form.firstName} ${form.lastName}`.trim(),
-          isSimulated: true,
-        });
-        setCashfreeModalOpen(true);
-        setSubmitting(false);
-        return;
-      }
-
       clearCart();
       addToast("Order placed successfully! Redirecting...", "success");
       navigate("/order-received");
@@ -277,28 +201,7 @@ export default function Checkout() {
     }
   };
 
-  const handleCashfreeSuccess = async ({ paymentId, paymentMethod: methodUsed, orderId }) => {
-    try {
-      if (isAuthenticated && isApproved) {
-        await ordersApi.verifyCashfree({ orderId });
-      }
-    } catch (err) {
-      console.warn("[Cashfree Verification Notice]:", err.message);
-    }
-
-    clearCart();
-    setCashfreeModalOpen(false);
-    addToast(`Payment of ₹${Number(cartTotal).toLocaleString("en-IN")} received via Cashfree! Order confirmed.`, "success");
-    navigate(`/order-received?order_id=${orderId}&cf_order_id=${paymentId}`);
-  };
-
-  const handleCashfreeClose = () => {
-    setCashfreeModalOpen(false);
-    setSubmitting(false);
-    addToast("Cashfree checkout cancelled. You can change methods or retry.", "info");
-  };
-
-  if (cart.length === 0 && !cashfreeModalOpen) {
+  if (cart.length === 0) {
     return (
       <>
         <Breadcrumb title="Checkout" links={[{ label: "Checkout" }]} />
@@ -470,43 +373,6 @@ export default function Checkout() {
                   <h4 className="fw-bold mb-4">Payment Method</h4>
 
                   <div className="mb-3">
-                    {/* Cashfree Payment Gateway (Official Instant Payment) */}
-                    <div
-                      className={`form-check p-3 border rounded-3 mb-3 cursor-pointer ${
-                        paymentMethod === "cashfree" ? "border-primary bg-primary-subtle bg-opacity-10" : ""
-                      }`}
-                      style={{ transition: "all 0.2s ease" }}
-                    >
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        name="paymentRadio"
-                        id="paymentCashfree"
-                        checked={paymentMethod === "cashfree"}
-                        onChange={() => setPaymentMethod("cashfree")}
-                      />
-                      <label
-                        className="form-check-label fw-semibold ms-2 d-flex flex-column gap-1 w-100"
-                        htmlFor="paymentCashfree"
-                        style={{ cursor: "pointer" }}
-                      >
-                        <div className="d-flex justify-content-between align-items-center">
-                          <span className="text-dark fw-bold d-flex align-items-center gap-2">
-                            <span>Cashfree Payment Gateway</span>
-                            <span className="badge bg-primary text-white" style={{ fontSize: "11px" }}>
-                              Official
-                            </span>
-                          </span>
-                          <span className="badge bg-success-subtle text-success">
-                            <i className="fa-solid fa-bolt me-1"></i> Instant Verification
-                          </span>
-                        </div>
-                        <span className="text-muted small fw-normal">
-                          Instant UPI (GPay, PhonePe, Paytm, QR), Debit/Credit Cards (Visa, Mastercard, RuPay), NetBanking & Wallets
-                        </span>
-                      </label>
-                    </div>
-
                     {/* Cash On Delivery */}
                     <div
                       className={`form-check p-3 border rounded-3 mb-2 cursor-pointer ${
@@ -622,14 +488,11 @@ export default function Checkout() {
                     type="submit"
                     disabled={submitting || (isAuthenticated && approvalStatus === "pending")}
                     className="btn btn-dark w-100 rounded-pill py-3 fw-semibold mb-3 d-flex align-items-center justify-content-center gap-2"
-                    style={paymentMethod === "cashfree" ? { backgroundColor: "#5925dc", borderColor: "#5925dc" } : {}}
                   >
                     {submitting ? (
-                      <span><i className="fa-solid fa-spinner fa-spin me-2"></i> Connecting Gateway...</span>
+                      <span><i className="fa-solid fa-spinner fa-spin me-2"></i> Processing Order...</span>
                     ) : isAuthenticated && approvalStatus === "pending" ? (
                       "Approval Pending (Cannot Checkout)"
-                    ) : paymentMethod === "cashfree" ? (
-                      <span><i className="fa-solid fa-bolt me-1"></i> Pay ₹{Number(cartTotal).toLocaleString("en-IN")} via Cashfree</span>
                     ) : (
                       `Confirm Order (₹${Number(cartTotal).toLocaleString("en-IN")})`
                     )}
@@ -645,14 +508,6 @@ export default function Checkout() {
           </form>
         </div>
       </div>
-
-      {/* Cashfree Payment Gateway Modal */}
-      <CashfreeModal
-        isOpen={cashfreeModalOpen}
-        orderData={cashfreeOrderData}
-        onClose={handleCashfreeClose}
-        onSuccess={handleCashfreeSuccess}
-      />
     </>
   );
 }

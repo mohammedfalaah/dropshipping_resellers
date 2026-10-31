@@ -10,9 +10,6 @@ const {
   recordAdjustmentSchema,
 } = require("../validators/paymentValidator");
 
-// Cashfree Webhook (called directly by Cashfree servers)
-router.post("/cashfree-webhook", paymentController.handleCashfreeWebhook);
-
 // Reseller viewing own payment history
 router.get("/my-payments", protect, requireApprovedReseller, paymentController.getMyPayments);
 
