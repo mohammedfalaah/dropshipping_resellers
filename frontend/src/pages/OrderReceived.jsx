@@ -66,6 +66,15 @@ export default function OrderReceived() {
               </p>
             </div>
 
+            {searchParams.get("payment_id") && (
+              <div className="alert alert-success d-flex align-items-center gap-2 py-2 px-3 small rounded-3 mb-4">
+                <i className="fa-solid fa-circle-check text-success"></i>
+                <span>
+                  Razorpay Online Payment Verified (ID: <code>{searchParams.get("payment_id")}</code>)
+                </span>
+              </div>
+            )}
+
             {/* Key Order Details Grid */}
             <div className="bg-light p-4 rounded-4 mb-4">
               <div className="row g-3 text-center">

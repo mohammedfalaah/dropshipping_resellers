@@ -10,6 +10,10 @@ const {
   recordAdjustmentSchema,
 } = require("../validators/paymentValidator");
 
+// Razorpay Standard Checkout endpoints
+router.post("/create-order", paymentController.createRazorpayOrder);
+router.post("/verify-payment", paymentController.verifyPayment);
+
 // Reseller viewing own payment history
 router.get("/my-payments", protect, requireApprovedReseller, paymentController.getMyPayments);
 

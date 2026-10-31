@@ -74,10 +74,12 @@ export const ordersApi = {
 
 // Payments & Ledger APIs
 export const paymentsApi = {
+  createOrder: (data) => api.post("/create-order", data),
+  verifyPayment: (data) => api.post("/verify-payment", data),
+  createRazorpayOrder: (data) => api.post("/create-order", data),
+  verifyRazorpay: (data) => api.post("/verify-payment", data),
   getResellerSummary: () => api.get("/payments/reseller-summary"),
   getResellerLedger: (params) => api.get("/payments/reseller-ledger", { params }),
-  createRazorpayOrder: (data) => api.post("/payments/create-razorpay-order", data),
-  verifyRazorpay: (data) => api.post("/payments/verify-razorpay", data),
   recordManual: (data) => api.post("/payments/record-manual", data),
   recordAdjustment: (data) => api.post("/payments/adjustment", data),
 };

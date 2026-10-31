@@ -1,5 +1,7 @@
 const Payment = require("../models/Payment");
 const paymentService = require("../services/paymentService");
+const { razorpayInstance, verifyPaymentSignature } = require("../config/razorpay");
+const { RAZORPAY_KEY_ID } = require("../config/env");
 const { successResponse, errorResponse } = require("../utils/response");
 const { rupeesToPaise } = require("../utils/currency");
 
@@ -140,10 +142,144 @@ const recordAdjustment = async (req, res, next) => {
   }
 };
 
+/**
+ * Create Razorpay Order
+ * Endpoint: POST /api/create-order and POST /api/payments/create-order
+ * Request: { amount (paise), currency, receipt }
+ * Return: { order_id, amount, currency }
+ * Minimum amount: 100 paise
+ */
+const createRazorpayOrder = async (req, res, next) => {
+  try {
+    const { amount, currency = "INR", receipt, notes = {} } = req.body;
+
+    const numericAmount = Number(amount);
+    if (!numericAmount || isNaN(numericAmount) || numericAmount < 100) {
+      return res.status(400).json({
+        success: false,
+        message: "Amount must be at least 100 paise (₹1.00)",
+        code: "INVALID_AMOUNT",
+      });
+    }
+
+    if (!razorpayInstance) {
+      return res.status(500).json({
+        success: false,
+        message: "Razorpay instance is not initialized.",
+        code: "RAZORPAY_CONFIG_ERROR",
+      });
+    }
+
+    const receiptId = receipt || `rcpt_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+    const rzpOrder = await razorpayInstance.orders.create({
+      amount: Math.round(numericAmount),
+      currency: String(currency).toUpperCase(),
+      receipt: String(receiptId).slice(0, 40),
+      notes: typeof notes === "object" ? notes : {},
+    });
+
+    return res.status(200).json({
+      success: true,
+      order_id: rzpOrder.id,
+      amount: rzpOrder.amount,
+      currency: rzpOrder.currency,
+      key_id: RAZORPAY_KEY_ID,
+      receipt: rzpOrder.receipt,
+    });
+  } catch (err) {
+    console.error("[Razorpay Create Order Error]:", err);
+    const statusCode = err.statusCode || (err.error?.code === "BAD_REQUEST_ERROR" ? 400 : 500);
+    return res.status(statusCode).json({
+      success: false,
+      message: err.error?.description || err.message || "Failed to create Razorpay order.",
+      code: err.error?.code || "RAZORPAY_ERROR",
+    });
+  }
+};
+
+/**
+ * Verify Razorpay Signature
+ * Endpoint: POST /api/verify-payment and POST /api/payments/verify-payment
+ * Algorithm: HMAC-SHA256(order_id + "|" + payment_id, KEY_SECRET)
+ * Compare generated signature with razorpay_signature
+ * Return success only if signatures match
+ */
+const verifyPayment = async (req, res, next) => {
+  try {
+    const orderId = req.body.order_id || req.body.razorpay_order_id;
+    const paymentId = req.body.payment_id || req.body.razorpay_payment_id;
+    const signature = req.body.razorpay_signature || req.body.signature;
+    const internalOrderId = req.body.orderId;
+
+    if (!orderId || !paymentId || !signature) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields: order_id, payment_id, and razorpay_signature are required.",
+        code: "MISSING_REQUIRED_FIELDS",
+        received: {
+          order_id: Boolean(orderId),
+          payment_id: Boolean(paymentId),
+          razorpay_signature: Boolean(signature),
+        },
+      });
+    }
+
+    const isValid = verifyPaymentSignature({
+      orderId,
+      paymentId,
+      signature,
+    });
+
+    if (!isValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment signature verification failed.",
+        code: "SIGNATURE_MISMATCH",
+        is_valid: false,
+      });
+    }
+
+    // Optional: If linked to an internal database order, update order status to PAID
+    let internalResult = null;
+    if (internalOrderId) {
+      try {
+        internalResult = await paymentService.verifyRazorpayPayment({
+          orderId: internalOrderId,
+          razorpayOrderId: orderId,
+          razorpayPaymentId: paymentId,
+          razorpaySignature: signature,
+          user: req.user || { _id: null, name: "Customer", role: "customer" },
+        });
+      } catch (e) {
+        console.warn("[Internal Order Sync Notice]:", e.message);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment verified successfully.",
+      is_valid: true,
+      order_id: orderId,
+      payment_id: paymentId,
+      order: internalResult?.order || null,
+    });
+  } catch (err) {
+    console.error("[Razorpay Verify Error]:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Internal server error during verification.",
+      code: "VERIFICATION_ERROR",
+    });
+  }
+};
+
 module.exports = {
   recordPayment,
   getAllPayments,
   getMyPayments,
   reversePayment,
   recordAdjustment,
+  createRazorpayOrder,
+  verifyPayment,
 };

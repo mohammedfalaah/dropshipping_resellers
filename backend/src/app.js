@@ -20,6 +20,7 @@ const reportRoutes = require("./routes/reportRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const wishlistRoutes = require("./routes/wishlistRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
+const paymentController = require("./controllers/paymentController");
 
 const app = express();
 
@@ -121,6 +122,10 @@ app.get("/api/health", (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// Razorpay Direct Endpoints
+app.post("/api/create-order", paymentController.createRazorpayOrder);
+app.post("/api/verify-payment", paymentController.verifyPayment);
 
 // API Routes
 app.use("/api/auth", authRoutes);

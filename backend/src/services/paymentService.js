@@ -132,9 +132,13 @@ const verifyRazorpayPayment = async ({
   razorpaySignature,
   user,
 }) => {
-  const order = await Order.findById(orderId);
+  const query =
+    typeof orderId === "string" && orderId.startsWith("SP-")
+      ? { orderNumber: orderId }
+      : { _id: orderId };
+  const order = await Order.findOne(query);
   if (!order) {
-    throw new Error("Order not found");
+    throw new Error(`Order not found: ${orderId}`);
   }
 
   // Idempotency: If order is already paid, return safely
@@ -149,8 +153,7 @@ const verifyRazorpayPayment = async ({
     signature: razorpaySignature,
   });
 
-  // If not valid signature and not in development test mode, throw error
-  if (!isValid && process.env.NODE_ENV === "production") {
+  if (!isValid) {
     order.paymentStatus = "FAILED";
     await order.save();
     throw new Error("Invalid Razorpay payment signature verification failed");

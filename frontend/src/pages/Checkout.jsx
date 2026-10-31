@@ -4,7 +4,7 @@ import Breadcrumb from "../components/Breadcrumb";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
-import { ordersApi, productsApi } from "../services/api";
+import { ordersApi, productsApi, paymentsApi } from "../services/api";
 
 export default function Checkout() {
   const { cart, cartSubtotal, discountAmount, shipping, cartTotal, clearCart } = useCart();
@@ -25,7 +25,7 @@ export default function Checkout() {
     notes: "",
   });
 
-  const [paymentMethod, setPaymentMethod] = useState("cash_on_delivery");
+  const [paymentMethod, setPaymentMethod] = useState("razorpay");
   const [submitting, setSubmitting] = useState(false);
   const [dbProducts, setDbProducts] = useState([]);
 
@@ -136,6 +136,7 @@ export default function Checkout() {
 
         const res = await ordersApi.create(orderPayload);
         const createdOrder = res.data?.data?.order;
+        const razorpayData = res.data?.data?.razorpay;
         const orderNumber = createdOrder?.orderNumber || "SP-" + Date.now().toString().slice(-6);
 
         // Save order details to local storage
@@ -155,9 +156,19 @@ export default function Checkout() {
                 ? "Razorpay Online"
                 : "Bank Transfer",
             customer: form,
-            paymentStatus: "CONFIRMED",
+            paymentStatus: paymentMethod === "razorpay" ? "PENDING" : "CONFIRMED",
           })
         );
+
+        if (paymentMethod === "razorpay") {
+          await handleRazorpayPayment({
+            orderNumber,
+            amountPaise: Math.round(cartTotal * 100),
+            customerDetails: form,
+            existingOrderId: razorpayData?.id,
+          });
+          return;
+        }
 
         clearCart();
         addToast(`Order ${createdOrder?.orderNumber || ""} confirmed and booked in ledger!`, "success");
@@ -177,11 +188,23 @@ export default function Checkout() {
         paymentMethod:
           paymentMethod === "cash_on_delivery"
             ? "Cash on Delivery"
+            : paymentMethod === "razorpay"
+            ? "Razorpay Online"
             : "Bank Transfer",
         customer: form,
       };
 
       localStorage.setItem("sparepro_latest_order", JSON.stringify(orderData));
+
+      if (paymentMethod === "razorpay") {
+        await handleRazorpayPayment({
+          orderNumber: guestOrderNumber,
+          amountPaise: Math.round(cartTotal * 100),
+          customerDetails: form,
+        });
+        return;
+      }
+
       clearCart();
       addToast("Order placed successfully! Redirecting...", "success");
       navigate("/order-received");
@@ -197,6 +220,108 @@ export default function Checkout() {
         addToast(errMsg, "error");
       }
     } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRazorpayPayment = async ({ orderNumber, amountPaise, customerDetails, existingOrderId }) => {
+    try {
+      if (!window.Razorpay) {
+        throw new Error("Razorpay SDK not loaded. Please ensure you have internet access and refresh.");
+      }
+
+      let rzpOrderId = existingOrderId || null;
+      let rzpAmount = amountPaise;
+      let rzpCurrency = "INR";
+      let keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_TuTXWZOTiUHDYs";
+
+      if (!rzpOrderId) {
+        try {
+          const orderRes = await paymentsApi.createOrder({
+            amount: amountPaise,
+            currency: "INR",
+            receipt: orderNumber,
+            notes: {
+              orderNumber,
+              customerName: `${customerDetails.firstName} ${customerDetails.lastName}`.trim(),
+              customerEmail: customerDetails.email,
+            },
+          });
+
+          if (orderRes.data?.order_id) {
+            rzpOrderId = orderRes.data.order_id;
+            rzpAmount = orderRes.data.amount;
+            rzpCurrency = orderRes.data.currency || "INR";
+            keyId = orderRes.data.key_id || keyId;
+          }
+        } catch (createErr) {
+          console.error("Razorpay create-order error:", createErr);
+          throw new Error(createErr.response?.data?.message || "Failed to initialize payment with Razorpay.");
+        }
+      }
+
+      const options = {
+        key: keyId,
+        amount: rzpAmount,
+        currency: rzpCurrency,
+        name: "SPARE PRO WHOLESALE",
+        description: `Order ${orderNumber} Payment`,
+        image: "/images/logo.png",
+        order_id: rzpOrderId,
+        prefill: {
+          name: `${customerDetails.firstName} ${customerDetails.lastName}`.trim(),
+          email: customerDetails.email,
+          contact: customerDetails.phone,
+        },
+        theme: {
+          color: "#0c2340",
+        },
+        modal: {
+          ondismiss: function () {
+            setSubmitting(false);
+            addToast("Payment window closed. You can retry checkout anytime.", "info");
+          },
+        },
+        handler: async function (response) {
+          try {
+            setSubmitting(true);
+            addToast("Verifying payment signature with bank...", "info");
+
+            const verifyRes = await paymentsApi.verifyPayment({
+              order_id: response.razorpay_order_id,
+              payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              orderId: orderNumber,
+            });
+
+            if (verifyRes.data?.success || verifyRes.data?.is_valid) {
+              clearCart();
+              addToast(`Payment of ₹${(rzpAmount / 100).toFixed(2)} verified successfully!`, "success");
+              navigate(`/order-received?order_id=${orderNumber}&payment_id=${response.razorpay_payment_id}`);
+            } else {
+              throw new Error(verifyRes.data?.message || "Signature verification failed.");
+            }
+          } catch (verifyErr) {
+            console.error("Payment verification error:", verifyErr);
+            addToast(verifyErr.response?.data?.message || verifyErr.message || "Payment verification failed.", "error");
+          } finally {
+            setSubmitting(false);
+          }
+        },
+      };
+
+      const rzpInstance = new window.Razorpay(options);
+
+      rzpInstance.on("payment.failed", function (response) {
+        console.error("Razorpay Payment Failed:", response.error);
+        addToast(`Payment failed: ${response.error?.description || response.error?.reason || "Transaction declined by bank"}`, "error");
+        setSubmitting(false);
+      });
+
+      rzpInstance.open();
+    } catch (err) {
+      console.error("Razorpay launch error:", err);
+      addToast(err.message || "Failed to start Razorpay checkout.", "error");
       setSubmitting(false);
     }
   };
@@ -373,6 +498,43 @@ export default function Checkout() {
                   <h4 className="fw-bold mb-4">Payment Method</h4>
 
                   <div className="mb-3">
+                    {/* Razorpay Standard Checkout */}
+                    <div
+                      className={`form-check p-3 border rounded-3 mb-3 cursor-pointer ${
+                        paymentMethod === "razorpay" ? "border-primary bg-primary-subtle bg-opacity-10" : ""
+                      }`}
+                      style={{ transition: "all 0.2s ease" }}
+                    >
+                      <input
+                        className="form-check-input"
+                        type="radio"
+                        name="paymentRadio"
+                        id="paymentRazorpay"
+                        checked={paymentMethod === "razorpay"}
+                        onChange={() => setPaymentMethod("razorpay")}
+                      />
+                      <label
+                        className="form-check-label fw-semibold ms-2 d-flex flex-column gap-1 w-100"
+                        htmlFor="paymentRazorpay"
+                        style={{ cursor: "pointer" }}
+                      >
+                        <div className="d-flex justify-content-between align-items-center">
+                          <span className="text-dark fw-bold d-flex align-items-center gap-2">
+                            <span>Razorpay Standard Checkout</span>
+                            <span className="badge bg-primary text-white" style={{ fontSize: "11px" }}>
+                              Official
+                            </span>
+                          </span>
+                          <span className="badge bg-success-subtle text-success">
+                            <i className="fa-solid fa-bolt me-1"></i> Instant Verification
+                          </span>
+                        </div>
+                        <span className="text-muted small fw-normal">
+                          Instant UPI (GPay, PhonePe, Paytm, QR), Debit &amp; Credit Cards (Visa, Mastercard, RuPay), NetBanking &amp; Wallets
+                        </span>
+                      </label>
+                    </div>
+
                     {/* Cash On Delivery */}
                     <div
                       className={`form-check p-3 border rounded-3 mb-2 cursor-pointer ${
@@ -488,11 +650,14 @@ export default function Checkout() {
                     type="submit"
                     disabled={submitting || (isAuthenticated && approvalStatus === "pending")}
                     className="btn btn-dark w-100 rounded-pill py-3 fw-semibold mb-3 d-flex align-items-center justify-content-center gap-2"
+                    style={paymentMethod === "razorpay" ? { backgroundColor: "#0c2340", borderColor: "#0c2340" } : {}}
                   >
                     {submitting ? (
-                      <span><i className="fa-solid fa-spinner fa-spin me-2"></i> Processing Order...</span>
+                      <span><i className="fa-solid fa-spinner fa-spin me-2"></i> Processing...</span>
                     ) : isAuthenticated && approvalStatus === "pending" ? (
                       "Approval Pending (Cannot Checkout)"
+                    ) : paymentMethod === "razorpay" ? (
+                      <span><i className="fa-solid fa-shield-halved me-1"></i> Pay ₹{Number(cartTotal).toLocaleString("en-IN")} with Razorpay</span>
                     ) : (
                       `Confirm Order (₹${Number(cartTotal).toLocaleString("en-IN")})`
                     )}
