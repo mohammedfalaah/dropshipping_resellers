@@ -62,9 +62,16 @@ const shippingAddressSchema = z
 const createOrderSchema = z.object({
   items: z.array(createOrderItemSchema).min(1, "Order must contain at least one item"),
   shippingAddress: shippingAddressSchema,
-  paymentMethod: z.enum(["COD", "RAZORPAY", "BANK_TRANSFER", "CASH", "OTHER"], {
+  paymentMethod: z.preprocess((val) => {
+    if (typeof val === "string") {
+      const upper = val.toUpperCase().trim();
+      if (upper === "CASHFREE") return "RAZORPAY";
+      return upper;
+    }
+    return val;
+  }, z.enum(["COD", "RAZORPAY", "BANK_TRANSFER", "CASH", "OTHER"], {
     errorMap: () => ({ message: "Payment method must be COD, RAZORPAY, BANK_TRANSFER, CASH, or OTHER" }),
-  }),
+  })),
 });
 
 const updateOrderStatusSchema = z.object({

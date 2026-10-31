@@ -19,6 +19,11 @@ const generateOrderNumber = () => {
  * Create a new order with atomic stock validation and deduction
  */
 const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, userObj }) => {
+  // Normalize payment method to supported enum (auto-map legacy CASHFREE to RAZORPAY)
+  let normalizedPaymentMethod = String(paymentMethod || "COD").toUpperCase().trim();
+  if (normalizedPaymentMethod === "CASHFREE") {
+    normalizedPaymentMethod = "RAZORPAY";
+  }
   if (!items || items.length === 0) {
     throw new Error("Order must contain at least one item");
   }
@@ -97,7 +102,7 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
   }
 
   // Initial order status: COD and others -> CONFIRMED, Razorpay -> PENDING until verified
-  const orderStatus = paymentMethod === "RAZORPAY" ? "PENDING" : "CONFIRMED";
+  const orderStatus = normalizedPaymentMethod === "RAZORPAY" ? "PENDING" : "CONFIRMED";
   const paymentStatus = "PENDING";
 
   // 3. Create Order document
@@ -110,12 +115,12 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
     shippingPaise,
     totalPaise,
     currency: "INR",
-    paymentMethod,
+    paymentMethod: normalizedPaymentMethod,
     paymentStatus,
     orderStatus,
     shippingAddress,
     cod:
-      paymentMethod === "COD"
+      normalizedPaymentMethod === "COD"
         ? {
             codAmountPaise: totalPaise,
             collectedPaise: 0,
@@ -128,7 +133,7 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
   });
 
   // 4. If COD, create CodCollection record
-  if (paymentMethod === "COD") {
+  if (normalizedPaymentMethod === "COD") {
     await CodCollection.create({
       order: order._id,
       orderNumber: order.orderNumber,
@@ -144,7 +149,7 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
 
   // 5. If Razorpay, initiate Razorpay Order
   let razorpayOrderData = null;
-  if (paymentMethod === "RAZORPAY") {
+  if (normalizedPaymentMethod === "RAZORPAY") {
     try {
       if (razorpayInstance) {
         const rzpOrder = await razorpayInstance.orders.create({
@@ -217,7 +222,7 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
     action: "ORDER_CREATED",
     targetType: "ORDER",
     targetId: order._id.toString(),
-    description: `Order ${order.orderNumber} created with total ₹${(totalPaise / 100).toFixed(2)} (${paymentMethod})`,
+    description: `Order ${order.orderNumber} created with total ₹${(totalPaise / 100).toFixed(2)} (${normalizedPaymentMethod})`,
   });
 
   return {
