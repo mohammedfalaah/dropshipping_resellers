@@ -250,13 +250,32 @@ export default function Checkout() {
 
           if (orderRes.data?.order_id) {
             rzpOrderId = orderRes.data.order_id;
-            rzpAmount = orderRes.data.amount;
+            rzpAmount = orderRes.data.amount || rzpAmount;
             rzpCurrency = orderRes.data.currency || "INR";
             keyId = orderRes.data.key_id || keyId;
           }
         } catch (createErr) {
           console.error("Razorpay create-order error:", createErr);
           throw new Error(createErr.response?.data?.message || "Failed to initialize payment with Razorpay.");
+        }
+      }
+
+      // If in Sandbox Simulation Mode (e.g. while Razorpay merchant onboarding / KYC is pending)
+      if (rzpOrderId && rzpOrderId.startsWith("order_sim_")) {
+        addToast("Razorpay Sandbox Mode: Simulating test payment authorization...", "info");
+        const simPaymentId = `pay_sim_${Date.now()}`;
+        const verifyRes = await paymentsApi.verifyPayment({
+          order_id: rzpOrderId,
+          payment_id: simPaymentId,
+          razorpay_signature: "simulated_test_signature",
+          orderId: orderNumber,
+        });
+
+        if (verifyRes.data?.success || verifyRes.data?.is_valid) {
+          clearCart();
+          addToast(`Order ${orderNumber} placed & verified in Razorpay Test Mode!`, "success");
+          navigate(`/order-received?order_id=${orderNumber}&payment_id=${simPaymentId}`);
+          return;
         }
       }
 

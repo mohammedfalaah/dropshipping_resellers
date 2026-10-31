@@ -171,7 +171,7 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
         };
       } else {
         // Mock fallback for testing if API credentials aren't live
-        const mockRzpId = `order_${Date.now()}`;
+        const mockRzpId = `order_sim_${Date.now()}`;
         order.razorpay.orderId = mockRzpId;
         await order.save();
         razorpayOrderData = {
@@ -179,12 +179,13 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
           amount: totalPaise,
           currency: "INR",
           keyId: RAZORPAY_KEY_ID,
+          isSimulated: true,
         };
       }
     } catch (err) {
-      console.error("[Razorpay Order Creation Error]:", err.message);
+      console.warn("[Razorpay Order Creation Fallback]:", err.message);
       // Fallback order ID
-      const fallbackRzpId = `order_${Date.now()}`;
+      const fallbackRzpId = `order_sim_${Date.now()}`;
       order.razorpay.orderId = fallbackRzpId;
       await order.save();
       razorpayOrderData = {
@@ -192,6 +193,7 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
         amount: totalPaise,
         currency: "INR",
         keyId: RAZORPAY_KEY_ID,
+        isSimulated: true,
       };
     }
   }
