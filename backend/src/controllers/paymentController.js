@@ -183,6 +183,13 @@ const createRazorpayOrder = async (req, res, next) => {
         currency: rzpOrder.currency,
         key_id: RAZORPAY_KEY_ID,
         receipt: rzpOrder.receipt,
+        data: {
+          order_id: rzpOrder.id,
+          amount: rzpOrder.amount,
+          currency: rzpOrder.currency,
+          key_id: RAZORPAY_KEY_ID,
+          receipt: rzpOrder.receipt,
+        },
       });
     } catch (apiErr) {
       console.warn("[Razorpay API Create Order Warning]:", apiErr.error?.description || apiErr.message);
@@ -199,6 +206,14 @@ const createRazorpayOrder = async (req, res, next) => {
         receipt: String(receiptId).slice(0, 40),
         is_simulated: true,
         warning: apiErr.error?.description || "Razorpay API authentication failed. Operating in sandbox simulation mode.",
+        data: {
+          order_id: fallbackOrderId,
+          amount: Math.round(numericAmount),
+          currency: String(currency).toUpperCase(),
+          key_id: RAZORPAY_KEY_ID,
+          receipt: String(receiptId).slice(0, 40),
+          is_simulated: true,
+        },
       });
     }
   } catch (err) {
@@ -289,6 +304,13 @@ const verifyPayment = async (req, res, next) => {
       order_id: orderId,
       payment_id: paymentId,
       order: internalResult?.order || null,
+      data: {
+        success: true,
+        is_valid: true,
+        order_id: orderId,
+        payment_id: paymentId,
+        order: internalResult?.order || null,
+      },
     });
   } catch (err) {
     console.error("[Razorpay Verify Error]:", err);

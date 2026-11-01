@@ -248,15 +248,18 @@ export default function Checkout() {
             },
           });
 
-          if (orderRes.data?.order_id) {
-            rzpOrderId = orderRes.data.order_id;
-            rzpAmount = orderRes.data.amount || rzpAmount;
-            rzpCurrency = orderRes.data.currency || "INR";
-            keyId = orderRes.data.key_id || keyId;
+          const dataObj = orderRes?.data || orderRes;
+          const resolvedOrderId = dataObj?.order_id || orderRes?.order_id;
+
+          if (resolvedOrderId) {
+            rzpOrderId = resolvedOrderId;
+            rzpAmount = dataObj?.amount || orderRes?.amount || rzpAmount;
+            rzpCurrency = dataObj?.currency || orderRes?.currency || "INR";
+            keyId = dataObj?.key_id || orderRes?.key_id || keyId;
           }
         } catch (createErr) {
           console.error("Razorpay create-order error:", createErr);
-          throw new Error(createErr.response?.data?.message || "Failed to initialize payment with Razorpay.");
+          throw new Error(createErr.response?.data?.message || createErr.message || "Failed to initialize payment with Razorpay.");
         }
       }
 
@@ -271,12 +274,19 @@ export default function Checkout() {
           orderId: orderNumber,
         });
 
-        if (verifyRes.data?.success || verifyRes.data?.is_valid) {
+        const vData = verifyRes?.data || verifyRes;
+        if (vData?.success || vData?.is_valid) {
           clearCart();
           addToast(`Order ${orderNumber} placed & verified in Razorpay Test Mode!`, "success");
           navigate(`/order-received?order_id=${orderNumber}&payment_id=${simPaymentId}`);
           return;
+        } else {
+          throw new Error(vData?.message || "Sandbox payment verification failed.");
         }
+      }
+
+      if (!rzpOrderId) {
+        throw new Error("Unable to obtain a valid Razorpay Order ID. Please try again.");
       }
 
       const options = {
@@ -290,7 +300,7 @@ export default function Checkout() {
         prefill: {
           name: `${customerDetails.firstName} ${customerDetails.lastName}`.trim(),
           email: customerDetails.email,
-          contact: customerDetails.phone,
+          contact: customerDetails.phone ? customerDetails.phone.replace(/[^0-9+]/g, "") : "",
         },
         theme: {
           color: "#0c2340",
@@ -313,12 +323,13 @@ export default function Checkout() {
               orderId: orderNumber,
             });
 
-            if (verifyRes.data?.success || verifyRes.data?.is_valid) {
+            const vData = verifyRes?.data || verifyRes;
+            if (vData?.success || vData?.is_valid) {
               clearCart();
               addToast(`Payment of ₹${(rzpAmount / 100).toFixed(2)} verified successfully!`, "success");
               navigate(`/order-received?order_id=${orderNumber}&payment_id=${response.razorpay_payment_id}`);
             } else {
-              throw new Error(verifyRes.data?.message || "Signature verification failed.");
+              throw new Error(vData?.message || "Signature verification failed.");
             }
           } catch (verifyErr) {
             console.error("Payment verification error:", verifyErr);
@@ -331,9 +342,43 @@ export default function Checkout() {
 
       const rzpInstance = new window.Razorpay(options);
 
-      rzpInstance.on("payment.failed", function (response) {
+      rzpInstance.on("payment.failed", async function (response) {
         console.error("Razorpay Payment Failed:", response.error);
-        addToast(`Payment failed: ${response.error?.description || response.error?.reason || "Transaction declined by bank"}`, "error");
+        const errMsg = response.error?.description || response.error?.reason || "Transaction declined by gateway";
+
+        // In test mode, if gateway rejects or encounters error, provide option to complete via sandbox simulation
+        if (keyId.startsWith("rzp_test_")) {
+          const trySim = window.confirm(
+            `Razorpay Test Mode Notice:\n${errMsg}\n\nWould you like to complete and verify this test order in Sandbox Mode?`
+          );
+          if (trySim) {
+            try {
+              setSubmitting(true);
+              addToast("Authorizing order in Test Sandbox Mode...", "info");
+              const simPaymentId = `pay_sim_${Date.now()}`;
+              const verifyRes = await paymentsApi.verifyPayment({
+                order_id: rzpOrderId || `order_sim_${Date.now()}`,
+                payment_id: simPaymentId,
+                razorpay_signature: "simulated_test_signature",
+                orderId: orderNumber,
+              });
+
+              const vData = verifyRes?.data || verifyRes;
+              if (vData?.success || vData?.is_valid) {
+                clearCart();
+                addToast(`Order ${orderNumber} placed & verified in Test Mode!`, "success");
+                navigate(`/order-received?order_id=${orderNumber}&payment_id=${simPaymentId}`);
+                return;
+              }
+            } catch (simErr) {
+              console.error("Sandbox simulation failed:", simErr);
+            } finally {
+              setSubmitting(false);
+            }
+          }
+        }
+
+        addToast(`Payment failed: ${errMsg}`, "error");
         setSubmitting(false);
       });
 
