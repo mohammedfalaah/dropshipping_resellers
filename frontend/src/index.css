@@ -582,10 +582,18 @@ header.main-header .header-sticky.active {
 /* ========================================================
    SCROLL ANIMATIONS SYSTEM (WOW.js & IntersectionObserver)
    ======================================================== */
+@keyframes wowSafetyReveal {
+  to {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+
 .wow {
   visibility: hidden;
   opacity: 0;
   will-change: transform, opacity;
+  animation: wowSafetyReveal 0.01s forwards 1.2s;
 }
 
 .wow.animated {

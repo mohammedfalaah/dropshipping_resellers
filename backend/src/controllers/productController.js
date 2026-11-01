@@ -16,6 +16,10 @@ const slugify = (text) => {
     .replace(/\-\-+/g, "-");
 };
 
+const escapeRegex = (string) => {
+  return typeof string === "string" ? string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") : "";
+};
+
 /**
  * Get Products with Category, Search, Status & Pagination
  */
@@ -45,10 +49,11 @@ const getProducts = async (req, res, next) => {
     }
 
     if (search) {
+      const escaped = escapeRegex(search);
       query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { sku: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
+        { name: { $regex: escaped, $options: "i" } },
+        { sku: { $regex: escaped, $options: "i" } },
+        { description: { $regex: escaped, $options: "i" } },
       ];
     }
 

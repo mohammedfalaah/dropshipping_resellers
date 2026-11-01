@@ -5,36 +5,57 @@ import { products as initialProducts, categories as initialCategories } from "..
 const ProductContext = createContext();
 
 export const ProductProvider = ({ children }) => {
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState(initialCategories);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const normalizeProduct = (p) => {
+    const rawCategory = p.category || (p.categorySlug ? p.categorySlug : "Gadgets");
+    const categorySlug = (p.categorySlug || rawCategory || "gadgets").toLowerCase().trim();
+    return {
+      ...p,
+      id: p._id || p.id,
+      _id: p._id || p.id,
+      name: p.name,
+      slug: p.slug,
+      category: rawCategory,
+      categorySlug: categorySlug,
+      price: Number(p.price ?? p.resellerPrice ?? p.regularPrice ?? 0),
+      originalPrice: Number(p.originalPrice ?? p.regularPrice ?? p.price ?? 0),
+      resellerPrice: Number(p.resellerPrice ?? p.price ?? 0),
+      regularPrice: Number(p.regularPrice ?? p.originalPrice ?? 0),
+      image: p.image || p.mainImage || "/images/product-earbuds.jpg",
+      mainImage: p.mainImage || p.image || "/images/product-earbuds.jpg",
+      thumbnails: (p.gallery && p.gallery.length) ? p.gallery : (p.thumbnails && p.thumbnails.length ? p.thumbnails : [p.image || p.mainImage || "/images/product-earbuds.jpg"]),
+      badge: p.badge || (p.isFeatured ? "Featured" : p.isTrending ? "Trending" : ""),
+      rating: p.rating || 5,
+      ratingCount: p.ratingCount || 48,
+      inStock: p.inStock !== undefined ? p.inStock : (p.stockQuantity !== undefined ? p.stockQuantity > 0 : true),
+      stockCount: p.stockQuantity !== undefined ? p.stockQuantity : (p.stockCount || 100),
+      sku: p.sku || "",
+      shortDescription: p.shortDescription || p.description || "",
+      description: p.description || "",
+      additionalInfo: p.additionalInfo || {},
+    };
+  };
 
-  const normalizeProduct = (p) => ({
-    ...p,
-    id: p._id || p.id,
-    _id: p._id || p.id,
-    name: p.name,
-    slug: p.slug,
-    category: p.category,
-    categorySlug: p.categorySlug || (p.category ? p.category.toLowerCase() : "gadgets"),
-    price: Number(p.price ?? p.resellerPrice ?? p.regularPrice ?? 0),
-    originalPrice: Number(p.originalPrice ?? p.regularPrice ?? p.price ?? 0),
-    resellerPrice: Number(p.resellerPrice ?? p.price ?? 0),
-    regularPrice: Number(p.regularPrice ?? p.originalPrice ?? 0),
-    image: p.image || p.mainImage || "/images/product-earbuds.jpg",
-    mainImage: p.mainImage || p.image || "/images/product-earbuds.jpg",
-    thumbnails: (p.gallery && p.gallery.length) ? p.gallery : (p.thumbnails && p.thumbnails.length ? p.thumbnails : [p.image || p.mainImage || "/images/product-earbuds.jpg"]),
-    badge: p.badge || (p.isFeatured ? "Featured" : p.isTrending ? "Trending" : ""),
-    rating: p.rating || 5,
-    ratingCount: p.ratingCount || 48,
-    inStock: p.inStock !== undefined ? p.inStock : (p.stockQuantity !== undefined ? p.stockQuantity > 0 : true),
-    stockCount: p.stockQuantity !== undefined ? p.stockQuantity : (p.stockCount || 100),
-    sku: p.sku || "",
-    shortDescription: p.shortDescription || p.description || "",
-    description: p.description || "",
-    additionalInfo: p.additionalInfo || {},
-  });
+  const normalizeCategory = (c, idx) => {
+    const slug = (c.slug || c.name || "").toLowerCase().trim();
+    const fallback = initialCategories.find(
+      (ic) => ic.slug.toLowerCase() === slug || ic.name.toLowerCase() === (c.name || "").toLowerCase()
+    );
+    return {
+      ...c,
+      id: c.id || c._id || `cat-${slug || idx}`,
+      _id: c._id || c.id || `cat-${slug || idx}`,
+      slug: slug || fallback?.slug || "gadgets",
+      name: c.name || fallback?.name || "Category",
+      image: c.image || fallback?.image || `/images/category-${slug || "gadgets"}.jpg`,
+      count: c.productCount ?? c.count ?? fallback?.count ?? 0,
+      description: c.description || fallback?.description || "",
+    };
+  };
+
+  const [products, setProducts] = useState(() => initialProducts.map(normalizeProduct));
+  const [categories, setCategories] = useState(() => initialCategories.map(normalizeCategory));
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -46,7 +67,10 @@ export const ProductProvider = ({ children }) => {
       ]);
 
       if (prodRes.status === "fulfilled") {
-        const rawProducts = prodRes.value?.data?.products || prodRes.value?.products || [];
+        const rawProducts =
+          prodRes.value?.data?.products ||
+          prodRes.value?.products ||
+          (Array.isArray(prodRes.value) ? prodRes.value : []);
         if (Array.isArray(rawProducts) && rawProducts.length > 0) {
           const normalizedDbProducts = rawProducts.map(normalizeProduct);
           setProducts(normalizedDbProducts);
@@ -54,19 +78,32 @@ export const ProductProvider = ({ children }) => {
           // Fallback to initialProducts if backend has no products yet
           setProducts(initialProducts.map(normalizeProduct));
         }
+      } else {
+        console.warn("Backend products API failed or unreachable, using fallback catalog:", prodRes.reason);
+        setProducts((prev) => (prev && prev.length > 0 ? prev : initialProducts.map(normalizeProduct)));
       }
 
       if (catRes.status === "fulfilled") {
-        const rawCategories = catRes.value?.data?.categories || catRes.value?.categories || [];
+        const rawCategories =
+          catRes.value?.data?.categories ||
+          catRes.value?.categories ||
+          (Array.isArray(catRes.value) ? catRes.value : []);
         if (Array.isArray(rawCategories) && rawCategories.length > 0) {
-          setCategories(rawCategories);
+          setCategories(rawCategories.map(normalizeCategory));
+        } else {
+          setCategories(initialCategories.map(normalizeCategory));
         }
+      } else {
+        console.warn("Backend categories API failed or unreachable, using fallback categories:", catRes.reason);
+        setCategories((prev) => (prev && prev.length > 0 ? prev : initialCategories.map(normalizeCategory)));
       }
 
       setError(null);
     } catch (err) {
       console.warn("Could not fetch live products from API:", err.message);
       setError(err.message);
+      setProducts((prev) => (prev && prev.length > 0 ? prev : initialProducts.map(normalizeProduct)));
+      setCategories((prev) => (prev && prev.length > 0 ? prev : initialCategories.map(normalizeCategory)));
     } finally {
       setLoading(false);
     }

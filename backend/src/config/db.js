@@ -4,11 +4,11 @@ const { MONGODB_URI } = require("./env");
 let cachedConnection = null;
 
 const connectDB = async () => {
-  if (mongoose.connection.readyState >= 1) {
+  if (mongoose.connection.readyState === 1) {
     return mongoose.connection;
   }
 
-  if (!cachedConnection) {
+  if (!cachedConnection || mongoose.connection.readyState === 0) {
     cachedConnection = mongoose.connect(MONGODB_URI, {
       autoIndex: true,
       serverSelectionTimeoutMS: 8000,
@@ -27,7 +27,13 @@ const connectDB = async () => {
 };
 
 mongoose.connection.on("disconnected", () => {
-  console.warn("[MongoDB] Disconnected. Attempting reconnect...");
+  console.warn("[MongoDB] Disconnected. Resetting cached connection.");
+  cachedConnection = null;
+});
+
+mongoose.connection.on("error", (err) => {
+  console.error("[MongoDB] Connection Error event:", err.message);
+  cachedConnection = null;
 });
 
 module.exports = connectDB;

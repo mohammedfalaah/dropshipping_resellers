@@ -425,9 +425,8 @@ export default function ProductDetails() {
               <div className="row g-4">
                 {relatedProducts.map((relProd, idx) => (
                   <div
-                    key={relProd.id}
-                    className="col-lg-3 col-md-6 wow fadeInUp"
-                    data-wow-delay={`${idx * 0.15}s`}
+                    key={relProd.id || relProd._id || idx}
+                    className="col-lg-3 col-md-6"
                   >
                     <ProductCard
                       product={relProd}

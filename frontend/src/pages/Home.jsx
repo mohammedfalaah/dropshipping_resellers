@@ -43,7 +43,11 @@ export default function Home() {
   const filteredProducts =
     selectedCategory === "all"
       ? products.slice(0, 8)
-      : products.filter((p) => p.categorySlug === selectedCategory);
+      : products.filter(
+          (p) =>
+            (p.categorySlug || "").toLowerCase() === selectedCategory.toLowerCase() ||
+            (p.category || "").toLowerCase() === selectedCategory.toLowerCase()
+        );
 
   return (
     <>
@@ -117,14 +121,20 @@ export default function Home() {
               <div className="category-item-list">
                 {categories.map((cat, idx) => (
                   <div
-                    key={cat.id}
-                    className="category-item wow fadeInUp"
-                    data-wow-delay={`${idx * 0.15}s`}
+                    key={cat.id || cat._id || cat.slug || idx}
+                    className="category-item"
                   >
                     <div className="category-item-image">
                       <Link to={`/shop?category=${cat.slug}`}>
                         <figure>
-                          <img src={cat.image} alt={cat.name} />
+                          <img
+                            src={cat.image || "/images/category-gadgets.jpg"}
+                            alt={cat.name}
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = "/images/category-gadgets.jpg";
+                            }}
+                          />
                         </figure>
                       </Link>
                     </div>
@@ -157,21 +167,24 @@ export default function Home() {
                 <div className="product-category-tabs">
                   <button
                     type="button"
-                    className={`product-category-tab ${selectedCategory === "all" ? "active" : ""}`}
+                    className={`product-category-tab ${selectedCategory.toLowerCase() === "all" ? "active" : ""}`}
                     onClick={() => setSelectedCategory("all")}
                   >
                     All Products
                   </button>
-                  {categories.map((cat) => (
-                    <button
-                      key={cat.slug || cat.id}
-                      type="button"
-                      className={`product-category-tab ${selectedCategory === cat.slug ? "active" : ""}`}
-                      onClick={() => setSelectedCategory(cat.slug)}
-                    >
-                      {cat.name}
-                    </button>
-                  ))}
+                  {categories.map((cat, idx) => {
+                    const catSlug = (cat.slug || cat.name || "").toLowerCase();
+                    return (
+                      <button
+                        key={cat.slug || cat.id || cat._id || idx}
+                        type="button"
+                        className={`product-category-tab ${selectedCategory.toLowerCase() === catSlug ? "active" : ""}`}
+                        onClick={() => setSelectedCategory(catSlug)}
+                      >
+                        {cat.name}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>

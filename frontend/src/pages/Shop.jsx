@@ -47,7 +47,12 @@ export default function Shop() {
 
     // Filter by Category
     if (currentCategory && currentCategory !== "all") {
-      result = result.filter((p) => p.categorySlug === currentCategory);
+      const target = currentCategory.toLowerCase();
+      result = result.filter(
+        (p) =>
+          (p.categorySlug || "").toLowerCase() === target ||
+          (p.category || "").toLowerCase() === target
+      );
     }
 
     // Filter by Search
@@ -245,9 +250,8 @@ export default function Shop() {
                 <div className="row g-4">
                   {filteredProducts.map((product, idx) => (
                     <div
-                      key={product.id}
-                      className="col-md-4 col-sm-6 wow fadeInUp"
-                      data-wow-delay={`${(idx % 6) * 0.1}s`}
+                      key={product.id || product._id || idx}
+                      className="col-md-4 col-sm-6"
                     >
                       <ProductCard
                         product={product}

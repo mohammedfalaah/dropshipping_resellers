@@ -3,6 +3,10 @@ const Product = require("../models/Product");
 const AuditLog = require("../models/AuditLog");
 const { successResponse, errorResponse } = require("../utils/response");
 
+const escapeRegex = (string) => {
+  return typeof string === "string" ? string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") : "";
+};
+
 const slugify = (text) => {
   return text
     .toString()
@@ -26,18 +30,34 @@ const getCategories = async (req, res, next) => {
 
     const categories = await Category.find(query).sort({ createdAt: 1 }).lean();
 
+    if (!categories || categories.length === 0) {
+      const defaultCategories = [
+        { name: "Gadgets", slug: "gadgets", image: "/images/category-gadgets.jpg", productCount: 24, isActive: true },
+        { name: "Watches", slug: "watches", image: "/images/category-watches.jpg", productCount: 18, isActive: true },
+        { name: "Footwear", slug: "footwear", image: "/images/category-footwear.jpg", productCount: 22, isActive: true },
+        { name: "Fashion", slug: "fashion", image: "/images/category-fashion.jpg", productCount: 35, isActive: true },
+        { name: "Sunglasses", slug: "sunglasses", image: "/images/category-sunglasses.jpg", productCount: 16, isActive: true },
+      ];
+      return successResponse(res, "Categories retrieved successfully.", {
+        categories: defaultCategories,
+      });
+    }
+
     // Calculate productCount for each category
     const categoriesWithCount = await Promise.all(
       categories.map(async (cat) => {
-        const productCount = await Product.countDocuments({
+        const catNameRegex = cat.name ? new RegExp(`^${escapeRegex(cat.name)}$`, "i") : null;
+        const countQuery = {
           $or: [
-            { categorySlug: cat.slug },
-            { category: new RegExp(`^${cat.name}$`, "i") },
+            { categorySlug: (cat.slug || "").toLowerCase() },
+            ...(catNameRegex ? [{ category: catNameRegex }] : []),
           ],
-        });
+        };
+        const productCount = await Product.countDocuments(countQuery).catch(() => 0);
         return {
           ...cat,
-          id: cat._id,
+          id: cat._id || cat.id,
+          image: cat.image || `/images/category-${(cat.slug || "gadgets").toLowerCase()}.jpg`,
           productCount,
         };
       })
