@@ -1,5 +1,7 @@
 
 
+export const products = [];
+
 export const categories = [
   {
     id: 1,

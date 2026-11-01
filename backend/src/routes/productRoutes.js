@@ -70,6 +70,13 @@ router.patch(
 );
 
 router.delete(
+  "/clear-all",
+  protect,
+  restrictTo("admin"),
+  productController.clearAllProducts
+);
+
+router.delete(
   "/:id",
   protect,
   restrictTo("admin"),

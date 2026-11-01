@@ -109,6 +109,18 @@ export default function Products() {
     }
   };
 
+  const handleClearAllProducts = async () => {
+    if (!window.confirm("⚠️ WARNING: Are you sure you want to permanently delete ALL products in the database? This cannot be undone.")) return;
+    try {
+      const res = await productsApi.deleteAll();
+      addToast(res.message || "All products deleted successfully.", "info");
+      fetchProducts();
+      if (refreshProducts) refreshProducts();
+    } catch (err) {
+      addToast(err.message || "Failed to delete all products.", "error");
+    }
+  };
+
   // Image Upload and Backend Compression Handler
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -248,12 +260,23 @@ export default function Products() {
           <h4 className="fw-bold text-dark mb-1">Product Catalog</h4>
           <p className="text-muted small mb-0">Manage wholesale and dropshipping products, inventory tiers, and pricing</p>
         </div>
-        <div className="d-flex gap-2">
+        <div className="d-flex flex-wrap gap-2">
+          {products.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-outline-danger btn-sm rounded-pill px-3 d-flex align-items-center gap-2"
+              onClick={handleClearAllProducts}
+              title="Delete all products from catalog"
+            >
+              <i className="fa-solid fa-trash-can"></i>
+              <span>Delete All Products</span>
+            </button>
+          )}
           <button
             type="button"
             className="btn btn-outline-dark btn-sm rounded-pill px-3 d-flex align-items-center gap-2"
             onClick={() => {
-              setImportJsonText(sampleImportJson);
+              setImportJsonText("");
               setShowImportModal(true);
             }}
           >

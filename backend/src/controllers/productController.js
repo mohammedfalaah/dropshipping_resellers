@@ -340,6 +340,29 @@ const deleteProduct = async (req, res, next) => {
 };
 
 /**
+ * Delete All Products from Catalog (Admin only)
+ */
+const clearAllProducts = async (req, res, next) => {
+  try {
+    const count = await Product.countDocuments();
+    await Product.deleteMany({});
+
+    await AuditLog.create({
+      user: req.user._id,
+      userName: req.user.name,
+      userRole: "admin",
+      action: "ALL_PRODUCTS_DELETED",
+      targetType: "PRODUCT",
+      description: `Admin deleted all ${count} products from catalog.`,
+    });
+
+    return successResponse(res, `Successfully removed all ${count} products.`);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
  * Upload & Compress Image (Auto-Resizes & Reduces File Size via Sharp)
  */
 const uploadImage = async (req, res, next) => {
@@ -478,6 +501,7 @@ module.exports = {
   updateProduct,
   updateStock,
   deleteProduct,
+  clearAllProducts,
   uploadImage,
   bulkImportProducts,
   getCategories,

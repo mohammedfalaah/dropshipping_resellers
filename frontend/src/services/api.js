@@ -56,6 +56,7 @@ export const productsApi = {
       return Promise.reject(err);
     }),
   delete: (id) => api.delete(`/products/${id}`),
+  deleteAll: () => api.delete("/products/clear-all"),
   uploadImage: (formData) =>
     api.post("/products/upload-image", formData, {
       headers: { "Content-Type": "multipart/form-data" },

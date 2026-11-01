@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { productsApi } from "../services/api";
-import { products as initialProducts, categories as initialCategories } from "../data/productsData";
+import { categories as initialCategories } from "../data/productsData";
 
 const ProductContext = createContext();
 
@@ -52,7 +52,7 @@ export const ProductProvider = ({ children }) => {
     };
   };
 
-  const [products, setProducts] = useState(() => initialProducts.map(normalizeProduct));
+  const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState(() => initialCategories.map(normalizeCategory));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -71,16 +71,15 @@ export const ProductProvider = ({ children }) => {
           prodRes.value?.data?.products ||
           prodRes.value?.products ||
           (Array.isArray(prodRes.value) ? prodRes.value : []);
-        if (Array.isArray(rawProducts) && rawProducts.length > 0) {
+        if (Array.isArray(rawProducts)) {
           const normalizedDbProducts = rawProducts.map(normalizeProduct);
           setProducts(normalizedDbProducts);
         } else {
-          // Fallback to initialProducts if backend has no products yet
-          setProducts(initialProducts.map(normalizeProduct));
+          setProducts([]);
         }
       } else {
-        console.warn("Backend products API failed or unreachable, using fallback catalog:", prodRes.reason);
-        setProducts((prev) => (prev && prev.length > 0 ? prev : initialProducts.map(normalizeProduct)));
+        console.warn("Backend products API failed or unreachable:", prodRes.reason);
+        setProducts([]);
       }
 
       if (catRes.status === "fulfilled") {
@@ -94,7 +93,7 @@ export const ProductProvider = ({ children }) => {
           setCategories(initialCategories.map(normalizeCategory));
         }
       } else {
-        console.warn("Backend categories API failed or unreachable, using fallback categories:", catRes.reason);
+        console.warn("Backend categories API failed or unreachable, keeping fallback categories:", catRes.reason);
         setCategories((prev) => (prev && prev.length > 0 ? prev : initialCategories.map(normalizeCategory)));
       }
 
@@ -102,8 +101,7 @@ export const ProductProvider = ({ children }) => {
     } catch (err) {
       console.warn("Could not fetch live products from API:", err.message);
       setError(err.message);
-      setProducts((prev) => (prev && prev.length > 0 ? prev : initialProducts.map(normalizeProduct)));
-      setCategories((prev) => (prev && prev.length > 0 ? prev : initialCategories.map(normalizeCategory)));
+      setProducts([]);
     } finally {
       setLoading(false);
     }
