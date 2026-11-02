@@ -29,22 +29,32 @@ const connectDB = require("./config/db");
 // Security HTTP headers
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 
-// CORS configuration supporting local dev, FRONTEND_URL and Vercel deployments
+// CORS configuration supporting local dev (all ports), FRONTEND_URL and Vercel deployments
 const allowedOrigins = [
   FRONTEND_URL,
   "http://localhost:5173",
   "http://127.0.0.1:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:5174",
   "http://localhost:3000",
 ];
+
+const isOriginAllowed = (origin) => {
+  if (!origin) return true; // Mobile apps, curl, server-to-server
+  if (NODE_ENV !== "production") return true; // All local ports allowed in development
+  if (allowedOrigins.includes(origin)) return true;
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
+  if (origin.endsWith(".vercel.app") || origin.includes("vercel.app")) return true;
+  return false;
+};
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // allow requests with no origin (like mobile apps, curl, or tests)
-      if (!origin || allowedOrigins.includes(origin) || (origin && origin.endsWith(".vercel.app"))) {
+      if (isOriginAllowed(origin)) {
         return callback(null, true);
       }
-      return callback(new Error(`CORS error: Origin ${origin} not permitted`));
+      return callback(null, false);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

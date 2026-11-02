@@ -141,7 +141,8 @@ export default function AccountDashboard() {
   const handleLoadReports = async () => {
     try {
       const res = await adminApi.getBalanceSheet();
-      if (res.data?.data) setFinancialReports(res.data.data);
+      const reportData = res?.data || res;
+      if (reportData) setFinancialReports(reportData);
     } catch (err) {
       console.error(err);
     }
@@ -270,7 +271,8 @@ export default function AccountDashboard() {
                         onClick={async () => {
                           setActiveTab("resellers");
                           const res = await adminApi.getResellers();
-                          if (res.data?.data?.resellers) setAllResellers(res.data.data.resellers);
+                          const resellersList = res?.data?.resellers || res?.resellers || (Array.isArray(res?.data) ? res.data : null);
+                          if (resellersList) setAllResellers(resellersList);
                         }}
                       >
                         <i className="fa-solid fa-users me-2"></i> All Resellers

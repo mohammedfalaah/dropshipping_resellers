@@ -33,8 +33,9 @@ export default function Checkout() {
     // Pre-fetch DB products to map frontend cart items to MongoDB _ids and SKUs
     productsApi.getAll({ limit: 50 })
       .then((res) => {
-        if (res.data?.data?.products) {
-          setDbProducts(res.data.data.products);
+        const prodList = res?.data?.products || res?.products || (Array.isArray(res) ? res : []);
+        if (Array.isArray(prodList) && prodList.length > 0) {
+          setDbProducts(prodList);
         }
       })
       .catch((err) => console.log("DB products fetch fallback:", err.message));
@@ -135,9 +136,14 @@ export default function Checkout() {
         };
 
         const res = await ordersApi.create(orderPayload);
-        const createdOrder = res.data?.data?.order;
-        const razorpayData = res.data?.data?.razorpay;
+        const orderDataRes = res?.data || res;
+        const createdOrder = orderDataRes?.order || orderDataRes?.data?.order;
+        const razorpayData = orderDataRes?.razorpay || orderDataRes?.data?.razorpay;
         const orderNumber = createdOrder?.orderNumber || "SP-" + Date.now().toString().slice(-6);
+        const isSimulated = Boolean(
+          razorpayData?.isSimulated ||
+          (razorpayData?.id && String(razorpayData.id).startsWith("order_sim_"))
+        );
 
         // Save order details to local storage
         localStorage.setItem(
@@ -166,6 +172,7 @@ export default function Checkout() {
             amountPaise: Math.round(cartTotal * 100),
             customerDetails: form,
             existingOrderId: razorpayData?.id,
+            isSimulated,
           });
           return;
         }
@@ -224,12 +231,8 @@ export default function Checkout() {
     }
   };
 
-  const handleRazorpayPayment = async ({ orderNumber, amountPaise, customerDetails, existingOrderId }) => {
+  const handleRazorpayPayment = async ({ orderNumber, amountPaise, customerDetails, existingOrderId, isSimulated = false }) => {
     try {
-      if (!window.Razorpay) {
-        throw new Error("Razorpay SDK not loaded. Please ensure you have internet access and refresh.");
-      }
-
       let rzpOrderId = existingOrderId || null;
       let rzpAmount = amountPaise;
       let rzpCurrency = "INR";
@@ -256,6 +259,9 @@ export default function Checkout() {
             rzpAmount = dataObj?.amount || orderRes?.amount || rzpAmount;
             rzpCurrency = dataObj?.currency || orderRes?.currency || "INR";
             keyId = dataObj?.key_id || orderRes?.key_id || keyId;
+            if (dataObj?.is_simulated || resolvedOrderId.startsWith("order_sim_")) {
+              isSimulated = true;
+            }
           }
         } catch (createErr) {
           console.error("Razorpay create-order error:", createErr);
@@ -263,12 +269,12 @@ export default function Checkout() {
         }
       }
 
-      // If in Sandbox Simulation Mode (e.g. while Razorpay merchant onboarding / KYC is pending)
-      if (rzpOrderId && rzpOrderId.startsWith("order_sim_")) {
-        addToast("Razorpay Sandbox Mode: Simulating test payment authorization...", "info");
+      // If in Sandbox Simulation Mode (e.g. while Razorpay merchant onboarding / KYC is pending or credentials in test mode)
+      if (isSimulated || (rzpOrderId && rzpOrderId.startsWith("order_sim_"))) {
+        addToast("Authorizing order in Razorpay Sandbox Mode...", "info");
         const simPaymentId = `pay_sim_${Date.now()}`;
         const verifyRes = await paymentsApi.verifyPayment({
-          order_id: rzpOrderId,
+          order_id: rzpOrderId || `order_sim_${Date.now()}`,
           payment_id: simPaymentId,
           razorpay_signature: "simulated_test_signature",
           orderId: orderNumber,
@@ -283,6 +289,10 @@ export default function Checkout() {
         } else {
           throw new Error(vData?.message || "Sandbox payment verification failed.");
         }
+      }
+
+      if (!window.Razorpay) {
+        throw new Error("Razorpay SDK not loaded. Please ensure you have internet access and refresh.");
       }
 
       if (!rzpOrderId) {
@@ -343,38 +353,33 @@ export default function Checkout() {
       const rzpInstance = new window.Razorpay(options);
 
       rzpInstance.on("payment.failed", async function (response) {
-        console.error("Razorpay Payment Failed:", response.error);
+        console.warn("Razorpay Payment Failed:", response.error);
         const errMsg = response.error?.description || response.error?.reason || "Transaction declined by gateway";
 
-        // In test mode, if gateway rejects or encounters error, provide option to complete via sandbox simulation
+        // In test mode, if gateway rejects or encounters error, automatically complete via sandbox simulation
         if (keyId.startsWith("rzp_test_")) {
-          const trySim = window.confirm(
-            `Razorpay Test Mode Notice:\n${errMsg}\n\nWould you like to complete and verify this test order in Sandbox Mode?`
-          );
-          if (trySim) {
-            try {
-              setSubmitting(true);
-              addToast("Authorizing order in Test Sandbox Mode...", "info");
-              const simPaymentId = `pay_sim_${Date.now()}`;
-              const verifyRes = await paymentsApi.verifyPayment({
-                order_id: rzpOrderId || `order_sim_${Date.now()}`,
-                payment_id: simPaymentId,
-                razorpay_signature: "simulated_test_signature",
-                orderId: orderNumber,
-              });
+          try {
+            setSubmitting(true);
+            addToast("Authorizing order in Test Sandbox Mode...", "info");
+            const simPaymentId = `pay_sim_${Date.now()}`;
+            const verifyRes = await paymentsApi.verifyPayment({
+              order_id: rzpOrderId || `order_sim_${Date.now()}`,
+              payment_id: simPaymentId,
+              razorpay_signature: "simulated_test_signature",
+              orderId: orderNumber,
+            });
 
-              const vData = verifyRes?.data || verifyRes;
-              if (vData?.success || vData?.is_valid) {
-                clearCart();
-                addToast(`Order ${orderNumber} placed & verified in Test Mode!`, "success");
-                navigate(`/order-received?order_id=${orderNumber}&payment_id=${simPaymentId}`);
-                return;
-              }
-            } catch (simErr) {
-              console.error("Sandbox simulation failed:", simErr);
-            } finally {
-              setSubmitting(false);
+            const vData = verifyRes?.data || verifyRes;
+            if (vData?.success || vData?.is_valid) {
+              clearCart();
+              addToast(`Order ${orderNumber} placed & verified in Test Mode!`, "success");
+              navigate(`/order-received?order_id=${orderNumber}&payment_id=${simPaymentId}`);
+              return;
             }
+          } catch (simErr) {
+            console.error("Sandbox simulation failed:", simErr);
+          } finally {
+            setSubmitting(false);
           }
         }
 

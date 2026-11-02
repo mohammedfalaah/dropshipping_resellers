@@ -15,7 +15,7 @@ const tickerItems = [
 ];
 
 export default function Home() {
-  const { products, categories } = useProducts();
+  const { products, categories, loading } = useProducts();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [quickViewProduct, setQuickViewProduct] = useState(null);
 
@@ -193,15 +193,37 @@ export default function Home() {
           {/* Product Grid Viewport */}
           <div className="row">
             <div className="col-lg-12">
-              <div className="product-item-list">
-                {filteredProducts.map((product) => (
-                  <ProductCard
-                    key={product.id || product._id}
-                    product={product}
-                    onQuickView={(p) => setQuickViewProduct(p)}
-                  />
-                ))}
-              </div>
+              {loading ? (
+                <div className="text-center py-5">
+                  <div className="spinner-border text-dark" role="status">
+                    <span className="visually-hidden">Loading products...</span>
+                  </div>
+                  <p className="text-muted mt-2 small">Loading wholesale products...</p>
+                </div>
+              ) : filteredProducts.length === 0 ? (
+                <div className="text-center py-5 bg-white rounded-4 border my-3 p-4">
+                  <i className="fa-solid fa-box-open fs-2 text-muted mb-3 d-block"></i>
+                  <h5 className="fw-semibold">No products available in this category</h5>
+                  <p className="text-muted mb-3 small">Check out other categories or explore our full wholesale inventory.</p>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-dark rounded-pill px-4 py-2"
+                    onClick={() => setSelectedCategory("all")}
+                  >
+                    View All Products
+                  </button>
+                </div>
+              ) : (
+                <div className="product-item-list">
+                  {filteredProducts.map((product) => (
+                    <ProductCard
+                      key={product.id || product._id}
+                      product={product}
+                      onQuickView={(p) => setQuickViewProduct(p)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
