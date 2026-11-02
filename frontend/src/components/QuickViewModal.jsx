@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import { useToast } from "../context/ToastContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function QuickViewModal({ product, onClose }) {
   if (!product) return null;
@@ -12,13 +13,22 @@ export default function QuickViewModal({ product, onClose }) {
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { addToast } = useToast();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const isFavorited = isInWishlist(product.id);
+  const isFavorited = isInWishlist(product.id || product._id);
 
   const handleAddToCart = () => {
+    if (!isAuthenticated) {
+      addToast("Please log in as a reseller to add products to your cart.", "info");
+      if (onClose) onClose();
+      navigate("/login", { state: { from: location } });
+      return;
+    }
     addToCart(product, quantity);
     addToast(`Added ${quantity} × ${product.name} to cart!`, "success");
-    onClose();
+    if (onClose) onClose();
   };
 
   const handleToggleWishlist = () => {
@@ -143,10 +153,11 @@ export default function QuickViewModal({ product, onClose }) {
 
                     <button
                       type="button"
-                      className="btn btn-dark flex-grow-1 rounded-pill py-2 px-4 fw-semibold"
+                      className="btn btn-dark flex-grow-1 rounded-pill py-2 px-4 fw-semibold d-flex align-items-center justify-content-center gap-2"
                       onClick={handleAddToCart}
                     >
-                      <i className="fa-solid fa-bag-shopping me-2"></i> Add to Cart
+                      <i className={`fa-solid ${isAuthenticated ? "fa-bag-shopping" : "fa-lock"} me-1`}></i>
+                      <span>{isAuthenticated ? "Add to Cart" : "Login to Add to Cart"}</span>
                     </button>
 
                     <button

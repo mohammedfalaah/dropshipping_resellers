@@ -1,18 +1,27 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import Breadcrumb from "../components/Breadcrumb";
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function Wishlist() {
   const { wishlist, removeFromWishlist } = useWishlist();
   const { addToCart } = useCart();
   const { addToast } = useToast();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const handleMoveToCart = (product) => {
+    if (!isAuthenticated) {
+      addToast("Please log in as a reseller to add products to your cart.", "info");
+      navigate("/login", { state: { from: location } });
+      return;
+    }
     addToCart(product, 1);
-    removeFromWishlist(product.id);
+    removeFromWishlist(product.id || product._id);
     addToast(`Moved ${product.name} to cart!`, "success");
   };
 
@@ -100,7 +109,7 @@ export default function Wishlist() {
                           className="btn btn-dark btn-sm rounded-pill px-3 me-2"
                           onClick={() => handleMoveToCart(item)}
                         >
-                          <i className="fa-solid fa-cart-plus me-1"></i> Add to Cart
+                          <i className={`fa-solid ${isAuthenticated ? "fa-cart-plus" : "fa-lock"} me-1`}></i> {isAuthenticated ? "Add to Cart" : "Login to Add"}
                         </button>
                         <button
                           type="button"

@@ -1,10 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { useAuth } from "./AuthContext";
 
 const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+
   const [cart, setCart] = useState(() => {
     try {
+      const savedToken = localStorage.getItem("sparepro_token");
+      if (!savedToken) return [];
       const saved = localStorage.getItem("sparepro_cart") || localStorage.getItem("lumixa_cart");
       return saved ? JSON.parse(saved) : [];
     } catch {
@@ -14,26 +19,46 @@ export const CartProvider = ({ children }) => {
 
   const [coupon, setCoupon] = useState({ code: "", discountPercent: 0, applied: false });
 
+  // Ensure cart is cleared if user is not authenticated
   useEffect(() => {
-    try {
-      localStorage.setItem("sparepro_cart", JSON.stringify(cart));
-    } catch (e) {
-      console.error("Failed to save cart to localStorage", e);
+    if (!isAuthenticated) {
+      setCart([]);
+      try {
+        localStorage.removeItem("sparepro_cart");
+        localStorage.removeItem("lumixa_cart");
+      } catch (e) {
+        // ignore
+      }
     }
-  }, [cart]);
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      try {
+        localStorage.setItem("sparepro_cart", JSON.stringify(cart));
+      } catch (e) {
+        console.error("Failed to save cart to localStorage", e);
+      }
+    }
+  }, [cart, isAuthenticated]);
 
   const addToCart = (product, quantity = 1) => {
+    if (!isAuthenticated) {
+      return false;
+    }
+    const targetId = product.id || product._id;
     setCart((prev) => {
-      const existing = prev.find((item) => item.id === product.id);
+      const existing = prev.find((item) => (item.id || item._id) === targetId);
       if (existing) {
         return prev.map((item) =>
-          item.id === product.id
+          (item.id || item._id) === targetId
             ? { ...item, quantity: item.quantity + quantity }
             : item
         );
       }
-      return [...prev, { ...product, quantity }];
+      return [...prev, { ...product, id: targetId, quantity }];
     });
+    return true;
   };
 
   const updateQuantity = (productId, newQuantity) => {

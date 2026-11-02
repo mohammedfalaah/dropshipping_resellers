@@ -3,8 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import Breadcrumb from "../components/Breadcrumb";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function Cart() {
+  const { isAuthenticated } = useAuth();
   const {
     cart,
     updateQuantity,
@@ -22,6 +24,15 @@ export default function Cart() {
   const [couponInput, setCouponInput] = useState("");
   const { addToast } = useToast();
   const navigate = useNavigate();
+
+  const handleProceedToCheckout = () => {
+    if (!isAuthenticated) {
+      addToast("Please log in as a reseller to checkout.", "info");
+      navigate("/login", { state: { from: { pathname: "/checkout" } } });
+      return;
+    }
+    navigate("/checkout");
+  };
 
   const handleApplyCoupon = (e) => {
     e.preventDefault();
@@ -242,7 +253,7 @@ export default function Cart() {
                 <button
                   type="button"
                   className="btn btn-dark w-100 rounded-pill py-3 fw-semibold mb-3"
-                  onClick={() => navigate("/checkout")}
+                  onClick={handleProceedToCheckout}
                 >
                   Proceed to Checkout &rarr;
                 </button>

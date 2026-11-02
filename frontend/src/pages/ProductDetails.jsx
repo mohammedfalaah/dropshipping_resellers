@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useLocation, Navigate } from "react-router-dom";
+import { useParams, useLocation, useNavigate, Navigate } from "react-router-dom";
 import Breadcrumb from "../components/Breadcrumb";
 import ProductCard from "../components/ProductCard";
 import QuickViewModal from "../components/QuickViewModal";
@@ -65,12 +65,19 @@ export default function ProductDetails() {
 
   const isFavorited = isInWishlist(product.id);
 
+  const navigate = useNavigate();
+
   // Related products from the same category
   const relatedProducts = products
     .filter((p) => p.id !== product.id && p.categorySlug === product.categorySlug)
     .slice(0, 4);
 
   const handleAddToCart = () => {
+    if (!isAuthenticated) {
+      addToast("Please log in as a reseller to add products to your cart.", "info");
+      navigate("/login", { state: { from: location } });
+      return;
+    }
     addToCart(product, quantity);
     addToast(`Added ${quantity} × ${product.name} to cart!`, "success");
   };
@@ -228,10 +235,11 @@ export default function ProductDetails() {
 
                   <button
                     type="button"
-                    className="btn btn-dark rounded-pill py-3 px-5 fw-semibold flex-grow-1"
+                    className="btn btn-dark rounded-pill py-3 px-5 fw-semibold flex-grow-1 d-flex align-items-center justify-content-center gap-2"
                     onClick={handleAddToCart}
                   >
-                    <i className="fa-solid fa-bag-shopping me-2"></i> Add to Cart
+                    <i className={`fa-solid ${isAuthenticated ? "fa-bag-shopping" : "fa-lock"} me-1`}></i>
+                    <span>{isAuthenticated ? "Add to Cart" : "Login to Add to Cart"}</span>
                   </button>
 
                   <button

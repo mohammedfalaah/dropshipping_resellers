@@ -1,13 +1,17 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import { useToast } from "../context/ToastContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function ProductCard({ product, onQuickView, className = "", isDragging = false, ...props }) {
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { addToast } = useToast();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const isFavorited = isInWishlist(product.id || product._id);
 
@@ -20,6 +24,13 @@ export default function ProductCard({ product, onQuickView, className = "", isDr
     e.preventDefault();
     e.stopPropagation();
     if (isDragging) return;
+
+    if (!isAuthenticated) {
+      addToast("Please log in as a reseller to add products to your cart.", "info");
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+
     addToCart(product, 1);
     addToast(`Added ${product.name} to cart!`, "success");
   };
@@ -118,7 +129,7 @@ export default function ProductCard({ product, onQuickView, className = "", isDr
                 type="button"
                 className="border-0 bg-transparent p-0"
                 onClick={handleAddToCart}
-                title="Add to Cart"
+                title={isAuthenticated ? "Add to Cart" : "Login as Reseller to Add to Cart"}
                 style={{ cursor: "pointer" }}
               >
                 <img src="/images/icon-cart-white.svg" alt="Add to Cart" />
