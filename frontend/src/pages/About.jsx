@@ -10,12 +10,6 @@ export default function About() {
     { number: "45%+", label: "Average Profit Margin" }
   ];
 
-  const team = [
-    { name: "Marcus Vance", role: "Head of Global Sourcing", image: "/images/author-1.jpg" },
-    { name: "Elena Rostova", role: "Supply Chain & Logistics Director", image: "/images/author-2.jpg" },
-    { name: "Claire Dupont", role: "Quality Assurance & Catalog Lead", image: "/images/author-3.jpg" }
-  ];
-
   return (
     <>
       <Breadcrumb title="About SPARE PRO Wholesale Platform" links={[{ label: "About Us" }]} />
@@ -95,33 +89,6 @@ export default function About() {
                     {stat.number}
                   </h2>
                   <p className="text-white-50 mb-0">{stat.label}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Team Section */}
-      <div className="py-5 bg-light">
-        <div className="container py-4">
-          <div className="section-title text-center mb-5">
-            <span className="section-sub-title wow fadeInUp">Sourcing Leadership</span>
-            <h2 className="text-anime-style-3">Meet Our Operations Team</h2>
-          </div>
-
-          <div className="row g-4 justify-content-center">
-            {team.map((member, idx) => (
-              <div key={idx} className="col-md-4 col-sm-6 wow fadeInUp" data-wow-delay={`${idx * 0.15}s`}>
-                <div className="card border-0 shadow-sm rounded-4 text-center p-4 bg-white">
-                  <img
-                    src={member.image}
-                    alt={member.name}
-                    className="rounded-circle mx-auto mb-3 shadow-sm"
-                    style={{ width: "110px", height: "110px", objectFit: "cover" }}
-                  />
-                  <h5 className="fw-bold mb-1">{member.name}</h5>
-                  <p className="text-muted small mb-0">{member.role}</p>
                 </div>
               </div>
             ))}
