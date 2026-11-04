@@ -19,6 +19,7 @@ export default function Checkout() {
     codPayableNow,
     codCollectionAmount,
     updateCustomerSellingPrice,
+    commitCustomerSellingPrice,
     clearCart,
   } = useCart();
   const { addToast } = useToast();
@@ -664,15 +665,18 @@ export default function Checkout() {
                   </div>
 
                   {/* Cart Items with Reseller Selling Price Inputs */}
-                  <div className="mb-4" style={{ maxHeight: "300px", overflowY: "auto" }}>
+                  <div className="mb-4" style={{ maxHeight: "350px", overflowY: "auto" }}>
                     {cart.map((item) => {
+                      const itemId = item.id || item._id;
                       const wholesale = Number(item.wholesalePrice || item.price || 0);
-                      const sellingPrice = Number(item.customerSellingPrice !== undefined ? item.customerSellingPrice : wholesale);
-                      const profitPerUnit = Math.max(0, sellingPrice - wholesale);
+                      const rawSelling = item.customerSellingPrice !== undefined && item.customerSellingPrice !== null ? item.customerSellingPrice : wholesale;
+                      const numericSelling = Number(rawSelling);
+                      const effectiveSelling = !isNaN(numericSelling) && numericSelling >= wholesale ? numericSelling : wholesale;
+                      const profitPerUnit = Math.max(0, effectiveSelling - wholesale);
                       const totalProfit = profitPerUnit * item.quantity;
 
                       return (
-                        <div key={item.id} className="py-2 border-bottom">
+                        <div key={itemId} className="py-2 border-bottom">
                           <div className="d-flex align-items-center justify-content-between">
                             <div className="d-flex align-items-center gap-3">
                               <img
@@ -689,32 +693,41 @@ export default function Checkout() {
                               <div className="fw-semibold">
                                 ₹{Number(wholesale * item.quantity).toLocaleString("en-IN")}
                               </div>
-                              <span className="text-muted" style={{ fontSize: "11px" }}>₹{wholesale}/ea</span>
+                              <span className="text-muted" style={{ fontSize: "11px" }}>₹{wholesale}/ea wholesale</span>
                             </div>
                           </div>
 
                           {/* Editable Customer Selling Price & Profit Calculation */}
-                          <div className="d-flex justify-content-between align-items-center mt-2 pt-1 bg-light p-2 rounded-3">
-                            <div className="d-flex align-items-center gap-1">
-                              <span className="text-muted" style={{ fontSize: "11px" }}>Customer Price:</span>
-                              <div className="input-group input-group-sm" style={{ width: "105px" }}>
-                                <span className="input-group-text px-1 text-muted" style={{ fontSize: "11px" }}>₹</span>
-                                <input
-                                  type="number"
-                                  min={wholesale}
-                                  value={sellingPrice}
-                                  onChange={(e) => updateCustomerSellingPrice(item.id, e.target.value)}
-                                  className="form-control px-1 text-end fw-bold"
-                                  style={{ fontSize: "12px" }}
-                                  title={`Min selling price: ₹${wholesale}`}
-                                />
+                          <div className="mt-2 p-2 rounded-3 bg-light border">
+                            <div className="d-flex justify-content-between align-items-center gap-2">
+                              <div className="d-flex align-items-center gap-1 flex-grow-1">
+                                <span className="text-dark small fw-semibold" style={{ fontSize: "11px", whiteSpace: "nowrap" }}>
+                                  <i className="fa-solid fa-pen-to-square text-primary me-1"></i>Customer Price:
+                                </span>
+                                <div className="input-group input-group-sm" style={{ width: "115px" }}>
+                                  <span className="input-group-text px-1 bg-white text-muted fw-bold" style={{ fontSize: "11px" }}>₹</span>
+                                  <input
+                                    type="number"
+                                    min={wholesale}
+                                    value={rawSelling}
+                                    onChange={(e) => updateCustomerSellingPrice(itemId, e.target.value)}
+                                    onBlur={() => commitCustomerSellingPrice(itemId)}
+                                    className="form-control px-2 text-end fw-bold bg-white text-dark"
+                                    style={{ fontSize: "13px" }}
+                                    title={`Minimum selling price: ₹${wholesale}`}
+                                  />
+                                </div>
+                              </div>
+                              <div className="text-end">
+                                <span className="badge bg-success-subtle text-success border border-success-subtle fw-semibold" style={{ fontSize: "11px" }}>
+                                  +₹{totalProfit.toLocaleString("en-IN")} profit
+                                </span>
+                                <div className="text-muted" style={{ fontSize: "10px" }}>₹{profitPerUnit}/unit</div>
                               </div>
                             </div>
-                            <div className="text-end">
-                              <span className="badge bg-success-subtle text-success border border-success-subtle" style={{ fontSize: "11px" }}>
-                                +₹{totalProfit.toLocaleString("en-IN")} profit
-                              </span>
-                              <div className="text-muted" style={{ fontSize: "10px" }}>₹{profitPerUnit}/unit</div>
+                            <div className="d-flex justify-content-between align-items-center mt-1 pt-1 border-top" style={{ fontSize: "10px" }}>
+                              <span className="text-muted">Wholesale: ₹{wholesale}</span>
+                              <span className="text-muted">Customer Total: <strong className="text-dark">₹{(effectiveSelling * item.quantity).toLocaleString("en-IN")}</strong></span>
                             </div>
                           </div>
                         </div>

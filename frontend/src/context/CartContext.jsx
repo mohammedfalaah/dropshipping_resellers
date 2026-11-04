@@ -82,20 +82,37 @@ export const CartProvider = ({ children }) => {
       return;
     }
     setCart((prev) =>
-      prev.map((item) =>
-        item.id === productId ? { ...item, quantity: newQuantity } : item
-      )
+      prev.map((item) => {
+        const itemId = String(item.id || item._id);
+        const targetId = String(productId);
+        return itemId === targetId ? { ...item, quantity: newQuantity } : item;
+      })
     );
   };
 
   const updateCustomerSellingPrice = (productId, newSellingPrice) => {
     setCart((prev) =>
       prev.map((item) => {
-        if (item.id === productId) {
+        const itemId = String(item.id || item._id);
+        const targetId = String(productId);
+        if (itemId === targetId) {
+          return { ...item, customerSellingPrice: newSellingPrice };
+        }
+        return item;
+      })
+    );
+  };
+
+  const commitCustomerSellingPrice = (productId) => {
+    setCart((prev) =>
+      prev.map((item) => {
+        const itemId = String(item.id || item._id);
+        const targetId = String(productId);
+        if (itemId === targetId) {
           const wholesale = Number(item.wholesalePrice ?? item.price ?? 0);
-          const parsedPrice = Number(newSellingPrice);
-          const validatedPrice = isNaN(parsedPrice) || parsedPrice < wholesale ? wholesale : parsedPrice;
-          return { ...item, customerSellingPrice: validatedPrice };
+          const parsed = Number(item.customerSellingPrice);
+          const finalPrice = isNaN(parsed) || parsed < wholesale ? wholesale : parsed;
+          return { ...item, customerSellingPrice: finalPrice };
         }
         return item;
       })
@@ -103,7 +120,7 @@ export const CartProvider = ({ children }) => {
   };
 
   const removeFromCart = (productId) => {
-    setCart((prev) => prev.filter((item) => item.id !== productId));
+    setCart((prev) => prev.filter((item) => String(item.id || item._id) !== String(productId)));
   };
 
   const clearCart = () => {
@@ -136,8 +153,12 @@ export const CartProvider = ({ children }) => {
   // Customer selling total and expected profit
   const cartCustomerSellingTotal = cart.reduce((total, item) => {
     const wholesale = Number(item.price || item.wholesalePrice || 0);
-    const selling = Number(item.customerSellingPrice !== undefined ? item.customerSellingPrice : (item.regularPrice || wholesale));
-    return total + (selling * item.quantity);
+    const parsedSelling = Number(item.customerSellingPrice);
+    const effectiveSelling =
+      item.customerSellingPrice !== undefined && !isNaN(parsedSelling) && parsedSelling >= wholesale
+        ? parsedSelling
+        : (Number(item.regularPrice) > wholesale ? Number(item.regularPrice) : wholesale);
+    return total + (effectiveSelling * item.quantity);
   }, 0);
 
   const cartExpectedProfit = Math.max(0, cartCustomerSellingTotal - cartWholesaleSubtotal);
@@ -160,6 +181,7 @@ export const CartProvider = ({ children }) => {
         addToCart,
         updateQuantity,
         updateCustomerSellingPrice,
+        commitCustomerSellingPrice,
         removeFromCart,
         clearCart,
         coupon,

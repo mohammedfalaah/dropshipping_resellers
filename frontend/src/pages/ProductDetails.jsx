@@ -59,6 +59,16 @@ export default function ProductDetails() {
   const [newReview, setNewReview] = useState({ name: "", email: "", rating: 5, comment: "" });
   const [quickViewProduct, setQuickViewProduct] = useState(null);
 
+  const wholesalePrice = Number(product?.price ?? product?.resellerPrice ?? 0);
+  const defaultSelling = Number(product?.customerSellingPrice ?? product?.regularPrice ?? (wholesalePrice > 0 ? wholesalePrice * 1.4 : 0));
+  const [customerSellingPrice, setCustomerSellingPrice] = useState(defaultSelling > wholesalePrice ? defaultSelling : wholesalePrice);
+
+  useEffect(() => {
+    const wholesale = Number(product?.price ?? product?.resellerPrice ?? 0);
+    const initial = Number(product?.customerSellingPrice ?? product?.regularPrice ?? (wholesale > 0 ? Math.round(wholesale * 1.4) : 0));
+    setCustomerSellingPrice(initial >= wholesale ? initial : wholesale);
+  }, [product]);
+
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { addToast } = useToast();
@@ -78,8 +88,9 @@ export default function ProductDetails() {
       navigate("/login", { state: { from: location } });
       return;
     }
-    addToCart(product, quantity);
-    addToast(`Added ${quantity} × ${product.name} to cart!`, "success");
+    const finalPrice = Math.max(wholesalePrice, Number(customerSellingPrice) || wholesalePrice);
+    addToCart(product, quantity, finalPrice);
+    addToast(`Added ${quantity} × ${product.name} (Selling Price: ₹${finalPrice}) to cart!`, "success");
   };
 
   const handleToggleWishlist = () => {
@@ -211,6 +222,58 @@ export default function ProductDetails() {
                     <strong>SKU: </strong>
                     <span className="text-muted">{product.sku}</span>
                   </p>
+                </div>
+
+                {/* Reseller Customer Selling Price & Profit Estimator */}
+                <div className="p-3 bg-light rounded-4 mb-4 border">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                      <span className="fw-bold text-dark d-block">
+                        <i className="fa-solid fa-pen-to-square text-primary me-1"></i> Reseller Customer Selling Price
+                      </span>
+                      <span className="text-muted small">Price your end customer will pay on delivery</span>
+                    </div>
+                    <span className="badge bg-success-subtle text-success border border-success-subtle fw-semibold">
+                      Dropship Margin
+                    </span>
+                  </div>
+                  <div className="row g-2 align-items-center">
+                    <div className="col-sm-6">
+                      <div className="input-group">
+                        <span className="input-group-text bg-white fw-bold">₹</span>
+                        <input
+                          type="number"
+                          min={wholesalePrice}
+                          className="form-control fw-bold fs-6 text-dark bg-white"
+                          value={customerSellingPrice}
+                          onChange={(e) => setCustomerSellingPrice(e.target.value)}
+                          onBlur={() => {
+                            const parsed = Number(customerSellingPrice);
+                            if (isNaN(parsed) || parsed < wholesalePrice) {
+                              setCustomerSellingPrice(wholesalePrice);
+                            }
+                          }}
+                          placeholder={String(wholesalePrice)}
+                        />
+                      </div>
+                      <div className="text-muted mt-1" style={{ fontSize: "11px" }}>
+                        Wholesale Cost: ₹{wholesalePrice} (Min price)
+                      </div>
+                    </div>
+                    <div className="col-sm-6">
+                      <div className="p-2 rounded-3 bg-white border d-flex justify-content-between align-items-center">
+                        <div>
+                          <span className="text-muted d-block" style={{ fontSize: "11px" }}>Expected Profit</span>
+                          <strong className="text-success fs-6">
+                            +₹{((Math.max(wholesalePrice, Number(customerSellingPrice) || wholesalePrice) - wholesalePrice) * quantity).toLocaleString("en-IN")}
+                          </strong>
+                        </div>
+                        <span className="badge bg-light text-muted border" style={{ fontSize: "11px" }}>
+                          ₹{Math.max(0, Math.max(wholesalePrice, Number(customerSellingPrice) || wholesalePrice) - wholesalePrice)}/unit
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Stepper & Add to Cart */}

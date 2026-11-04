@@ -11,6 +11,7 @@ export default function Cart() {
     cart,
     updateQuantity,
     updateCustomerSellingPrice,
+    commitCustomerSellingPrice,
     removeFromCart,
     clearCart,
     coupon,
@@ -116,14 +117,17 @@ export default function Cart() {
                     </thead>
                     <tbody>
                       {cart.map((item) => {
+                        const itemId = item.id || item._id;
                         const wholesale = Number(item.wholesalePrice || item.price || 0);
-                        const sellingPrice = Number(item.customerSellingPrice !== undefined ? item.customerSellingPrice : (item.regularPrice || wholesale));
-                        const profitPerUnit = Math.max(0, sellingPrice - wholesale);
-                        const lineCustomerTotal = sellingPrice * item.quantity;
+                        const rawSelling = item.customerSellingPrice !== undefined && item.customerSellingPrice !== null ? item.customerSellingPrice : wholesale;
+                        const numericSelling = Number(rawSelling);
+                        const effectiveSelling = !isNaN(numericSelling) && numericSelling >= wholesale ? numericSelling : wholesale;
+                        const profitPerUnit = Math.max(0, effectiveSelling - wholesale);
+                        const lineCustomerTotal = effectiveSelling * item.quantity;
                         const lineTotalProfit = profitPerUnit * item.quantity;
 
                         return (
-                          <tr key={item.id}>
+                          <tr key={itemId}>
                             <td>
                               <Link to={`/product/${item.slug || "product"}`}>
                                 <img
@@ -149,19 +153,20 @@ export default function Cart() {
                               ₹{wholesale.toLocaleString("en-IN")}
                             </td>
                             <td>
-                              <div className="input-group input-group-sm" style={{ maxWidth: "140px" }}>
+                              <div className="input-group input-group-sm" style={{ maxWidth: "145px" }}>
                                 <span className="input-group-text bg-light text-muted fw-bold">₹</span>
                                 <input
                                   type="number"
                                   className="form-control fw-bold text-dark"
                                   min={wholesale}
-                                  value={sellingPrice}
-                                  onChange={(e) => updateCustomerSellingPrice(item.id, e.target.value)}
-                                  title={`Minimum selling price is wholesale: ₹${wholesale}`}
+                                  value={rawSelling}
+                                  onChange={(e) => updateCustomerSellingPrice(itemId, e.target.value)}
+                                  onBlur={() => commitCustomerSellingPrice(itemId)}
+                                  title={`Minimum customer selling price is wholesale: ₹${wholesale}`}
                                 />
                               </div>
-                              <span className="text-muted" style={{ fontSize: "11px" }}>
-                                Min: ₹{wholesale}
+                              <span className="text-muted d-block mt-1" style={{ fontSize: "11px" }}>
+                                <i className="fa-solid fa-pen-to-square me-1 text-primary"></i>Min: ₹{wholesale}
                               </span>
                             </td>
                             <td>
@@ -169,7 +174,7 @@ export default function Cart() {
                                 <button
                                   type="button"
                                   className="btn btn-sm border-0 p-0"
-                                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                  onClick={() => updateQuantity(itemId, item.quantity - 1)}
                                 >
                                   <i className="fa-solid fa-minus small"></i>
                                 </button>
@@ -179,7 +184,7 @@ export default function Cart() {
                                 <button
                                   type="button"
                                   className="btn btn-sm border-0 p-0"
-                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                  onClick={() => updateQuantity(itemId, item.quantity + 1)}
                                 >
                                   <i className="fa-solid fa-plus small"></i>
                                 </button>
@@ -201,7 +206,7 @@ export default function Cart() {
                                 type="button"
                                 className="btn btn-sm text-danger border-0"
                                 onClick={() => {
-                                  removeFromCart(item.id);
+                                  removeFromCart(itemId);
                                   addToast(`Removed ${item.name} from cart`, "info");
                                 }}
                                 title="Remove item"

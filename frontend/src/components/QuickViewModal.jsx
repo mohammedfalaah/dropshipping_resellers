@@ -10,6 +10,10 @@ export default function QuickViewModal({ product, onClose }) {
 
   const [activeImg, setActiveImg] = useState(product.image);
   const [quantity, setQuantity] = useState(1);
+  const wholesale = Number(product.price ?? product.resellerPrice ?? 0);
+  const defaultSelling = Number(product.customerSellingPrice ?? product.regularPrice ?? (wholesale > 0 ? Math.round(wholesale * 1.4) : 0));
+  const [customerSellingPrice, setCustomerSellingPrice] = useState(defaultSelling >= wholesale ? defaultSelling : wholesale);
+
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { addToast } = useToast();
@@ -26,8 +30,9 @@ export default function QuickViewModal({ product, onClose }) {
       navigate("/login", { state: { from: location } });
       return;
     }
-    addToCart(product, quantity);
-    addToast(`Added ${quantity} × ${product.name} to cart!`, "success");
+    const finalPrice = Math.max(wholesale, Number(customerSellingPrice) || wholesale);
+    addToCart(product, quantity, finalPrice);
+    addToast(`Added ${quantity} × ${product.name} (Selling Price: ₹${finalPrice}) to cart!`, "success");
     if (onClose) onClose();
   };
 
@@ -130,6 +135,35 @@ export default function QuickViewModal({ product, onClose }) {
                   </div>
 
                   <p className="text-muted small mb-4">{product.shortDescription || product.description}</p>
+
+                  {/* Customer Selling Price Input */}
+                  <div className="p-3 bg-light rounded-3 mb-3 border">
+                    <div className="d-flex justify-content-between align-items-center mb-1">
+                      <span className="small fw-bold text-dark">
+                        <i className="fa-solid fa-pen-to-square text-primary me-1"></i> Customer Selling Price
+                      </span>
+                      <span className="small text-success fw-semibold">
+                        +₹{((Math.max(wholesale, Number(customerSellingPrice) || wholesale) - wholesale) * quantity).toLocaleString("en-IN")} Profit
+                      </span>
+                    </div>
+                    <div className="input-group input-group-sm">
+                      <span className="input-group-text bg-white fw-bold">₹</span>
+                      <input
+                        type="number"
+                        min={wholesale}
+                        className="form-control fw-bold bg-white text-dark"
+                        value={customerSellingPrice}
+                        onChange={(e) => setCustomerSellingPrice(e.target.value)}
+                        onBlur={() => {
+                          const parsed = Number(customerSellingPrice);
+                          if (isNaN(parsed) || parsed < wholesale) setCustomerSellingPrice(wholesale);
+                        }}
+                      />
+                      <span className="input-group-text bg-light text-muted small">
+                        Min: ₹{wholesale}
+                      </span>
+                    </div>
+                  </div>
 
                   {/* Quantity & Actions */}
                   <div className="d-flex align-items-center gap-3 mb-4">
