@@ -25,6 +25,7 @@ export default function AccountDashboard() {
   const [resellerOrders, setResellerOrders] = useState([]);
   const [resellerSummary, setResellerSummary] = useState(null);
   const [resellerLedger, setResellerLedger] = useState([]);
+  const [selectedResellerOrder, setSelectedResellerOrder] = useState(null);
 
   // Fetch initial data based on role
   useEffect(() => {
@@ -883,32 +884,216 @@ export default function AccountDashboard() {
                           <thead className="table-light">
                             <tr>
                               <th>Order #</th>
-                              <th>Date</th>
-                              <th>Items</th>
-                              <th>Payment Method</th>
-                              <th>Status</th>
-                              <th>Total</th>
+                              <th>Wholesale Cost</th>
+                              <th>Customer Selling Price</th>
+                              <th>Expected Profit</th>
+                              <th>Delivery Charge</th>
+                              <th>Customer Collection</th>
+                              <th>COD Status</th>
+                              <th>Settlement Status</th>
+                              <th className="text-end">Details</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {resellerOrders.map((o) => (
-                              <tr key={o._id}>
-                                <td className="fw-bold">{o.orderNumber}</td>
-                                <td>{new Date(o.createdAt).toLocaleDateString()}</td>
-                                <td>{o.items?.length || 1} items</td>
-                                <td>
-                                  <span className="badge bg-light text-dark border">
-                                    {o.paymentMethod.toUpperCase()} • {o.paymentStatus}
-                                  </span>
-                                </td>
-                                <td>
-                                  <span className="badge bg-success-subtle text-success text-capitalize">{o.orderStatus}</span>
-                                </td>
-                                <td className="fw-bold">₹{(o.totalAmountPaise / 100).toFixed(2)}</td>
-                              </tr>
-                            ))}
+                            {resellerOrders.map((o) => {
+                              const wholesaleCost = ((o.wholesaleCostPaise || o.subtotalPaise || 0) / 100).toFixed(2);
+                              const customerSelling = ((o.customerSellingTotalPaise || o.totalPaise || 0) / 100).toFixed(2);
+                              const expectedProfit = ((o.expectedResellerProfitPaise || 0) / 100).toFixed(2);
+                              const deliveryChargeAmt = ((o.deliveryChargePaise || o.shippingPaise || 0) / 100).toFixed(2);
+                              const collectedAmt = ((o.codCollectedAmountPaise || 0) / 100).toFixed(2);
+                              const targetCollection = ((o.customerCollectionPaise || o.cod?.codAmountPaise || 0) / 100).toFixed(2);
+                              const codStatus = o.codCollectionStatus || o.cod?.collectionStatus || (o.paymentMethod === "COD" ? "PENDING" : "PREPAID");
+                              const settlementStatus = o.resellerSettlementStatus || "UNSETTLED";
+
+                              return (
+                                <tr key={o._id}>
+                                  <td>
+                                    <div className="fw-bold">{o.orderNumber}</div>
+                                    <small className="text-muted">{new Date(o.createdAt).toLocaleDateString()}</small>
+                                  </td>
+                                  <td className="fw-semibold text-secondary">
+                                    ₹{wholesaleCost}
+                                  </td>
+                                  <td className="fw-bold text-dark">
+                                    ₹{customerSelling}
+                                  </td>
+                                  <td>
+                                    <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fw-bold">
+                                      +₹{expectedProfit}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <div>₹{deliveryChargeAmt}</div>
+                                    <span className={`badge ${o.deliveryChargeStatus === "PAID" ? "bg-success-subtle text-success" : "bg-warning-subtle text-warning"} text-capitalize`} style={{ fontSize: "10px" }}>
+                                      {o.deliveryChargeStatus || "PENDING"}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    {o.paymentMethod === "COD" ? (
+                                      <div>
+                                        <div className="small fw-semibold">₹{collectedAmt} / ₹{targetCollection}</div>
+                                        <div className="text-muted" style={{ fontSize: "10px" }}>
+                                          {Number(collectedAmt) >= Number(targetCollection) && Number(targetCollection) > 0 ? "Fully Collected" : "Pending Courier Remit"}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <span className="badge bg-light text-muted border">Prepaid</span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    <span className={`badge ${
+                                      codStatus === "RECONCILED" || codStatus === "COLLECTED"
+                                        ? "bg-success-subtle text-success"
+                                        : codStatus === "PENDING"
+                                        ? "bg-warning-subtle text-dark"
+                                        : "bg-light text-dark border"
+                                    } text-uppercase`}>
+                                      {codStatus}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <span className={`badge ${
+                                      settlementStatus === "SETTLED"
+                                        ? "bg-success text-white"
+                                        : settlementStatus === "PARTIALLY_SETTLED"
+                                        ? "bg-warning text-dark"
+                                        : "bg-secondary text-white"
+                                    } text-uppercase`}>
+                                      {settlementStatus}
+                                    </span>
+                                  </td>
+                                  <td className="text-end">
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-outline-dark rounded-pill px-3"
+                                      onClick={() => setSelectedResellerOrder(o)}
+                                    >
+                                      View
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
+                      </div>
+                    )}
+
+                    {/* Reseller Order Breakdown Modal (Read-Only) */}
+                    {selectedResellerOrder && (
+                      <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+                        <div className="modal-dialog modal-lg modal-dialog-centered">
+                          <div className="modal-content rounded-4 border-0 shadow">
+                            <div className="modal-header border-bottom px-4 pt-4 pb-3">
+                              <div>
+                                <h5 className="modal-title fw-bold">Order Financial Breakdown: {selectedResellerOrder.orderNumber}</h5>
+                                <span className="badge bg-light text-dark border me-2">{selectedResellerOrder.paymentMethod}</span>
+                                <span className="small text-muted">{new Date(selectedResellerOrder.createdAt).toLocaleString()}</span>
+                              </div>
+                              <button
+                                type="button"
+                                className="btn-close"
+                                onClick={() => setSelectedResellerOrder(null)}
+                              ></button>
+                            </div>
+                            <div className="modal-body p-4">
+                              {/* Financial Summary Cards */}
+                              <div className="row g-3 mb-4">
+                                <div className="col-sm-3">
+                                  <div className="p-3 bg-light rounded-3 text-center border">
+                                    <div className="text-muted small">Wholesale Cost</div>
+                                    <div className="h5 fw-bold mb-0">₹{((selectedResellerOrder.wholesaleCostPaise || selectedResellerOrder.subtotalPaise || 0) / 100).toFixed(2)}</div>
+                                  </div>
+                                </div>
+                                <div className="col-sm-3">
+                                  <div className="p-3 bg-light rounded-3 text-center border">
+                                    <div className="text-muted small">Customer Selling Amount</div>
+                                    <div className="h5 fw-bold mb-0 text-dark">₹{((selectedResellerOrder.customerSellingTotalPaise || selectedResellerOrder.totalPaise || 0) / 100).toFixed(2)}</div>
+                                  </div>
+                                </div>
+                                <div className="col-sm-3">
+                                  <div className="p-3 bg-success-subtle rounded-3 text-center border border-success-subtle">
+                                    <div className="text-success small fw-semibold">Expected Profit</div>
+                                    <div className="h5 fw-bold mb-0 text-success">+₹{((selectedResellerOrder.expectedResellerProfitPaise || 0) / 100).toFixed(2)}</div>
+                                  </div>
+                                </div>
+                                <div className="col-sm-3">
+                                  <div className="p-3 bg-light rounded-3 text-center border">
+                                    <div className="text-muted small">Settlement Status</div>
+                                    <span className={`badge ${selectedResellerOrder.resellerSettlementStatus === "SETTLED" ? "bg-success" : "bg-secondary"} text-uppercase mt-1`}>
+                                      {selectedResellerOrder.resellerSettlementStatus || "UNSETTLED"}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Items Table */}
+                              <h6 className="fw-bold mb-2">Ordered Items &amp; Margin Breakdown</h6>
+                              <div className="table-responsive mb-4">
+                                <table className="table table-sm align-middle border">
+                                  <thead className="table-light">
+                                    <tr>
+                                      <th>Item</th>
+                                      <th>Qty</th>
+                                      <th>Wholesale Price</th>
+                                      <th>Customer Selling Price</th>
+                                      <th>Subtotal</th>
+                                      <th>Expected Profit</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {(selectedResellerOrder.items || []).map((it, idx) => {
+                                      const wPrice = ((it.wholesalePricePaise || it.unitPricePaise || 0) / 100).toFixed(2);
+                                      const sPrice = ((it.customerSellingPricePaise || it.unitPricePaise || 0) / 100).toFixed(2);
+                                      const profit = ((it.resellerProfitPaise || 0) / 100).toFixed(2);
+                                      return (
+                                        <tr key={it._id || idx}>
+                                          <td className="fw-semibold">{it.name}</td>
+                                          <td>{it.quantity}</td>
+                                          <td>₹{wPrice}</td>
+                                          <td className="fw-bold">₹{sPrice}</td>
+                                          <td>₹{(((it.customerSellingSubtotalPaise || it.subtotalPaise || 0)) / 100).toFixed(2)}</td>
+                                          <td className="text-success fw-bold">+₹{profit}</td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+
+                              {/* Settlement and Delivery status info */}
+                              <div className="bg-light p-3 rounded-3 border small">
+                                <div className="row g-2">
+                                  <div className="col-sm-6">
+                                    <div><strong>Delivery Charge:</strong> ₹{((selectedResellerOrder.deliveryChargePaise || 0) / 100).toFixed(2)} ({selectedResellerOrder.deliveryChargeStatus || "PENDING"})</div>
+                                    <div><strong>COD Collection Status:</strong> {selectedResellerOrder.codCollectionStatus || "NOT_APPLICABLE"}</div>
+                                  </div>
+                                  <div className="col-sm-6">
+                                    <div><strong>Amount Collected from Customer:</strong> ₹{((selectedResellerOrder.codCollectedAmountPaise || 0) / 100).toFixed(2)}</div>
+                                    <div><strong>Profit Settled:</strong> ₹{((selectedResellerOrder.settledProfitPaise || 0) / 100).toFixed(2)}</div>
+                                  </div>
+                                </div>
+                                {selectedResellerOrder.settlementReference && (
+                                  <div className="mt-2 pt-2 border-top">
+                                    <strong>Settlement Reference:</strong> {selectedResellerOrder.settlementReference}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="modal-footer border-top px-4 py-3">
+                              <span className="text-muted small me-auto">
+                                <i className="fa-solid fa-lock me-1"></i> Read-only confirmed order record.
+                              </span>
+                              <button
+                                type="button"
+                                className="btn btn-dark rounded-pill px-4"
+                                onClick={() => setSelectedResellerOrder(null)}
+                              >
+                                Close
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>

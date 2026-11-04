@@ -81,6 +81,7 @@ export default function About() {
       {/* Metrics Banner */}
       <div className="py-5 bg-dark text-white">
         <div className="container">
+         
           <div className="row g-4 text-center">
             {stats.map((stat, idx) => (
               <div key={idx} className="col-6 col-md-3 wow fadeInUp" data-wow-delay={`${idx * 0.15}s`}>

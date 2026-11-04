@@ -69,6 +69,43 @@ const updateDeliveryStatus = async (req, res, next) => {
 };
 
 /**
+ * Reconcile Courier COD Remittance (Admin)
+ */
+const reconcileCollection = async (req, res, next) => {
+  try {
+    const { reconciliationReference, notes } = req.body;
+    const codRecord = await codService.reconcileCodPayment(
+      req.params.id,
+      { reconciliationReference, notes },
+      req.user
+    );
+
+    return successResponse(res, "COD remittance reconciled successfully.", { codRecord });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Settle Reseller Profit (Admin)
+ */
+const settleProfit = async (req, res, next) => {
+  try {
+    const { amount, amountPaise, reference, notes } = req.body;
+    const paiseToSettle = amountPaise !== undefined ? amountPaise : amount !== undefined ? rupeesToPaise(amount) : undefined;
+    const codRecord = await codService.settleResellerProfit(
+      req.params.id,
+      { amountPaise: paiseToSettle, reference, notes },
+      req.user
+    );
+
+    return successResponse(res, "Reseller profit settled and credited to ledger successfully.", { codRecord });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
  * Get My COD Orders (Reseller)
  */
 const getMyCodOrders = async (req, res, next) => {
@@ -81,7 +118,7 @@ const getMyCodOrders = async (req, res, next) => {
 
     const [records, total] = await Promise.all([
       CodCollection.find(query)
-        .populate("order", "orderNumber totalPaise orderStatus paymentStatus")
+        .populate("order", "orderNumber totalPaise orderStatus paymentStatus wholesaleCostPaise customerSellingTotalPaise expectedResellerProfitPaise deliveryChargePaise customerCollectionPaise resellerSettlementStatus settledProfitPaise")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit)),
@@ -105,6 +142,8 @@ const getMyCodOrders = async (req, res, next) => {
 module.exports = {
   getCodList,
   recordCollection,
+  reconcileCollection,
+  settleProfit,
   updateDeliveryStatus,
   getMyCodOrders,
 };

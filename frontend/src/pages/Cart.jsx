@@ -10,15 +10,21 @@ export default function Cart() {
   const {
     cart,
     updateQuantity,
+    updateCustomerSellingPrice,
     removeFromCart,
     clearCart,
     coupon,
     applyCoupon,
     removeCoupon,
     cartSubtotal,
-    discountAmount,
+    cartWholesaleSubtotal,
+    cartCustomerSellingTotal,
+    cartExpectedProfit,
+    deliveryCharge,
     shipping,
-    cartTotal
+    cartTotal,
+    codPayableNow,
+    codCollectionAmount,
   } = useCart();
 
   const [couponInput, setCouponInput] = useState("");
@@ -98,78 +104,114 @@ export default function Cart() {
                   <table className="table align-middle">
                     <thead className="table-light">
                       <tr>
-                        <th scope="col" style={{ width: "80px" }}>Item</th>
+                        <th scope="col" style={{ width: "70px" }}>Item</th>
                         <th scope="col">Product</th>
-                        <th scope="col">Price</th>
-                        <th scope="col" style={{ width: "130px" }}>Quantity</th>
-                        <th scope="col">Subtotal</th>
+                        <th scope="col" className="text-nowrap">Wholesale Price</th>
+                        <th scope="col" style={{ minWidth: "160px" }}>Customer Selling Price</th>
+                        <th scope="col" style={{ width: "115px" }}>Quantity</th>
+                        <th scope="col" className="text-nowrap">Customer Total</th>
+                        <th scope="col" className="text-nowrap">Expected Profit</th>
                         <th scope="col" className="text-end">Remove</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {cart.map((item) => (
-                        <tr key={item.id}>
-                          <td>
-                            <Link to={`/product/${item.slug || "product"}`}>
-                              <img
-                                src={item.image}
-                                alt={item.name}
-                                className="rounded-3 border"
-                                style={{ width: "65px", height: "65px", objectFit: "contain" }}
-                              />
-                            </Link>
-                          </td>
-                          <td>
-                            <h6 className="mb-1">
-                              <Link
-                                to={`/product/${item.slug || "product"}`}
-                                className="text-dark text-decoration-none fw-semibold"
-                              >
-                                {item.name}
+                      {cart.map((item) => {
+                        const wholesale = Number(item.wholesalePrice || item.price || 0);
+                        const sellingPrice = Number(item.customerSellingPrice !== undefined ? item.customerSellingPrice : (item.regularPrice || wholesale));
+                        const profitPerUnit = Math.max(0, sellingPrice - wholesale);
+                        const lineCustomerTotal = sellingPrice * item.quantity;
+                        const lineTotalProfit = profitPerUnit * item.quantity;
+
+                        return (
+                          <tr key={item.id}>
+                            <td>
+                              <Link to={`/product/${item.slug || "product"}`}>
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                  className="rounded-3 border"
+                                  style={{ width: "60px", height: "60px", objectFit: "contain" }}
+                                />
                               </Link>
-                            </h6>
-                            <span className="text-muted small">{item.category}</span>
-                          </td>
-                          <td>₹{Number(item.price).toLocaleString("en-IN")}</td>
-                          <td>
-                            <div className="d-flex align-items-center border rounded-pill px-2 py-1 bg-light" style={{ width: "105px" }}>
-                              <button
-                                type="button"
-                                className="btn btn-sm border-0 p-0"
-                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                              >
-                                <i className="fa-solid fa-minus small"></i>
-                              </button>
-                              <span className="fw-semibold px-2 flex-grow-1 text-center small">
-                                {item.quantity}
+                            </td>
+                            <td>
+                              <h6 className="mb-1" style={{ fontSize: "14px" }}>
+                                <Link
+                                  to={`/product/${item.slug || "product"}`}
+                                  className="text-dark text-decoration-none fw-semibold"
+                                >
+                                  {item.name}
+                                </Link>
+                              </h6>
+                              <span className="text-muted small">SKU: {item.sku || "RES-SKU"}</span>
+                            </td>
+                            <td className="fw-semibold text-secondary">
+                              ₹{wholesale.toLocaleString("en-IN")}
+                            </td>
+                            <td>
+                              <div className="input-group input-group-sm" style={{ maxWidth: "140px" }}>
+                                <span className="input-group-text bg-light text-muted fw-bold">₹</span>
+                                <input
+                                  type="number"
+                                  className="form-control fw-bold text-dark"
+                                  min={wholesale}
+                                  value={sellingPrice}
+                                  onChange={(e) => updateCustomerSellingPrice(item.id, e.target.value)}
+                                  title={`Minimum selling price is wholesale: ₹${wholesale}`}
+                                />
+                              </div>
+                              <span className="text-muted" style={{ fontSize: "11px" }}>
+                                Min: ₹{wholesale}
                               </span>
+                            </td>
+                            <td>
+                              <div className="d-flex align-items-center border rounded-pill px-2 py-1 bg-light" style={{ width: "100px" }}>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm border-0 p-0"
+                                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                >
+                                  <i className="fa-solid fa-minus small"></i>
+                                </button>
+                                <span className="fw-semibold px-2 flex-grow-1 text-center small">
+                                  {item.quantity}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm border-0 p-0"
+                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                >
+                                  <i className="fa-solid fa-plus small"></i>
+                                </button>
+                              </div>
+                            </td>
+                            <td className="fw-bold text-dark">
+                              ₹{lineCustomerTotal.toLocaleString("en-IN")}
+                            </td>
+                            <td>
+                              <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fw-bold">
+                                +₹{lineTotalProfit.toLocaleString("en-IN")}
+                              </span>
+                              <div className="text-muted" style={{ fontSize: "11px" }}>
+                                ₹{profitPerUnit}/unit
+                              </div>
+                            </td>
+                            <td className="text-end">
                               <button
                                 type="button"
-                                className="btn btn-sm border-0 p-0"
-                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                className="btn btn-sm text-danger border-0"
+                                onClick={() => {
+                                  removeFromCart(item.id);
+                                  addToast(`Removed ${item.name} from cart`, "info");
+                                }}
+                                title="Remove item"
                               >
-                                <i className="fa-solid fa-plus small"></i>
+                                <i className="fa-solid fa-trash-can"></i>
                               </button>
-                            </div>
-                          </td>
-                          <td className="fw-bold">
-                            ₹{Number(item.price * item.quantity).toLocaleString("en-IN")}
-                          </td>
-                          <td className="text-end">
-                            <button
-                              type="button"
-                              className="btn btn-sm text-danger border-0"
-                              onClick={() => {
-                                removeFromCart(item.id);
-                                addToast(`Removed ${item.name} from cart`, "info");
-                              }}
-                              title="Remove item"
-                            >
-                              <i className="fa-solid fa-trash-can"></i>
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -218,48 +260,58 @@ export default function Cart() {
             {/* Cart Summary */}
             <div className="col-lg-4">
               <div className="bg-white p-4 rounded-4 shadow-sm border">
-                <h4 className="fw-bold mb-4">Order Summary</h4>
+                <h4 className="fw-bold mb-4">Financial Summary</h4>
 
-                <div className="d-flex justify-content-between mb-3 text-muted">
-                  <span>Subtotal</span>
-                  <span className="fw-semibold text-dark">₹{Number(cartSubtotal).toLocaleString("en-IN")}</span>
+                <div className="d-flex justify-content-between mb-2 text-muted small">
+                  <span>Wholesale product cost</span>
+                  <span className="fw-semibold text-dark">₹{Number(cartWholesaleSubtotal).toLocaleString("en-IN")}</span>
                 </div>
 
-                {coupon.applied && (
-                  <div className="d-flex justify-content-between mb-3 text-success">
-                    <span>Discount ({coupon.discountPercent}%)</span>
-                    <span className="fw-semibold">-₹{Number(discountAmount).toLocaleString("en-IN")}</span>
+                <div className="d-flex justify-content-between mb-2 text-muted small">
+                  <span>Customer selling amount</span>
+                  <span className="fw-bold text-dark">₹{Number(cartCustomerSellingTotal).toLocaleString("en-IN")}</span>
+                </div>
+
+                <div className="p-3 my-3 rounded-3 bg-success-subtle border border-success-subtle">
+                  <div className="d-flex justify-content-between align-items-center">
+                    <div>
+                      <div className="fw-bold text-success">Expected Reseller Profit</div>
+                      <small className="text-muted">Calculated upon delivery</small>
+                    </div>
+                    <span className="h4 fw-bold text-success mb-0">
+                      ₹{Number(cartExpectedProfit).toLocaleString("en-IN")}
+                    </span>
                   </div>
-                )}
+                </div>
 
-                <div className="d-flex justify-content-between mb-3 text-muted">
-                  <span>Estimated Shipping</span>
+                <div className="d-flex justify-content-between mb-3 text-muted small">
+                  <span>Delivery charge</span>
                   <span className="fw-semibold text-dark">
-                    {shipping === 0 ? (
-                      <span className="badge bg-success-subtle text-success">Free Shipping</span>
-                    ) : (
-                      `₹${Number(shipping).toLocaleString("en-IN")}`
-                    )}
+                    ₹{Number(deliveryCharge).toLocaleString("en-IN")}
                   </span>
                 </div>
 
-                <div className="border-top pt-3 mb-4 d-flex justify-content-between align-items-center">
-                  <span className="h5 fw-bold mb-0">Total</span>
-                  <span className="h4 fw-bold mb-0" style={{ color: "var(--accent-color, #FA7EAA)" }}>
-                    ₹{Number(cartTotal).toLocaleString("en-IN")}
-                  </span>
+                <div className="border-top pt-3 mb-4">
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <span className="small text-muted">COD Amount Payable Now (Delivery):</span>
+                    <strong className="text-dark">₹{Number(codPayableNow).toLocaleString("en-IN")}</strong>
+                  </div>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <span className="small text-muted">Customer Collect on Delivery:</span>
+                    <strong className="text-primary">₹{Number(codCollectionAmount).toLocaleString("en-IN")}</strong>
+                  </div>
                 </div>
 
                 <button
                   type="button"
-                  className="btn btn-dark w-100 rounded-pill py-3 fw-semibold mb-3"
+                  className="btn btn-dark w-100 rounded-pill py-3 fw-semibold mb-3 shadow-sm"
                   onClick={handleProceedToCheckout}
                 >
                   Proceed to Checkout &rarr;
                 </button>
 
                 <div className="text-center small text-muted">
-                  <i className="fa-solid fa-lock me-1"></i> Guaranteed safe & secure checkout
+                  <i className="fa-solid fa-truck-fast me-1 text-primary"></i> Dropshipping COD &amp; Instant Razorpay Supported
                 </div>
               </div>
             </div>

@@ -56,10 +56,12 @@ router.delete("/categories/:id", categoryController.deleteCategory);
 router.get("/orders", orderController.getAllOrders);
 router.patch("/orders/:id/status", validate(updateOrderStatusSchema), orderController.updateOrderStatus);
 
-// COD Pending Management
+// COD Pending & Remittance Management
 router.get("/cod", codController.getCodList);
 router.get("/cod/pending", codController.getCodList);
 router.patch("/cod/:id/collect", codController.recordCollection);
+router.patch("/cod/:id/reconcile", codController.reconcileCollection);
+router.post("/cod/:id/settle", codController.settleProfit);
 router.patch("/cod/:id/delivery-status", codController.updateDeliveryStatus);
 
 // Payments & Balances

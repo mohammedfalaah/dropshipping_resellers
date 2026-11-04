@@ -88,7 +88,10 @@ export const paymentsApi = {
 // COD APIs
 export const codApi = {
   getPending: (params) => api.get("/cod/pending", { params }),
+  getMyCodOrders: (params) => api.get("/cod/my-cod-orders", { params }),
   markCollected: (id, data) => api.patch(`/cod/${id}/collect`, data),
+  reconcile: (id, data) => api.patch(`/cod/${id}/reconcile`, data),
+  settleProfit: (id, data) => api.post(`/cod/${id}/settle`, data),
   updateDeliveryStatus: (id, data) => api.patch(`/cod/${id}/delivery-status`, data),
 };
 

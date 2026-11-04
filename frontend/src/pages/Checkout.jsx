@@ -7,7 +7,20 @@ import { useAuth } from "../context/AuthContext";
 import { ordersApi, productsApi, paymentsApi } from "../services/api";
 
 export default function Checkout() {
-  const { cart, cartSubtotal, discountAmount, shipping, cartTotal, clearCart } = useCart();
+  const {
+    cart,
+    cartSubtotal,
+    cartWholesaleSubtotal,
+    cartCustomerSellingTotal,
+    cartExpectedProfit,
+    deliveryCharge,
+    shipping,
+    cartTotal,
+    codPayableNow,
+    codCollectionAmount,
+    updateCustomerSellingPrice,
+    clearCart,
+  } = useCart();
   const { addToast } = useToast();
   const { user, isAuthenticated, approvalStatus, isApproved } = useAuth();
   const navigate = useNavigate();
@@ -63,7 +76,7 @@ export default function Checkout() {
     try {
       // If user is authenticated as an approved reseller, place order via backend API
       if (isAuthenticated && isApproved) {
-        // Map cart items to backend format with productId
+        // Map cart items to backend format with productId and reseller customer selling price
         const orderItems = cart.map((item) => {
           const isHexId = (val) => typeof val === "string" && /^[0-9a-fA-F]{24}$/.test(val);
           const directId =
@@ -80,6 +93,8 @@ export default function Checkout() {
           );
 
           const resolvedId = directId || matchedDb?._id || dbProducts[0]?._id;
+          const wholesale = Number(item.wholesalePrice || item.price || 0);
+          const sellingPrice = Number(item.customerSellingPrice !== undefined ? item.customerSellingPrice : wholesale);
 
           return {
             productId: resolvedId ? String(resolvedId) : undefined,
@@ -87,7 +102,9 @@ export default function Checkout() {
             sku: item.sku || matchedDb?.sku || "SKU-" + (item.id || "1"),
             name: item.name || "Product",
             quantity: Number(item.quantity) || 1,
-            pricePaise: Math.round(Number(item.price || 0) * 100),
+            pricePaise: Math.round(wholesale * 100),
+            customerSellingPrice: sellingPrice,
+            customerSellingPricePaise: Math.round(sellingPrice * 100),
           };
         });
 
@@ -633,32 +650,7 @@ export default function Checkout() {
                     </div>
 
                     {/* Bank Transfer */}
-                    <div
-                      className={`form-check p-3 border rounded-3 cursor-pointer ${
-                        paymentMethod === "bank_transfer" ? "border-dark bg-light" : ""
-                      }`}
-                      style={{ transition: "all 0.2s ease" }}
-                    >
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        name="paymentRadio"
-                        id="paymentBank"
-                        checked={paymentMethod === "bank_transfer"}
-                        onChange={() => setPaymentMethod("bank_transfer")}
-                      />
-                      <label
-                        className="form-check-label fw-semibold ms-2 d-flex justify-content-between align-items-center w-100"
-                        htmlFor="paymentBank"
-                        style={{ cursor: "pointer" }}
-                      >
-                        <div>
-                          <div className="text-dark">Direct Bank Transfer (NEFT / RTGS / IMPS)</div>
-                          <div className="text-muted small fw-normal">Manual remittance to current account</div>
-                        </div>
-                        <span className="badge bg-light text-muted border">Manual Audit</span>
-                      </label>
-                    </div>
+                  
                   </div>
                 </div>
               </div>
@@ -666,76 +658,171 @@ export default function Checkout() {
               {/* Order Summary Sidebar */}
               <div className="col-lg-5">
                 <div className="bg-white p-4 rounded-4 shadow-sm border sticky-top" style={{ top: "100px" }}>
-                  <h4 className="fw-bold mb-4">Your Wholesale Order</h4>
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h4 className="fw-bold mb-0">Your Wholesale Order</h4>
+                    <span className="badge bg-light text-dark border">{cart.length} items</span>
+                  </div>
 
-                  <div className="mb-4" style={{ maxHeight: "260px", overflowY: "auto" }}>
-                    {cart.map((item) => (
-                      <div key={item.id} className="d-flex align-items-center justify-content-between py-2 border-bottom">
-                        <div className="d-flex align-items-center gap-3">
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            style={{ width: "45px", height: "45px", objectFit: "contain", borderRadius: "8px" }}
-                          />
-                          <div>
-                            <h6 className="mb-0" style={{ fontSize: "14px" }}>{item.name}</h6>
-                            <span className="text-muted small">Qty: {item.quantity} • SKU: {item.sku || "RES-SKU"}</span>
+                  {/* Cart Items with Reseller Selling Price Inputs */}
+                  <div className="mb-4" style={{ maxHeight: "300px", overflowY: "auto" }}>
+                    {cart.map((item) => {
+                      const wholesale = Number(item.wholesalePrice || item.price || 0);
+                      const sellingPrice = Number(item.customerSellingPrice !== undefined ? item.customerSellingPrice : wholesale);
+                      const profitPerUnit = Math.max(0, sellingPrice - wholesale);
+                      const totalProfit = profitPerUnit * item.quantity;
+
+                      return (
+                        <div key={item.id} className="py-2 border-bottom">
+                          <div className="d-flex align-items-center justify-content-between">
+                            <div className="d-flex align-items-center gap-3">
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                style={{ width: "45px", height: "45px", objectFit: "contain", borderRadius: "8px" }}
+                              />
+                              <div>
+                                <h6 className="mb-0" style={{ fontSize: "14px" }}>{item.name}</h6>
+                                <span className="text-muted small">Qty: {item.quantity} • SKU: {item.sku || "RES-SKU"}</span>
+                              </div>
+                            </div>
+                            <div className="text-end">
+                              <div className="fw-semibold">
+                                ₹{Number(wholesale * item.quantity).toLocaleString("en-IN")}
+                              </div>
+                              <span className="text-muted" style={{ fontSize: "11px" }}>₹{wholesale}/ea</span>
+                            </div>
+                          </div>
+
+                          {/* Editable Customer Selling Price & Profit Calculation */}
+                          <div className="d-flex justify-content-between align-items-center mt-2 pt-1 bg-light p-2 rounded-3">
+                            <div className="d-flex align-items-center gap-1">
+                              <span className="text-muted" style={{ fontSize: "11px" }}>Customer Price:</span>
+                              <div className="input-group input-group-sm" style={{ width: "105px" }}>
+                                <span className="input-group-text px-1 text-muted" style={{ fontSize: "11px" }}>₹</span>
+                                <input
+                                  type="number"
+                                  min={wholesale}
+                                  value={sellingPrice}
+                                  onChange={(e) => updateCustomerSellingPrice(item.id, e.target.value)}
+                                  className="form-control px-1 text-end fw-bold"
+                                  style={{ fontSize: "12px" }}
+                                  title={`Min selling price: ₹${wholesale}`}
+                                />
+                              </div>
+                            </div>
+                            <div className="text-end">
+                              <span className="badge bg-success-subtle text-success border border-success-subtle" style={{ fontSize: "11px" }}>
+                                +₹{totalProfit.toLocaleString("en-IN")} profit
+                              </span>
+                              <div className="text-muted" style={{ fontSize: "10px" }}>₹{profitPerUnit}/unit</div>
+                            </div>
                           </div>
                         </div>
-                        <span className="fw-semibold">
-                          ₹{Number(item.price * item.quantity).toLocaleString("en-IN")}
+                      );
+                    })}
+                  </div>
+
+                  {/* Payment Method Breakdown */}
+                  {paymentMethod === "cash_on_delivery" ? (
+                    <div>
+                      <h5 className="fw-bold text-dark mb-3">Order Summary</h5>
+                      <div className="d-flex justify-content-between mb-2 text-muted small">
+                        <span>Wholesale product cost</span>
+                        <span className="fw-semibold text-dark">₹{Number(cartWholesaleSubtotal).toLocaleString("en-IN")}</span>
+                      </div>
+                      <div className="d-flex justify-content-between mb-2 text-muted small">
+                        <span>Customer selling amount</span>
+                        <span className="fw-bold text-dark">₹{Number(cartCustomerSellingTotal).toLocaleString("en-IN")}</span>
+                      </div>
+                      <div className="d-flex justify-content-between mb-2 text-success small fw-semibold">
+                        <span>Expected reseller profit</span>
+                        <span>+₹{Number(cartExpectedProfit).toLocaleString("en-IN")}</span>
+                      </div>
+                      <div className="d-flex justify-content-between mb-3 text-muted small">
+                        <span>Delivery charge</span>
+                        <span className="fw-semibold text-dark">₹{Number(deliveryCharge).toLocaleString("en-IN")}</span>
+                      </div>
+                      <div className="border-top border-dark pt-3 mb-2 d-flex justify-content-between align-items-center">
+                        <div>
+                          <strong className="text-dark d-block">Amount payable by reseller now</strong>
+                          <span className="text-muted" style={{ fontSize: "11px" }}>Delivery charge only</span>
+                        </div>
+                        <span className="h4 fw-bold mb-0" style={{ color: "var(--accent-color, #FA7EAA)" }}>
+                          ₹{Number(deliveryCharge).toLocaleString("en-IN")}
                         </span>
                       </div>
-                    ))}
-                  </div>
+                      <div className="p-2 mb-4 rounded-3 bg-light border d-flex justify-content-between align-items-center">
+                        <span className="small text-primary fw-semibold">Amount to collect from customer on delivery</span>
+                        <strong className="text-primary">₹{Number(cartCustomerSellingTotal).toLocaleString("en-IN")}</strong>
+                      </div>
 
-                  <div className="d-flex justify-content-between mb-2 text-muted small">
-                    <span>Subtotal</span>
-                    <span className="fw-semibold text-dark">₹{Number(cartSubtotal).toLocaleString("en-IN")}</span>
-                  </div>
+                      <button
+                        type="submit"
+                        disabled={submitting || (isAuthenticated && approvalStatus === "pending")}
+                        className="btn btn-dark w-100 rounded-pill py-3 fw-semibold mb-3 d-flex align-items-center justify-content-center gap-2"
+                      >
+                        {submitting ? (
+                          <span><i className="fa-solid fa-spinner fa-spin me-2"></i> Booking COD Order...</span>
+                        ) : isAuthenticated && approvalStatus === "pending" ? (
+                          "Approval Pending (Cannot Checkout)"
+                        ) : (
+                          `Confirm COD Order (Pay ₹${Number(deliveryCharge).toLocaleString("en-IN")} Delivery Charge)`
+                        )}
+                      </button>
 
-                  {discountAmount > 0 && (
-                    <div className="d-flex justify-content-between mb-2 text-success small">
-                      <span>Wholesale Discount</span>
-                      <span className="fw-semibold">-₹{Number(discountAmount).toLocaleString("en-IN")}</span>
+                      <p className="text-muted text-center mb-0" style={{ fontSize: "11px", lineHeight: "1.4" }}>
+                        The reseller pays ₹{deliveryCharge} as the delivery charge at checkout. The product selling amount of ₹{cartCustomerSellingTotal} is collected from the customer on delivery through the COD process. Wholesale cost (₹{cartWholesaleSubtotal}) is NOT charged upfront.
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <h5 className="fw-bold text-dark mb-3">Prepaid Wholesale Summary</h5>
+                      <div className="d-flex justify-content-between mb-2 text-muted small">
+                        <span>Wholesale product cost</span>
+                        <span className="fw-semibold text-dark">₹{Number(cartWholesaleSubtotal).toLocaleString("en-IN")}</span>
+                      </div>
+                      <div className="d-flex justify-content-between mb-2 text-muted small">
+                        <span>Delivery charge</span>
+                        <span className="fw-semibold text-dark">₹{Number(deliveryCharge).toLocaleString("en-IN")}</span>
+                      </div>
+                      <div className="border-top pt-3 mb-3 d-flex justify-content-between align-items-center">
+                        <span className="h5 fw-bold mb-0">Total Due Now</span>
+                        <span className="h4 fw-bold mb-0" style={{ color: "#0c2340" }}>
+                          ₹{Number(cartWholesaleSubtotal + deliveryCharge).toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                      <div className="p-2 mb-4 rounded-3 bg-light border small text-muted">
+                        <div className="d-flex justify-content-between mb-1">
+                          <span>Customer Selling Amount:</span>
+                          <strong className="text-dark">₹{Number(cartCustomerSellingTotal).toLocaleString("en-IN")}</strong>
+                        </div>
+                        <div className="d-flex justify-content-between text-success">
+                          <span>Expected Reseller Profit:</span>
+                          <strong>+₹{Number(cartExpectedProfit).toLocaleString("en-IN")}</strong>
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={submitting || (isAuthenticated && approvalStatus === "pending")}
+                        className="btn btn-dark w-100 rounded-pill py-3 fw-semibold mb-3 d-flex align-items-center justify-content-center gap-2"
+                        style={{ backgroundColor: "#0c2340", borderColor: "#0c2340" }}
+                      >
+                        {submitting ? (
+                          <span><i className="fa-solid fa-spinner fa-spin me-2"></i> Processing...</span>
+                        ) : isAuthenticated && approvalStatus === "pending" ? (
+                          "Approval Pending (Cannot Checkout)"
+                        ) : (
+                          <span><i className="fa-solid fa-shield-halved me-1"></i> Pay ₹{Number(cartWholesaleSubtotal + deliveryCharge).toLocaleString("en-IN")} with Razorpay</span>
+                        )}
+                      </button>
+
+                      <p className="text-muted small text-center mb-0">
+                        <i className="fa-solid fa-shield-halved me-1 text-success"></i>
+                        Atomic stock validation &amp; immutable double-entry ledger bookkeeping.
+                      </p>
                     </div>
                   )}
-
-                  <div className="d-flex justify-content-between mb-3 text-muted small">
-                    <span>Shipping</span>
-                    <span className="fw-semibold text-dark">
-                      {shipping === 0 ? "Free Shipping" : `₹${Number(shipping).toLocaleString("en-IN")}`}
-                    </span>
-                  </div>
-
-                  <div className="border-top pt-3 mb-4 d-flex justify-content-between align-items-center">
-                    <span className="h5 fw-bold mb-0">Total Due</span>
-                    <span className="h4 fw-bold mb-0" style={{ color: "var(--accent-color, #FA7EAA)" }}>
-                      ₹{Number(cartTotal).toLocaleString("en-IN")}
-                    </span>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={submitting || (isAuthenticated && approvalStatus === "pending")}
-                    className="btn btn-dark w-100 rounded-pill py-3 fw-semibold mb-3 d-flex align-items-center justify-content-center gap-2"
-                    style={paymentMethod === "razorpay" ? { backgroundColor: "#0c2340", borderColor: "#0c2340" } : {}}
-                  >
-                    {submitting ? (
-                      <span><i className="fa-solid fa-spinner fa-spin me-2"></i> Processing...</span>
-                    ) : isAuthenticated && approvalStatus === "pending" ? (
-                      "Approval Pending (Cannot Checkout)"
-                    ) : paymentMethod === "razorpay" ? (
-                      <span><i className="fa-solid fa-shield-halved me-1"></i> Pay ₹{Number(cartTotal).toLocaleString("en-IN")} with Razorpay</span>
-                    ) : (
-                      `Confirm Order (₹${Number(cartTotal).toLocaleString("en-IN")})`
-                    )}
-                  </button>
-
-                  <p className="text-muted small text-center mb-0">
-                    <i className="fa-solid fa-shield-halved me-1 text-success"></i>
-                    Atomic stock validation &amp; immutable double-entry ledger bookkeeping.
-                  </p>
                 </div>
               </div>
             </div>

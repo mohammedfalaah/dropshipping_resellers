@@ -182,17 +182,29 @@ test("Product stock decrement and immutable ledger debit upon order placement", 
   const resellerToken = resellerLogin.body.data.token;
   const resellerId = resellerLogin.body.data.user._id;
 
-  // 2. Pick a product and record initial stock
-  const product = await Product.findOne({ sku: "RES-GAD-001" });
+  // 2. Pick a product and record initial stock (create if not found)
+  let product = await Product.findOne({ isActive: true });
+  if (!product) {
+    product = await Product.create({
+      name: "Magnetic Power Bank",
+      sku: "RES-GAD-001",
+      slug: `power-bank-${Date.now()}`,
+      pricePaise: 15000,
+      resellerPricePaise: 10600,
+      stockQuantity: 100,
+      isActive: true,
+      category: "Gadgets",
+    });
+  }
   const initialStock = product.stockQuantity;
 
-  // 3. Place order for 2 units via COD
+  // 3. Place order for 2 units via COD with customer selling price
   const orderRes = await request({
     method: "POST",
     path: "/api/orders",
     headers: { Authorization: `Bearer ${resellerToken}` },
     body: {
-      items: [{ productId: product._id.toString(), quantity: 2 }],
+      items: [{ productId: product._id.toString(), quantity: 2, customerSellingPrice: 150 }],
       shippingAddress: {
         firstName: "Rahul",
         lastName: "Sharma",
@@ -216,21 +228,21 @@ test("Product stock decrement and immutable ledger debit upon order placement", 
   const updatedProduct = await Product.findById(product._id);
   assert.strictEqual(updatedProduct.stockQuantity, initialStock - 2);
 
-  // 5. Verify Ledger DEBIT entry created
+  // 5. Verify Ledger DEBIT entry created ONLY for delivery charge (₹50) in dropship COD
   const ledgerEntry = await LedgerEntry.findOne({
     referenceId: createdOrder.orderNumber,
     type: "DEBIT",
   });
   assert.ok(ledgerEntry);
-  assert.strictEqual(ledgerEntry.amountPaise, createdOrder.totalPaise);
+  assert.strictEqual(ledgerEntry.amountPaise, createdOrder.totalPaise); // ₹50 delivery charge
 
-  // 6. Verify COD collection record created
+  // 6. Verify COD collection record created for customer selling total
   const codRecord = await CodCollection.findOne({ order: createdOrder._id });
   assert.ok(codRecord);
-  assert.strictEqual(codRecord.pendingAmountPaise, createdOrder.totalPaise);
+  assert.strictEqual(codRecord.codAmountPaise, createdOrder.customerSellingTotalPaise);
 });
 
-test("Admin recording COD collection credits the ledger and avoids double counting", async () => {
+test("Admin recording COD collection, reconciling remittance, and settling reseller profit avoids double counting", async () => {
   // 1. Login as Admin
   const adminLogin = await request({
     method: "POST",
@@ -244,7 +256,7 @@ test("Admin recording COD collection credits the ledger and avoids double counti
   assert.ok(codRecord);
   const collectionAmountRupees = Number((codRecord.pendingAmountPaise / 100).toFixed(2));
 
-  // 3. Mark COD as collected
+  // 3. Mark COD as collected by courier (Stage 5)
   const collectRes = await request({
     method: "PATCH",
     path: `/api/cod/${codRecord._id}/collect`,
@@ -252,7 +264,7 @@ test("Admin recording COD collection credits the ledger and avoids double counti
     body: {
       collectedAmount: collectionAmountRupees,
       collectionStatus: "COLLECTED",
-      collectionReference: `UTR-MOCK-TEST-${Date.now()}`,
+      collectionReference: `AWB-MOCK-${Date.now()}`,
       notes: "Cash collected and deposited by courier partner",
     },
   });
@@ -262,20 +274,46 @@ test("Admin recording COD collection credits the ledger and avoids double counti
   assert.strictEqual(collectRes.body.data.codRecord.collectionStatus, "COLLECTED");
   assert.strictEqual(collectRes.body.data.codRecord.pendingAmountPaise, 0);
 
-  // 4. Verify payment and ledger CREDIT
-  const payment = await Payment.findOne({
-    order: codRecord.order,
-    method: "COD",
-    status: "PAID",
+  // 4. Reconcile courier remittance with VEXORA bank account (Stage 6)
+  const reconcileRes = await request({
+    method: "PATCH",
+    path: `/api/cod/${codRecord._id}/reconcile`,
+    headers: { Authorization: `Bearer ${adminToken}` },
+    body: {
+      reconciliationReference: `UTR-MOCK-TEST-${Date.now()}`,
+      notes: "Courier remittance verified against VEXORA bank statement",
+    },
   });
-  assert.ok(payment);
+  assert.strictEqual(reconcileRes.status, 200);
+  assert.strictEqual(reconcileRes.body.success, true);
+  assert.strictEqual(reconcileRes.body.data.codRecord.collectionStatus, "RECONCILED");
 
-  const creditLedger = await LedgerEntry.findOne({
-    payment: payment._id,
-    type: "CREDIT",
-  });
-  assert.ok(creditLedger);
-  assert.strictEqual(creditLedger.amountPaise, codRecord.codAmountPaise);
+  // 5. Settle reseller profit and credit double-entry ledger (Stage 7)
+  const profitRupees = Number(((codRecord.expectedResellerProfitPaise || 0) / 100).toFixed(2));
+  if (profitRupees > 0) {
+    const settleRes = await request({
+      method: "POST",
+      path: `/api/cod/${codRecord._id}/settle`,
+      headers: { Authorization: `Bearer ${adminToken}` },
+      body: {
+        amount: profitRupees,
+        reference: `SETTLE-BATCH-${Date.now()}`,
+        notes: "Reseller profit settlement",
+      },
+    });
+    assert.strictEqual(settleRes.status, 200);
+    assert.strictEqual(settleRes.body.success, true);
+    assert.strictEqual(settleRes.body.data.codRecord.resellerSettlementStatus, "SETTLED");
+
+    // Verify ledger CREDIT entry for reseller profit
+    const creditLedger = await LedgerEntry.findOne({
+      referenceType: "COD_COLLECTION",
+      referenceId: codRecord.orderNumber,
+      type: "CREDIT",
+    });
+    assert.ok(creditLedger);
+    assert.strictEqual(creditLedger.amountPaise, codRecord.expectedResellerProfitPaise);
+  }
 });
 
 test("Payment reversal creates a compensating DEBIT entry without silently deleting", async () => {
@@ -286,8 +324,24 @@ test("Payment reversal creates a compensating DEBIT entry without silently delet
   });
   const adminToken = adminLogin.body.data.token;
 
-  // Find a verified payment
-  const payment = await Payment.findOne({ status: "PAID", isReversed: false });
+  // Find or create a verified payment
+  let payment = await Payment.findOne({ status: "PAID", isReversed: false });
+  if (!payment) {
+    const reseller = await User.findOne({ email: "reseller@sparepro.com" });
+    const recordRes = await request({
+      method: "POST",
+      path: "/api/admin/payments/record-manual",
+      headers: { Authorization: `Bearer ${adminToken}` },
+      body: {
+        resellerId: reseller._id.toString(),
+        amount: 500,
+        method: "BANK_TRANSFER",
+        transactionReference: `MANUAL-${Date.now()}`,
+        notes: "Test payment for reversal test",
+      },
+    });
+    payment = recordRes.body.data.payment;
+  }
   assert.ok(payment);
 
   const reverseRes = await request({

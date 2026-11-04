@@ -47,7 +47,9 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
   products.forEach((p) => productMap.set(p._id.toString(), p));
 
   const orderItems = [];
-  let subtotalPaise = 0;
+  let wholesaleCostPaise = 0;
+  let customerSellingTotalPaise = 0;
+  let expectedResellerProfitPaise = 0;
 
   for (const item of items) {
     const pId = (item.productId || item.product || "").toString();
@@ -73,8 +75,24 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
       throw new Error(`Minimum order quantity for '${product.name}' is ${product.minOrderQuantity}`);
     }
 
-    const itemSubtotal = product.resellerPricePaise * item.quantity;
-    subtotalPaise += itemSubtotal;
+    const wholesalePricePaise = product.resellerPricePaise;
+    // Reseller customer selling price: must be at least wholesale price
+    let customerSellingPricePaise = wholesalePricePaise;
+    if (item.customerSellingPricePaise && Number(item.customerSellingPricePaise) >= wholesalePricePaise) {
+      customerSellingPricePaise = Math.round(Number(item.customerSellingPricePaise));
+    } else if (item.customerSellingPrice && Math.round(Number(item.customerSellingPrice) * 100) >= wholesalePricePaise) {
+      customerSellingPricePaise = Math.round(Number(item.customerSellingPrice) * 100);
+    } else if (item.price && Math.round(Number(item.price) * 100) > wholesalePricePaise) {
+      customerSellingPricePaise = Math.round(Number(item.price) * 100);
+    }
+
+    const itemWholesaleSubtotal = wholesalePricePaise * item.quantity;
+    const itemCustomerSellingSubtotal = customerSellingPricePaise * item.quantity;
+    const itemProfit = itemCustomerSellingSubtotal - itemWholesaleSubtotal;
+
+    wholesaleCostPaise += itemWholesaleSubtotal;
+    customerSellingTotalPaise += itemCustomerSellingSubtotal;
+    expectedResellerProfitPaise += itemProfit;
 
     orderItems.push({
       product: product._id,
@@ -82,15 +100,34 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
       sku: product.sku,
       image: product.mainImage,
       quantity: item.quantity,
-      unitPricePaise: product.resellerPricePaise,
-      subtotalPaise: itemSubtotal,
+      unitPricePaise: wholesalePricePaise,
+      wholesalePricePaise: wholesalePricePaise,
+      subtotalPaise: itemWholesaleSubtotal,
+      customerSellingPricePaise: customerSellingPricePaise,
+      customerSellingSubtotalPaise: itemCustomerSellingSubtotal,
+      resellerProfitPaise: itemProfit,
     });
   }
 
-  // Free shipping over 50000 paise (₹500.00), else 4900 paise (₹49.00)
-  const shippingPaise = subtotalPaise >= 50000 ? 0 : 4900;
+  // Standard delivery charge for dropshipping
+  const deliveryChargePaise = 5000; // ₹50.00 standard delivery charge
   const discountPaise = 0;
-  const totalPaise = subtotalPaise + shippingPaise - discountPaise;
+
+  // Determine financial amounts based on payment method
+  let totalPaise = 0;
+  let customerCollectionPaise = 0;
+  let deliveryChargeStatus = "PENDING";
+
+  if (normalizedPaymentMethod === "COD") {
+    // For COD: Reseller pays ONLY the delivery charge now.
+    // Wholesale product amount is collected from customer upon delivery.
+    totalPaise = deliveryChargePaise;
+    customerCollectionPaise = customerSellingTotalPaise;
+  } else {
+    // For Prepaid (Razorpay / Bank Transfer): Reseller pays wholesale cost + delivery charge now.
+    totalPaise = wholesaleCostPaise + deliveryChargePaise - discountPaise;
+    customerCollectionPaise = 0;
+  }
 
   const orderNumber = generateOrderNumber();
 
@@ -103,16 +140,27 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
 
   // Initial order status: COD and others -> CONFIRMED, Razorpay -> PENDING until verified
   const orderStatus = normalizedPaymentMethod === "RAZORPAY" ? "PENDING" : "CONFIRMED";
-  const paymentStatus = "PENDING";
+  const paymentStatus = normalizedPaymentMethod === "COD" ? "PENDING" : "PENDING";
 
   // 3. Create Order document
   const order = await Order.create({
     orderNumber,
     reseller: resellerId,
     items: orderItems,
-    subtotalPaise,
+    subtotalPaise: wholesaleCostPaise,
+    wholesaleCostPaise,
+    customerSellingTotalPaise,
+    expectedResellerProfitPaise,
+    deliveryChargePaise,
+    deliveryChargeStatus,
+    customerCollectionPaise,
+    codCollectedAmountPaise: 0,
+    codCollectionStatus: normalizedPaymentMethod === "COD" ? "PENDING" : "NOT_APPLICABLE",
+    amountPayableToVexoraPaise: wholesaleCostPaise + deliveryChargePaise,
+    resellerSettlementStatus: "UNSETTLED",
+    settledProfitPaise: 0,
     discountPaise,
-    shippingPaise,
+    shippingPaise: deliveryChargePaise,
     totalPaise,
     currency: "INR",
     paymentMethod: normalizedPaymentMethod,
@@ -122,9 +170,9 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
     cod:
       normalizedPaymentMethod === "COD"
         ? {
-            codAmountPaise: totalPaise,
+            codAmountPaise: customerSellingTotalPaise,
             collectedPaise: 0,
-            pendingPaise: totalPaise,
+            pendingPaise: customerSellingTotalPaise,
             collectionStatus: "PENDING",
           }
         : {
@@ -139,11 +187,19 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
       orderNumber: order.orderNumber,
       reseller: resellerId,
       resellerName: userObj.name || "Reseller",
-      codAmountPaise: totalPaise,
+      wholesaleCostPaise,
+      customerSellingTotalPaise,
+      expectedResellerProfitPaise,
+      deliveryChargePaise,
+      deliveryChargeStatus,
+      amountPayableToVexoraPaise: wholesaleCostPaise + deliveryChargePaise,
+      codAmountPaise: customerSellingTotalPaise,
       collectedAmountPaise: 0,
-      pendingAmountPaise: totalPaise,
+      pendingAmountPaise: customerSellingTotalPaise,
       deliveryStatus: "PENDING",
       collectionStatus: "PENDING",
+      resellerSettlementStatus: "UNSETTLED",
+      settledProfitPaise: 0,
     });
   }
 
@@ -198,19 +254,35 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
     }
   }
 
-  // 6. Record DEBIT in Ledger (Reseller's balance increases by order amount)
+  // 6. Record DEBIT in Ledger
   if (orderStatus === "CONFIRMED") {
-    await ledgerService.recordEntry({
-      resellerId,
-      type: "DEBIT",
-      amountPaise: totalPaise,
-      referenceType: "ORDER",
-      referenceId: order.orderNumber,
-      orderId: order._id,
-      description: `Order Placed - ${order.orderNumber}`,
-      reason: "Confirmed wholesale order placement",
-      recordedById: resellerId,
-    });
+    if (normalizedPaymentMethod === "COD") {
+      // For COD dropshipping: reseller is debited ONLY the delivery charge now.
+      // The wholesale product cost is collected from the end customer on delivery.
+      await ledgerService.recordEntry({
+        resellerId,
+        type: "DEBIT",
+        amountPaise: deliveryChargePaise,
+        referenceType: "ORDER",
+        referenceId: order.orderNumber,
+        orderId: order._id,
+        description: `COD Order Placed (Delivery Charge) - ${order.orderNumber}`,
+        reason: "COD Delivery charge debit",
+        recordedById: resellerId,
+      });
+    } else {
+      await ledgerService.recordEntry({
+        resellerId,
+        type: "DEBIT",
+        amountPaise: totalPaise,
+        referenceType: "ORDER",
+        referenceId: order.orderNumber,
+        orderId: order._id,
+        description: `Wholesale Order Placed - ${order.orderNumber}`,
+        reason: "Confirmed wholesale order placement",
+        recordedById: resellerId,
+      });
+    }
   }
 
   // 7. Clear reseller's cart

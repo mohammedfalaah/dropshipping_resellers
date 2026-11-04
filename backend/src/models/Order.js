@@ -10,8 +10,15 @@ const OrderItemSchema = new mongoose.Schema({
   sku: { type: String, required: true },
   image: { type: String, default: "" },
   quantity: { type: Number, required: true, min: 1 },
+  // Wholesale price per unit charged by VEXORA
   unitPricePaise: { type: Number, required: true, min: 0 },
+  wholesalePricePaise: { type: Number, min: 0 },
   subtotalPaise: { type: Number, required: true, min: 0 },
+  // Price reseller charges end customer
+  customerSellingPricePaise: { type: Number, required: true, min: 0 },
+  customerSellingSubtotalPaise: { type: Number, required: true, min: 0 },
+  // Expected profit for reseller: (customerSellingPrice - wholesalePrice) * quantity
+  resellerProfitPaise: { type: Number, default: 0 },
 });
 
 const OrderSchema = new mongoose.Schema(
@@ -34,6 +41,46 @@ const OrderSchema = new mongoose.Schema(
     discountPaise: { type: Number, default: 0, min: 0 },
     shippingPaise: { type: Number, default: 0, min: 0 },
     totalPaise: { type: Number, required: true, min: 0 },
+    // Financial Breakdown
+    wholesaleCostPaise: { type: Number, default: 0, min: 0 },
+    customerSellingTotalPaise: { type: Number, default: 0, min: 0 },
+    expectedResellerProfitPaise: { type: Number, default: 0 },
+    deliveryChargePaise: { type: Number, default: 5000, min: 0 },
+    deliveryChargeStatus: {
+      type: String,
+      enum: ["PENDING", "PAID"],
+      default: "PENDING",
+      index: true,
+    },
+    customerCollectionPaise: { type: Number, default: 0, min: 0 },
+    codCollectedAmountPaise: { type: Number, default: 0, min: 0 },
+    codCollectionStatus: {
+      type: String,
+      enum: ["PENDING", "PARTIALLY_COLLECTED", "COLLECTED", "RECONCILED", "CANCELLED", "NOT_APPLICABLE"],
+      default: "NOT_APPLICABLE",
+      index: true,
+    },
+    amountPayableToVexoraPaise: { type: Number, default: 0, min: 0 },
+    resellerSettlementStatus: {
+      type: String,
+      enum: ["UNSETTLED", "PARTIALLY_SETTLED", "SETTLED"],
+      default: "UNSETTLED",
+      index: true,
+    },
+    settledProfitPaise: { type: Number, default: 0, min: 0 },
+    settlementDate: { type: Date, default: null },
+    settlementReference: { type: String, default: "" },
+    settlementNotes: { type: String, default: "" },
+    settlementHistory: [
+      {
+        amountPaise: { type: Number, required: true },
+        method: { type: String, default: "BANK_TRANSFER" },
+        reference: { type: String, default: "" },
+        notes: { type: String, default: "" },
+        settledAt: { type: Date, default: Date.now },
+        settledBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+      },
+    ],
     currency: { type: String, default: "INR" },
     paymentMethod: {
       type: String,
@@ -110,6 +157,24 @@ OrderSchema.virtual("shippingRupees").get(function () {
 });
 OrderSchema.virtual("discountRupees").get(function () {
   return Number((this.discountPaise / 100).toFixed(2));
+});
+OrderSchema.virtual("wholesaleCostRupees").get(function () {
+  return Number(((this.wholesaleCostPaise || this.subtotalPaise || 0) / 100).toFixed(2));
+});
+OrderSchema.virtual("customerSellingTotalRupees").get(function () {
+  return Number(((this.customerSellingTotalPaise || this.totalPaise || 0) / 100).toFixed(2));
+});
+OrderSchema.virtual("expectedResellerProfitRupees").get(function () {
+  return Number(((this.expectedResellerProfitPaise || 0) / 100).toFixed(2));
+});
+OrderSchema.virtual("deliveryChargeRupees").get(function () {
+  return Number(((this.deliveryChargePaise || this.shippingPaise || 0) / 100).toFixed(2));
+});
+OrderSchema.virtual("customerCollectionRupees").get(function () {
+  return Number(((this.customerCollectionPaise || this.cod?.codAmountPaise || 0) / 100).toFixed(2));
+});
+OrderSchema.virtual("settledProfitRupees").get(function () {
+  return Number(((this.settledProfitPaise || 0) / 100).toFixed(2));
 });
 
 module.exports = mongoose.model("Order", OrderSchema);

@@ -8,6 +8,8 @@ const createOrderItemSchema = z
     sku: z.string().optional(),
     name: z.string().optional(),
     pricePaise: z.number().optional(),
+    customerSellingPrice: z.coerce.number().optional(),
+    customerSellingPricePaise: z.coerce.number().optional(),
   })
   .refine((val) => val.productId || val.product, {
     message: "Product ID is required",
@@ -19,6 +21,8 @@ const createOrderItemSchema = z
     sku: val.sku || "",
     name: val.name || "",
     pricePaise: val.pricePaise,
+    customerSellingPrice: val.customerSellingPrice,
+    customerSellingPricePaise: val.customerSellingPricePaise,
   }));
 
 const shippingAddressSchema = z
@@ -72,6 +76,8 @@ const createOrderSchema = z.object({
   }, z.enum(["COD", "RAZORPAY", "BANK_TRANSFER", "CASH", "OTHER"], {
     errorMap: () => ({ message: "Payment method must be COD, RAZORPAY, BANK_TRANSFER, CASH, or OTHER" }),
   })),
+  deliveryChargePaid: z.boolean().optional(),
+  deliveryPaymentDetails: z.any().optional(),
 });
 
 const updateOrderStatusSchema = z.object({

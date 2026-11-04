@@ -72,7 +72,7 @@ const getCodList = async ({
 };
 
 /**
- * Record actual cash/collection received from a COD delivery
+ * Record actual cash/collection received from a COD delivery by courier
  */
 const recordCodCollection = async (
   codId,
@@ -109,15 +109,15 @@ const recordCodCollection = async (
 
   await codRecord.save();
 
-  // Create official payment and credit ledger entry
-  await paymentService.recordManualPayment({
-    resellerId: codRecord.reseller,
-    orderId: codRecord.order,
-    amountPaise: amountToCollect,
-    method: "COD",
-    transactionReference: collectionReference || `COD-COLLECT-${codRecord.orderNumber}`,
-    notes: `COD Collection received. ${notes}`.trim(),
-    adminUser,
+  // Sync to Order document
+  await Order.findByIdAndUpdate(codRecord.order, {
+    codCollectedAmountPaise: newCollectedTotal,
+    codCollectionStatus: codRecord.collectionStatus,
+    "cod.collectedPaise": newCollectedTotal,
+    "cod.pendingPaise": newPendingTotal,
+    "cod.collectionStatus": codRecord.collectionStatus,
+    "cod.collectionDate": new Date(),
+    "cod.collectionReference": collectionReference || undefined,
   });
 
   await AuditLog.create({
@@ -127,7 +127,139 @@ const recordCodCollection = async (
     action: "COD_COLLECTED",
     targetType: "COD",
     targetId: codRecord._id.toString(),
-    description: `COD collection of ₹${(amountToCollect / 100).toFixed(2)} recorded for order ${codRecord.orderNumber}`,
+    description: `COD courier collection of ₹${(amountToCollect / 100).toFixed(2)} recorded for order ${codRecord.orderNumber}`,
+  });
+
+  return codRecord;
+};
+
+/**
+ * Reconcile courier remittance with VEXORA bank account
+ */
+const reconcileCodPayment = async (codId, { reconciliationReference = "", notes = "" }, adminUser) => {
+  const codRecord = await CodCollection.findById(codId);
+  if (!codRecord) {
+    throw new Error("COD record not found");
+  }
+
+  if (codRecord.collectionStatus === "RECONCILED") {
+    return codRecord; // Idempotent
+  }
+
+  // Ensure collection is marked complete
+  if (codRecord.collectedAmountPaise === 0) {
+    codRecord.collectedAmountPaise = codRecord.codAmountPaise;
+    codRecord.pendingAmountPaise = 0;
+  }
+
+  codRecord.collectionStatus = "RECONCILED";
+  codRecord.reconciliationDate = new Date();
+  codRecord.reconciliationReference = reconciliationReference || `REMIT-${Date.now().toString().slice(-6)}`;
+  codRecord.reconciledBy = adminUser._id;
+  if (notes) codRecord.notes = (codRecord.notes ? codRecord.notes + "\n" : "") + notes;
+
+  await codRecord.save();
+
+  // Sync to Order document: paymentStatus marked PAID upon courier remittance
+  await Order.findByIdAndUpdate(codRecord.order, {
+    codCollectionStatus: "RECONCILED",
+    paymentStatus: "PAID",
+    "cod.collectionStatus": "COLLECTED",
+    "cod.collectionReference": codRecord.reconciliationReference,
+  });
+
+  await AuditLog.create({
+    user: adminUser._id,
+    userName: adminUser.name,
+    userRole: adminUser.role,
+    action: "COD_RECONCILED",
+    targetType: "COD",
+    targetId: codRecord._id.toString(),
+    description: `COD courier remittance reconciled for order ${codRecord.orderNumber} (Ref: ${codRecord.reconciliationReference})`,
+  });
+
+  return codRecord;
+};
+
+/**
+ * Settle reseller profit for reconciled COD orders
+ */
+const settleResellerProfit = async (codId, { amountPaise, reference = "", notes = "" }, adminUser) => {
+  const codRecord = await CodCollection.findById(codId);
+  if (!codRecord) {
+    throw new Error("COD record not found");
+  }
+
+  const expectedProfit = codRecord.expectedResellerProfitPaise || 0;
+  const alreadySettled = codRecord.settledProfitPaise || 0;
+  const remainingUnsettled = Math.max(0, expectedProfit - alreadySettled);
+
+  if (remainingUnsettled <= 0 && codRecord.resellerSettlementStatus === "SETTLED") {
+    throw new Error(`Reseller profit of ₹${(expectedProfit / 100).toFixed(2)} has already been fully settled for order ${codRecord.orderNumber}.`);
+  }
+
+  const amountToSettle = amountPaise !== undefined ? Number(amountPaise) : remainingUnsettled;
+  if (amountToSettle <= 0) {
+    throw new Error("Settlement amount must be greater than zero.");
+  }
+  if (amountToSettle > remainingUnsettled) {
+    throw new Error(`Settlement amount (₹${(amountToSettle / 100).toFixed(2)}) cannot exceed remaining unsettled profit (₹${(remainingUnsettled / 100).toFixed(2)}).`);
+  }
+
+  const newSettledTotal = alreadySettled + amountToSettle;
+  const isFullySettled = newSettledTotal >= expectedProfit;
+  const settlementRef = reference || `SETTLE-${Date.now().toString().slice(-6)}`;
+
+  codRecord.settledProfitPaise = newSettledTotal;
+  codRecord.resellerSettlementStatus = isFullySettled ? "SETTLED" : "PARTIALLY_SETTLED";
+  codRecord.settlementDate = new Date();
+  codRecord.settlementReference = settlementRef;
+  codRecord.settlementNotes = notes || "Reseller profit settlement";
+  codRecord.settledBy = adminUser._id;
+
+  await codRecord.save();
+
+  // Update Order with settlement history
+  await Order.findByIdAndUpdate(codRecord.order, {
+    resellerSettlementStatus: codRecord.resellerSettlementStatus,
+    settledProfitPaise: newSettledTotal,
+    settlementDate: new Date(),
+    settlementReference: settlementRef,
+    settlementNotes: notes || "Reseller profit settlement",
+    $push: {
+      settlementHistory: {
+        amountPaise: amountToSettle,
+        method: "BANK_TRANSFER",
+        reference: settlementRef,
+        notes: notes || "",
+        settledAt: new Date(),
+        settledBy: adminUser._id,
+      },
+    },
+  });
+
+  // Credit the reseller's double-entry ledger with earned profit
+  const ledgerService = require("./ledgerService");
+  await ledgerService.recordEntry({
+    resellerId: codRecord.reseller,
+    type: "CREDIT",
+    amountPaise: amountToSettle,
+    referenceType: "COD_COLLECTION",
+    referenceId: codRecord.orderNumber,
+    orderId: codRecord.order,
+    description: `COD Profit Settlement - ${codRecord.orderNumber} (Ref: ${settlementRef})`,
+    reason: notes || `Settled ₹${(amountToSettle / 100).toFixed(2)} profit for delivered COD order`,
+    recordedById: adminUser._id,
+  });
+
+  await AuditLog.create({
+    user: adminUser._id,
+    userName: adminUser.name,
+    userRole: adminUser.role,
+    action: "RESELLER_PROFIT_SETTLED",
+    targetType: "COD",
+    targetId: codRecord._id.toString(),
+    description: `Profit settlement of ₹${(amountToSettle / 100).toFixed(2)} paid to reseller for order ${codRecord.orderNumber}`,
   });
 
   return codRecord;
@@ -171,5 +303,7 @@ const updateCodDeliveryStatus = async (codId, { deliveryStatus, courierName, tra
 module.exports = {
   getCodList,
   recordCodCollection,
+  reconcileCodPayment,
+  settleResellerProfit,
   updateCodDeliveryStatus,
 };
