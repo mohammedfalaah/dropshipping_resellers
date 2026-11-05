@@ -564,7 +564,7 @@ export default function Checkout() {
                     </div>
 
                     <div className="col-12">
-                      <label className="form-label small fw-semibold">Street Address / Warehouse Location *</label>
+                      <label className="form-label small fw-semibold">Customer Delivery Address (House / Flat / Street) *</label>
                       <input
                         type="text"
                         name="address"
