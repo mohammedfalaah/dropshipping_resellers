@@ -31,6 +31,17 @@ export const ProductProvider = ({ children }) => {
       sku: p.sku || "",
       shortDescription: p.shortDescription || p.description || "",
       description: p.description || "",
+      colors: Array.isArray(p.colors) && p.colors.length > 0
+        ? p.colors
+        : Array.isArray(p.variants)
+        ? Array.from(new Set(p.variants.map((v) => v.color).filter(Boolean)))
+        : [],
+      sizes: Array.isArray(p.sizes) && p.sizes.length > 0
+        ? p.sizes
+        : Array.isArray(p.variants)
+        ? Array.from(new Set(p.variants.map((v) => v.size).filter(Boolean)))
+        : [],
+      variants: Array.isArray(p.variants) ? p.variants : [],
       additionalInfo: p.additionalInfo || {},
     };
   };

@@ -13,6 +13,33 @@ export default function QuickViewModal({ product, onClose }) {
   const wholesale = Number(product.price ?? product.resellerPrice ?? 0);
   const [customerSellingPrice, setCustomerSellingPrice] = useState("");
 
+  const availableColors = Array.isArray(product?.colors) && product.colors.length > 0
+    ? product.colors
+    : Array.isArray(product?.variants)
+    ? Array.from(new Set(product.variants.map((v) => v.color).filter(Boolean)))
+    : [];
+
+  const availableSizes = Array.isArray(product?.sizes) && product.sizes.length > 0
+    ? product.sizes
+    : Array.isArray(product?.variants)
+    ? Array.from(new Set(product.variants.map((v) => v.size).filter(Boolean)))
+    : [];
+
+  const [selectedColor, setSelectedColor] = useState(availableColors[0] || "");
+  const [selectedSize, setSelectedSize] = useState(availableSizes[0] || "");
+
+  const handleColorSelect = (color) => {
+    setSelectedColor(color);
+    if (Array.isArray(product.variants)) {
+      const variantWithImg = product.variants.find(
+        (v) => v.color && v.color.toLowerCase() === color.toLowerCase() && v.image
+      );
+      if (variantWithImg?.image) {
+        setActiveImg(variantWithImg.image);
+      }
+    }
+  };
+
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { addToast } = useToast();
@@ -29,14 +56,27 @@ export default function QuickViewModal({ product, onClose }) {
       navigate("/login", { state: { from: location } });
       return;
     }
+    if (availableColors.length > 0 && !selectedColor) {
+      addToast("Please select a color before adding to cart.", "error");
+      return;
+    }
+    if (availableSizes.length > 0 && !selectedSize) {
+      addToast("Please select a size before adding to cart.", "error");
+      return;
+    }
+
     const finalPrice = customerSellingPrice !== "" && !isNaN(Number(customerSellingPrice))
       ? Number(customerSellingPrice)
       : "";
-    addToCart(product, quantity, finalPrice);
+    addToCart(product, quantity, finalPrice, selectedColor, selectedSize);
+
+    const variantLabel = [selectedColor, selectedSize].filter(Boolean).join(" / ");
+    const variantDesc = variantLabel ? ` (${variantLabel})` : "";
+
     addToast(
       finalPrice !== ""
-        ? `Added ${quantity} × ${product.name} (Customer Price: ₹${finalPrice}) to cart!`
-        : `Added ${quantity} × ${product.name} to cart! Set your customer price in cart or checkout.`,
+        ? `Added ${quantity} × ${product.name}${variantDesc} (Customer Price: ₹${finalPrice}) to cart!`
+        : `Added ${quantity} × ${product.name}${variantDesc} to cart! Set your customer price in cart or checkout.`,
       "success"
     );
     if (onClose) onClose();
@@ -141,6 +181,68 @@ export default function QuickViewModal({ product, onClose }) {
                   </div>
 
                   <p className="text-muted small mb-4">{product.shortDescription || product.description}</p>
+
+                  {/* Variant Selection (Color & Size) */}
+                  {(availableColors.length > 0 || availableSizes.length > 0) && (
+                    <div className="p-3 bg-light rounded-3 mb-3 border">
+                      {availableColors.length > 0 && (
+                        <div className={availableSizes.length > 0 ? "mb-2" : "mb-0"}>
+                          <div className="d-flex justify-content-between align-items-center mb-1">
+                            <span className="small fw-bold text-dark">
+                              <i className="fa-solid fa-palette text-primary me-1"></i>
+                              Color: <span className="text-primary fw-semibold">{selectedColor}</span>
+                            </span>
+                          </div>
+                          <div className="d-flex flex-wrap gap-2">
+                            {availableColors.map((color, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold ${
+                                  selectedColor === color
+                                    ? "btn-dark text-white"
+                                    : "btn-outline-secondary bg-white text-dark"
+                                }`}
+                                onClick={() => handleColorSelect(color)}
+                                style={{ fontSize: "12px" }}
+                              >
+                                {selectedColor === color && <i className="fa-solid fa-check me-1 small text-success"></i>}
+                                {color}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {availableSizes.length > 0 && (
+                        <div>
+                          <div className="d-flex justify-content-between align-items-center mb-1">
+                            <span className="small fw-bold text-dark">
+                              <i className="fa-solid fa-ruler-combined text-primary me-1"></i>
+                              Size: <span className="text-primary fw-semibold">{selectedSize}</span>
+                            </span>
+                          </div>
+                          <div className="d-flex flex-wrap gap-2">
+                            {availableSizes.map((size, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold ${
+                                  selectedSize === size
+                                    ? "btn-dark text-white"
+                                    : "btn-outline-secondary bg-white text-dark"
+                                }`}
+                                onClick={() => setSelectedSize(size)}
+                                style={{ fontSize: "12px", minWidth: "40px" }}
+                              >
+                                {size}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Customer Selling Price Input */}
                   <div className="p-3 bg-light rounded-3 mb-3 border">

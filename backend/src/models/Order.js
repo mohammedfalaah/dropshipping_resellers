@@ -9,6 +9,9 @@ const OrderItemSchema = new mongoose.Schema({
   name: { type: String, required: true },
   sku: { type: String, required: true },
   image: { type: String, default: "" },
+  color: { type: String, default: "" },
+  size: { type: String, default: "" },
+  variantSku: { type: String, default: "" },
   quantity: { type: Number, required: true, min: 1 },
   // Wholesale price per unit charged by VEXORA
   unitPricePaise: { type: Number, required: true, min: 0 },

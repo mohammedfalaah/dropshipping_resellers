@@ -54,6 +54,25 @@ const ProductSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    // Product Variants & Options (Colors, Sizes, and Variant Matrix)
+    colors: {
+      type: [String],
+      default: [],
+    },
+    sizes: {
+      type: [String],
+      default: [],
+    },
+    variants: [
+      {
+        sku: { type: String, trim: true, uppercase: true },
+        color: { type: String, trim: true, default: "" },
+        size: { type: String, trim: true, default: "" },
+        stockQuantity: { type: Number, default: 0, min: 0 },
+        pricePaise: { type: Number, default: null }, // optional custom variant wholesale price
+        image: { type: String, default: "" },
+      },
+    ],
     // Financial pricing stored in integer paise
     regularPricePaise: {
       type: Number,

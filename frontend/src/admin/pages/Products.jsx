@@ -38,8 +38,16 @@ export default function Products() {
     stockQuantity: 100,
     minOrderQuantity: 1,
     isActive: true,
+    colors: [],
+    sizes: [],
+    variants: [],
   };
   const [formData, setFormData] = useState(initialForm);
+
+  // Variant Manager States
+  const [newColorInput, setNewColorInput] = useState("");
+  const [newSizeInput, setNewSizeInput] = useState("");
+  const [showVariantMatrix, setShowVariantMatrix] = useState(false);
 
   const { addToast } = useToast();
 
@@ -71,9 +79,121 @@ export default function Products() {
     fetchProducts();
   };
 
+  const handleAddColor = (colorName) => {
+    const clean = colorName?.trim();
+    if (!clean) return;
+    if (formData.colors?.includes(clean)) return;
+    setFormData((prev) => ({
+      ...prev,
+      colors: [...(prev.colors || []), clean],
+    }));
+    setNewColorInput("");
+  };
+
+  const handleRemoveColor = (colorName) => {
+    setFormData((prev) => ({
+      ...prev,
+      colors: (prev.colors || []).filter((c) => c !== colorName),
+    }));
+  };
+
+  const handleAddSize = (sizeName) => {
+    const clean = sizeName?.trim();
+    if (!clean) return;
+    if (formData.sizes?.includes(clean)) return;
+    setFormData((prev) => ({
+      ...prev,
+      sizes: [...(prev.sizes || []), clean],
+    }));
+    setNewSizeInput("");
+  };
+
+  const handleRemoveSize = (sizeName) => {
+    setFormData((prev) => ({
+      ...prev,
+      sizes: (prev.sizes || []).filter((s) => s !== sizeName),
+    }));
+  };
+
+  const handleGenerateVariants = () => {
+    const colors = formData.colors?.length > 0 ? formData.colors : [""];
+    const sizes = formData.sizes?.length > 0 ? formData.sizes : [""];
+
+    if (colors.length === 1 && colors[0] === "" && sizes.length === 1 && sizes[0] === "") {
+      addToast("Please add at least one color or size before generating variants.", "warning");
+      return;
+    }
+
+    const baseSku = formData.sku?.trim() || "SKU";
+    const baseStock = parseInt(formData.stockQuantity, 10) || 10;
+    const basePricePaise = formData.resellerPrice ? Math.round(parseFloat(formData.resellerPrice) * 100) : 0;
+
+    const generated = [];
+    colors.forEach((c) => {
+      sizes.forEach((s) => {
+        const parts = [baseSku];
+        if (c) parts.push(c.toUpperCase().replace(/[^A-Z0-9]/g, ""));
+        if (s) parts.push(s.toUpperCase().replace(/[^A-Z0-9]/g, ""));
+        generated.push({
+          sku: parts.join("-"),
+          color: c,
+          size: s,
+          stockQuantity: baseStock,
+          pricePaise: basePricePaise,
+          image: formData.mainImage || "",
+        });
+      });
+    });
+
+    setFormData((prev) => ({
+      ...prev,
+      variants: generated,
+    }));
+    setShowVariantMatrix(true);
+    addToast(`Generated ${generated.length} variant combinations!`, "success");
+  };
+
+  const handleVariantChange = (index, field, value) => {
+    setFormData((prev) => {
+      const nextVariants = [...(prev.variants || [])];
+      if (nextVariants[index]) {
+        nextVariants[index] = {
+          ...nextVariants[index],
+          [field]: value,
+        };
+      }
+      return { ...prev, variants: nextVariants };
+    });
+  };
+
+  const handleRemoveVariant = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      variants: (prev.variants || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleAddCustomVariant = () => {
+    const baseSku = formData.sku?.trim() || "SKU";
+    const newVariant = {
+      sku: `${baseSku}-VAR-${(formData.variants?.length || 0) + 1}`,
+      color: formData.colors?.[0] || "",
+      size: formData.sizes?.[0] || "",
+      stockQuantity: parseInt(formData.stockQuantity, 10) || 10,
+      pricePaise: formData.resellerPrice ? Math.round(parseFloat(formData.resellerPrice) * 100) : 0,
+      image: formData.mainImage || "",
+    };
+    setFormData((prev) => ({
+      ...prev,
+      variants: [...(prev.variants || []), newVariant],
+    }));
+    setShowVariantMatrix(true);
+  };
+
   const handleOpenAdd = () => {
     setEditingProduct(null);
     setFormData(initialForm);
+    setShowVariantMatrix(false);
     setUploadStats(null);
     setShowModal(true);
   };
@@ -92,7 +212,11 @@ export default function Products() {
       stockQuantity: prod.stockQuantity,
       minOrderQuantity: prod.minOrderQuantity || 1,
       isActive: prod.isActive !== false,
+      colors: prod.colors || [],
+      sizes: prod.sizes || [],
+      variants: prod.variants || [],
     });
+    setShowVariantMatrix(Boolean(prod.variants?.length > 0));
     setUploadStats(null);
     setShowModal(true);
   };
@@ -169,6 +293,16 @@ export default function Products() {
       stockQuantity: parseInt(formData.stockQuantity, 10),
       minOrderQuantity: parseInt(formData.minOrderQuantity, 10),
       isActive: formData.isActive,
+      colors: formData.colors || [],
+      sizes: formData.sizes || [],
+      variants: (formData.variants || []).map((v) => ({
+        sku: v.sku || `${formData.sku}-${v.color || "DEF"}-${v.size || "STD"}`,
+        color: v.color || "",
+        size: v.size || "",
+        stockQuantity: Number(v.stockQuantity) >= 0 ? Number(v.stockQuantity) : parseInt(formData.stockQuantity, 10),
+        pricePaise: v.pricePaise !== undefined ? Number(v.pricePaise) : Math.round(parseFloat(formData.resellerPrice) * 100),
+        image: v.image || formData.mainImage,
+      })),
     };
 
     try {
@@ -377,9 +511,19 @@ export default function Products() {
                           />
                           <div>
                             <div className="fw-bold text-dark">{prod.name}</div>
-                            <span className="text-muted" style={{ fontSize: "11px" }}>
-                              MOQ: {prod.minOrderQuantity || 1} units
-                            </span>
+                            <div className="d-flex align-items-center gap-2">
+                              <span className="text-muted" style={{ fontSize: "11px" }}>
+                                MOQ: {prod.minOrderQuantity || 1} units
+                              </span>
+                              {(prod.colors?.length > 0 || prod.sizes?.length > 0 || prod.variants?.length > 0) && (
+                                <span className="badge bg-light text-secondary border" style={{ fontSize: "10px" }}>
+                                  {prod.colors?.length > 0 && `${prod.colors.length} colors`}
+                                  {prod.colors?.length > 0 && prod.sizes?.length > 0 && " • "}
+                                  {prod.sizes?.length > 0 && `${prod.sizes.length} sizes`}
+                                  {prod.variants?.length > 0 && ` (${prod.variants.length} vars)`}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -664,6 +808,303 @@ export default function Products() {
                           value={formData.mainImage}
                           onChange={(e) => setFormData({ ...formData, mainImage: e.target.value })}
                         />
+                      </div>
+                    </div>
+
+                    {/* Product Variants & Options (Colors & Sizes) */}
+                    <div className="col-12">
+                      <div className="card border rounded-3 p-3 bg-light">
+                        <div className="d-flex justify-content-between align-items-center mb-3">
+                          <div>
+                            <h6 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                              <i className="fa-solid fa-layer-group text-primary"></i>
+                              <span>Product Variants & Options (Colors & Sizes)</span>
+                            </h6>
+                            <p className="text-muted small mb-0" style={{ fontSize: "12px" }}>
+                              Configure available color options, sizes, and specific inventory variants.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-primary rounded-pill px-3"
+                            onClick={handleGenerateVariants}
+                            title="Auto-generate variant combinations from configured colors and sizes"
+                          >
+                            <i className="fa-solid fa-wand-magic-sparkles me-1"></i> Auto-Generate Matrix
+                          </button>
+                        </div>
+
+                        {/* Colors Manager */}
+                        <div className="mb-3 p-3 bg-white rounded-3 border">
+                          <label className="form-label small fw-bold text-dark d-flex align-items-center gap-2 mb-2">
+                            <i className="fa-solid fa-palette text-primary"></i>
+                            <span>Available Colors</span>
+                          </label>
+
+                          {/* Active Colors Chips */}
+                          <div className="d-flex flex-wrap gap-2 mb-2 align-items-center">
+                            {(formData.colors || []).map((col) => (
+                              <span
+                                key={col}
+                                className="badge bg-primary-subtle text-primary border border-primary-subtle py-2 px-3 rounded-pill d-flex align-items-center gap-2"
+                                style={{ fontSize: "12px" }}
+                              >
+                                <span>{col}</span>
+                                <i
+                                  className="fa-solid fa-xmark cursor-pointer"
+                                  onClick={() => handleRemoveColor(col)}
+                                  title="Remove color"
+                                  style={{ cursor: "pointer" }}
+                                ></i>
+                              </span>
+                            ))}
+                            {(!formData.colors || formData.colors.length === 0) && (
+                              <span className="text-muted small fst-italic">No colors added yet. Select quick chips or type below.</span>
+                            )}
+                          </div>
+
+                          {/* Quick Add Color Chips */}
+                          <div className="d-flex flex-wrap gap-1 mb-2">
+                            <span className="text-muted small me-1 align-self-center" style={{ fontSize: "11px" }}>Quick Add:</span>
+                            {["Black", "White", "Navy Blue", "Red", "Grey", "Green", "Silver", "Gold"].map((c) => (
+                              <button
+                                key={c}
+                                type="button"
+                                className={`btn btn-sm py-0 px-2 rounded-pill ${
+                                  formData.colors?.includes(c) ? "btn-primary text-white" : "btn-outline-secondary"
+                                }`}
+                                style={{ fontSize: "11px" }}
+                                onClick={() => (formData.colors?.includes(c) ? handleRemoveColor(c) : handleAddColor(c))}
+                              >
+                                {formData.colors?.includes(c) ? `✓ ${c}` : `+ ${c}`}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Custom Color Input */}
+                          <div className="input-group input-group-sm" style={{ maxWidth: "300px" }}>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="Add custom color..."
+                              value={newColorInput}
+                              onChange={(e) => setNewColorInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleAddColor(newColorInput);
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-outline-primary"
+                              onClick={() => handleAddColor(newColorInput)}
+                            >
+                              Add Color
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Sizes Manager */}
+                        <div className="mb-3 p-3 bg-white rounded-3 border">
+                          <label className="form-label small fw-bold text-dark d-flex align-items-center gap-2 mb-2">
+                            <i className="fa-solid fa-ruler-combined text-primary"></i>
+                            <span>Available Sizes</span>
+                          </label>
+
+                          {/* Active Sizes Chips */}
+                          <div className="d-flex flex-wrap gap-2 mb-2 align-items-center">
+                            {(formData.sizes || []).map((sz) => (
+                              <span
+                                key={sz}
+                                className="badge bg-secondary-subtle text-dark border py-2 px-3 rounded-pill d-flex align-items-center gap-2"
+                                style={{ fontSize: "12px" }}
+                              >
+                                <span>{sz}</span>
+                                <i
+                                  className="fa-solid fa-xmark cursor-pointer"
+                                  onClick={() => handleRemoveSize(sz)}
+                                  title="Remove size"
+                                  style={{ cursor: "pointer" }}
+                                ></i>
+                              </span>
+                            ))}
+                            {(!formData.sizes || formData.sizes.length === 0) && (
+                              <span className="text-muted small fst-italic">No sizes added yet. Select quick chips or type below.</span>
+                            )}
+                          </div>
+
+                          {/* Quick Add Size Chips */}
+                          <div className="mb-2">
+                            <div className="d-flex flex-wrap gap-1 align-items-center mb-1">
+                              <span className="text-muted small me-1" style={{ fontSize: "11px" }}>Apparel:</span>
+                              {["S", "M", "L", "XL", "XXL"].map((s) => (
+                                <button
+                                  key={s}
+                                  type="button"
+                                  className={`btn btn-sm py-0 px-2 rounded-pill ${
+                                    formData.sizes?.includes(s) ? "btn-secondary text-white" : "btn-outline-secondary"
+                                  }`}
+                                  style={{ fontSize: "11px" }}
+                                  onClick={() => (formData.sizes?.includes(s) ? handleRemoveSize(s) : handleAddSize(s))}
+                                >
+                                  {formData.sizes?.includes(s) ? `✓ ${s}` : `+ ${s}`}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="d-flex flex-wrap gap-1 align-items-center">
+                              <span className="text-muted small me-1" style={{ fontSize: "11px" }}>Footwear &amp; Universal:</span>
+                              {["UK 6", "UK 7", "UK 8", "UK 9", "UK 10", "Free Size"].map((s) => (
+                                <button
+                                  key={s}
+                                  type="button"
+                                  className={`btn btn-sm py-0 px-2 rounded-pill ${
+                                    formData.sizes?.includes(s) ? "btn-secondary text-white" : "btn-outline-secondary"
+                                  }`}
+                                  style={{ fontSize: "11px" }}
+                                  onClick={() => (formData.sizes?.includes(s) ? handleRemoveSize(s) : handleAddSize(s))}
+                                >
+                                  {formData.sizes?.includes(s) ? `✓ ${s}` : `+ ${s}`}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Custom Size Input */}
+                          <div className="input-group input-group-sm" style={{ maxWidth: "300px" }}>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="Add custom size..."
+                              value={newSizeInput}
+                              onChange={(e) => setNewSizeInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleAddSize(newSizeInput);
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-outline-secondary"
+                              onClick={() => handleAddSize(newSizeInput)}
+                            >
+                              Add Size
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Variant Matrix Table */}
+                        {formData.variants?.length > 0 && (
+                          <div className="p-3 bg-white rounded-3 border">
+                            <div className="d-flex justify-content-between align-items-center mb-2">
+                              <label className="form-label small fw-bold text-dark mb-0">
+                                <i className="fa-solid fa-table-cells text-primary me-1"></i>
+                                Specific Variant Inventory Combinations ({formData.variants.length})
+                              </label>
+                              <div className="d-flex gap-2">
+                                <button
+                                  type="button"
+                                  className="btn btn-xs btn-sm btn-outline-secondary py-0 px-2 rounded-pill"
+                                  style={{ fontSize: "11px" }}
+                                  onClick={handleAddCustomVariant}
+                                >
+                                  + Add Single Variant Row
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-xs btn-sm btn-outline-danger py-0 px-2 rounded-pill"
+                                  style={{ fontSize: "11px" }}
+                                  onClick={() => setFormData((p) => ({ ...p, variants: [] }))}
+                                >
+                                  Clear Variants
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="table-responsive" style={{ maxHeight: "250px", overflowY: "auto" }}>
+                              <table className="table table-sm table-bordered align-middle mb-0" style={{ fontSize: "12px" }}>
+                                <thead className="table-light sticky-top" style={{ top: 0 }}>
+                                  <tr>
+                                    <th>SKU</th>
+                                    <th>Color</th>
+                                    <th>Size</th>
+                                    <th style={{ width: "90px" }}>Stock</th>
+                                    <th style={{ width: "110px" }}>Wholesale (₹)</th>
+                                    <th style={{ width: "40px" }} className="text-center">Action</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {formData.variants.map((v, idx) => (
+                                    <tr key={idx}>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm py-0 px-1"
+                                          style={{ fontSize: "11px" }}
+                                          value={v.sku || ""}
+                                          onChange={(e) => handleVariantChange(idx, "sku", e.target.value)}
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm py-0 px-1"
+                                          style={{ fontSize: "11px" }}
+                                          value={v.color || ""}
+                                          onChange={(e) => handleVariantChange(idx, "color", e.target.value)}
+                                          placeholder="e.g. Black"
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm py-0 px-1"
+                                          style={{ fontSize: "11px" }}
+                                          value={v.size || ""}
+                                          onChange={(e) => handleVariantChange(idx, "size", e.target.value)}
+                                          placeholder="e.g. M"
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="number"
+                                          className="form-control form-control-sm py-0 px-1 text-end"
+                                          style={{ fontSize: "11px" }}
+                                          value={v.stockQuantity !== undefined ? v.stockQuantity : ""}
+                                          onChange={(e) => handleVariantChange(idx, "stockQuantity", e.target.value)}
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="number"
+                                          step="0.01"
+                                          className="form-control form-control-sm py-0 px-1 text-end"
+                                          style={{ fontSize: "11px" }}
+                                          value={v.pricePaise !== undefined ? (v.pricePaise / 100).toFixed(2) : ""}
+                                          onChange={(e) => handleVariantChange(idx, "pricePaise", Math.round(parseFloat(e.target.value || 0) * 100))}
+                                          placeholder={formData.resellerPrice || "Base Price"}
+                                        />
+                                      </td>
+                                      <td className="text-center">
+                                        <button
+                                          type="button"
+                                          className="btn btn-sm btn-link text-danger p-0"
+                                          onClick={() => handleRemoveVariant(idx)}
+                                          title="Remove variant"
+                                        >
+                                          <i className="fa-solid fa-trash-can"></i>
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
 

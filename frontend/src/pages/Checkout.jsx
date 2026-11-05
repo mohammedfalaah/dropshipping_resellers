@@ -39,7 +39,7 @@ export default function Checkout() {
     notes: "",
   });
 
-  const [paymentMethod, setPaymentMethod] = useState("razorpay");
+  const [paymentMethod, setPaymentMethod] = useState("cash_on_delivery");
   const [submitting, setSubmitting] = useState(false);
   const [dbProducts, setDbProducts] = useState([]);
 
@@ -127,7 +127,10 @@ export default function Checkout() {
           return {
             productId: resolvedId ? String(resolvedId) : undefined,
             product: resolvedId ? String(resolvedId) : undefined,
-            sku: item.sku || matchedDb?.sku || "SKU-" + (item.id || "1"),
+            sku: item.variantSku || item.sku || matchedDb?.sku || "SKU-" + (item.id || "1"),
+            variantSku: item.variantSku || "",
+            color: item.selectedColor || item.color || "",
+            size: item.selectedSize || item.size || "",
             name: item.name || "Product",
             quantity: Number(item.quantity) || 1,
             pricePaise: Math.round(wholesale * 100),
@@ -561,7 +564,7 @@ export default function Checkout() {
                     </div>
 
                     <div className="col-12">
-                      <label className="form-label small fw-semibold">Street Address / Delivery Location *</label>
+                      <label className="form-label small fw-semibold">Street Address / Warehouse Location *</label>
                       <input
                         type="text"
                         name="address"
@@ -713,7 +716,8 @@ export default function Checkout() {
                   {/* Cart Items with Reseller Selling Price Inputs */}
                   <div className="mb-4" style={{ maxHeight: "350px", overflowY: "auto" }}>
                     {cart.map((item) => {
-                      const itemId = item.id || item._id;
+                      const itemKey = item.cartItemId || item.id || item._id;
+                      const itemId = itemKey;
                       const wholesale = Number(item.wholesalePrice || item.price || 0);
                       const rawSelling = item.customerSellingPrice !== undefined && item.customerSellingPrice !== null ? item.customerSellingPrice : "";
                       const hasSelling = rawSelling !== "" && !isNaN(Number(rawSelling));
@@ -722,7 +726,7 @@ export default function Checkout() {
                       const totalProfit = profitPerUnit * item.quantity;
 
                       return (
-                        <div key={itemId} className="py-2 border-bottom">
+                        <div key={itemKey} className="py-2 border-bottom">
                           <div className="d-flex align-items-center justify-content-between">
                             <div className="d-flex align-items-center gap-3">
                               <img
@@ -732,7 +736,21 @@ export default function Checkout() {
                               />
                               <div>
                                 <h6 className="mb-0" style={{ fontSize: "14px" }}>{item.name}</h6>
-                                <span className="text-muted small">Qty: {item.quantity} • SKU: {item.sku || "RES-SKU"}</span>
+                                <span className="text-muted small">Qty: {item.quantity} • SKU: {item.variantSku || item.sku || "RES-SKU"}</span>
+                                {(item.selectedColor || item.selectedSize) && (
+                                  <div className="d-flex flex-wrap gap-1 mt-1">
+                                    {item.selectedColor && (
+                                      <span className="badge bg-white text-dark border" style={{ fontSize: "10px" }}>
+                                        {item.selectedColor}
+                                      </span>
+                                    )}
+                                    {item.selectedSize && (
+                                      <span className="badge bg-white text-dark border" style={{ fontSize: "10px" }}>
+                                        Size: {item.selectedSize}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
                             <div className="text-end">
@@ -829,13 +847,18 @@ export default function Checkout() {
                           <strong className="text-dark d-block">Amount payable by reseller now</strong>
                           <span className="text-muted" style={{ fontSize: "11px" }}>Delivery charge only</span>
                         </div>
-                        <span className="h4 fw-bold mb-0" style={{ color: "var(--accent-color, #FA7EAA)" }}>
+                        <span className="h4 fw-bold mb-0" style={{ color: "var(--accent-color, #2dd2b3)" }}>
                           ₹{Number(deliveryCharge).toLocaleString("en-IN")}
                         </span>
                       </div>
-                      <div className="p-2 mb-4 rounded-3 bg-light border d-flex justify-content-between align-items-center">
-                        <span className="small text-primary fw-semibold">Amount to collect from customer on delivery</span>
-                        <strong className="text-primary">
+                      <div
+                        className="p-2 mb-4 rounded-3 border d-flex justify-content-between align-items-center"
+                        style={{ backgroundColor: "#f0f7ff", borderColor: "#bfdbfe" }}
+                      >
+                        <span className="small fw-semibold" style={{ color: "#1d4ed8" }}>
+                          Amount to collect from customer on delivery
+                        </span>
+                        <strong style={{ color: "#1d4ed8" }}>
                           {cartCustomerSellingTotal > 0 ? (
                             `₹${Number(cartCustomerSellingTotal).toLocaleString("en-IN")}`
                           ) : (
@@ -859,7 +882,7 @@ export default function Checkout() {
                       </button>
 
                       <p className="text-muted text-center mb-0" style={{ fontSize: "11px", lineHeight: "1.4" }}>
-                        The reseller pays ₹{deliveryCharge} as the delivery charge at checkout. The product selling amount of ₹{cartCustomerSellingTotal} is collected from the customer on delivery through the COD process. Wholesale cost (₹{cartWholesaleSubtotal}) is NOT charged upfront.
+                        The reseller pays ₹{deliveryCharge} as the delivery charge at checkout. The product selling amount of ₹{cartCustomerSellingTotal > 0 ? Number(cartCustomerSellingTotal).toLocaleString("en-IN") : "0"} is collected from the customer on delivery through the COD process. Wholesale cost (₹{Number(cartWholesaleSubtotal).toLocaleString("en-IN")}) is NOT charged upfront.
                       </p>
                     </div>
                   ) : (

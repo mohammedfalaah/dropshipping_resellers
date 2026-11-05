@@ -54,3 +54,4 @@ SettingSchema.virtual("deliveryChargeRupees").get(function () {
 });
 
 module.exports = mongoose.model("Setting", SettingSchema);
+

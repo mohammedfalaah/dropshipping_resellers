@@ -133,7 +133,8 @@ export default function Cart() {
                     </thead>
                     <tbody>
                       {cart.map((item) => {
-                        const itemId = item.id || item._id;
+                        const itemKey = item.cartItemId || item.id || item._id;
+                        const itemId = itemKey;
                         const wholesale = Number(item.wholesalePrice || item.price || 0);
                         const rawSelling = item.customerSellingPrice !== undefined && item.customerSellingPrice !== null ? item.customerSellingPrice : "";
                         const hasSelling = rawSelling !== "" && !isNaN(Number(rawSelling));
@@ -143,7 +144,7 @@ export default function Cart() {
                         const lineTotalProfit = profitPerUnit * item.quantity;
 
                         return (
-                          <tr key={itemId}>
+                          <tr key={itemKey}>
                             <td>
                               <Link to={`/product/${item.slug || "product"}`}>
                                 <img
@@ -163,7 +164,19 @@ export default function Cart() {
                                   {item.name}
                                 </Link>
                               </h6>
-                              <span className="text-muted small">SKU: {item.sku || "RES-SKU"}</span>
+                              <div className="d-flex flex-wrap align-items-center gap-1">
+                                <span className="text-muted small">SKU: {item.variantSku || item.sku || "RES-SKU"}</span>
+                                {item.selectedColor && (
+                                  <span className="badge bg-light text-dark border" style={{ fontSize: "11px" }}>
+                                    Color: {item.selectedColor}
+                                  </span>
+                                )}
+                                {item.selectedSize && (
+                                  <span className="badge bg-light text-dark border" style={{ fontSize: "11px" }}>
+                                    Size: {item.selectedSize}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="fw-semibold text-secondary">
                               ₹{wholesale.toLocaleString("en-IN")}

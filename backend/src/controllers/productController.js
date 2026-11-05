@@ -78,6 +78,15 @@ const getProducts = async (req, res, next) => {
       obj.regularPrice = paiseToRupees(p.regularPricePaise || 0);
       obj.image = p.mainImage || "/images/product-earbuds.jpg";
       obj.thumbnails = p.gallery && p.gallery.length ? p.gallery : [p.mainImage || "/images/product-earbuds.jpg"];
+      obj.colors = p.colors || [];
+      obj.sizes = p.sizes || [];
+      obj.variants = (p.variants || []).map((v) => {
+        const vObj = v.toObject ? v.toObject() : v;
+        return {
+          ...vObj,
+          price: vObj.pricePaise ? paiseToRupees(vObj.pricePaise) : obj.price,
+        };
+      });
       return obj;
     });
 
@@ -118,6 +127,15 @@ const getProductBySlug = async (req, res, next) => {
     obj.regularPrice = paiseToRupees(product.regularPricePaise || 0);
     obj.image = product.mainImage || "/images/product-earbuds.jpg";
     obj.thumbnails = product.gallery && product.gallery.length ? product.gallery : [product.mainImage || "/images/product-earbuds.jpg"];
+    obj.colors = product.colors || [];
+    obj.sizes = product.sizes || [];
+    obj.variants = (product.variants || []).map((v) => {
+      const vObj = v.toObject ? v.toObject() : v;
+      return {
+        ...vObj,
+        price: vObj.pricePaise ? paiseToRupees(vObj.pricePaise) : obj.price,
+      };
+    });
 
     return successResponse(res, "Product details retrieved.", {
       product: obj,
@@ -141,6 +159,9 @@ const createProduct = async (req, res, next) => {
       shortDescription,
       mainImage,
       gallery,
+      colors,
+      sizes,
+      variants,
       regularPrice,
       resellerPrice,
       stockQuantity,
@@ -165,6 +186,29 @@ const createProduct = async (req, res, next) => {
 
     const categorySlug = category.toLowerCase();
 
+    // Process Variants, Colors, and Sizes
+    let parsedVariants = [];
+    if (Array.isArray(variants)) {
+      parsedVariants = variants.map((v) => ({
+        sku: (v.sku || `${sku}-${(v.color || "VAR").slice(0, 3)}-${v.size || "STD"}`).toUpperCase(),
+        color: v.color || "",
+        size: v.size || "",
+        stockQuantity: Number(v.stockQuantity) >= 0 ? Number(v.stockQuantity) : Number(stockQuantity) || 0,
+        pricePaise: v.price ? rupeesToPaise(v.price) : v.pricePaise || null,
+        image: v.image || "",
+      }));
+    }
+
+    let parsedColors = Array.isArray(colors) ? colors.filter(Boolean).map((c) => String(c).trim()) : [];
+    let parsedSizes = Array.isArray(sizes) ? sizes.filter(Boolean).map((s) => String(s).trim()) : [];
+
+    if (parsedColors.length === 0 && parsedVariants.length > 0) {
+      parsedColors = Array.from(new Set(parsedVariants.map((v) => v.color).filter(Boolean)));
+    }
+    if (parsedSizes.length === 0 && parsedVariants.length > 0) {
+      parsedSizes = Array.from(new Set(parsedVariants.map((v) => v.size).filter(Boolean)));
+    }
+
     const product = await Product.create({
       name,
       sku: sku.toUpperCase(),
@@ -175,6 +219,9 @@ const createProduct = async (req, res, next) => {
       shortDescription: shortDescription || "",
       mainImage,
       gallery: gallery || [],
+      colors: parsedColors,
+      sizes: parsedSizes,
+      variants: parsedVariants,
       regularPricePaise: rupeesToPaise(regularPrice),
       resellerPricePaise: rupeesToPaise(resellerPrice),
       stockQuantity: stockQuantity || 0,
@@ -221,6 +268,9 @@ const updateProduct = async (req, res, next) => {
       shortDescription,
       mainImage,
       gallery,
+      colors,
+      sizes,
+      variants,
       regularPrice,
       resellerPrice,
       stockQuantity,
@@ -261,6 +311,31 @@ const updateProduct = async (req, res, next) => {
     if (isTrending !== undefined) product.isTrending = isTrending;
     if (badge !== undefined) product.badge = badge;
     if (additionalInfo) product.additionalInfo = additionalInfo;
+
+    if (colors !== undefined) {
+      product.colors = Array.isArray(colors) ? colors.filter(Boolean).map((c) => String(c).trim()) : [];
+    }
+    if (sizes !== undefined) {
+      product.sizes = Array.isArray(sizes) ? sizes.filter(Boolean).map((s) => String(s).trim()) : [];
+    }
+    if (variants !== undefined) {
+      product.variants = Array.isArray(variants)
+        ? variants.map((v) => ({
+            sku: (v.sku || `${product.sku}-${(v.color || "VAR").slice(0, 3)}-${v.size || "STD"}`).toUpperCase(),
+            color: v.color || "",
+            size: v.size || "",
+            stockQuantity: Number(v.stockQuantity) >= 0 ? Number(v.stockQuantity) : product.stockQuantity || 0,
+            pricePaise: v.price ? rupeesToPaise(v.price) : v.pricePaise || null,
+            image: v.image || "",
+          }))
+        : [];
+      if (product.colors.length === 0 && product.variants.length > 0) {
+        product.colors = Array.from(new Set(product.variants.map((v) => v.color).filter(Boolean)));
+      }
+      if (product.sizes.length === 0 && product.variants.length > 0) {
+        product.sizes = Array.from(new Set(product.variants.map((v) => v.size).filter(Boolean)));
+      }
+    }
 
     await product.save();
 

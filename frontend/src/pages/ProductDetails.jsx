@@ -62,9 +62,48 @@ export default function ProductDetails() {
   const wholesalePrice = Number(product?.price ?? product?.resellerPrice ?? 0);
   const [customerSellingPrice, setCustomerSellingPrice] = useState("");
 
+  // Product Variants: Available Colors & Sizes
+  const availableColors = Array.isArray(product?.colors) && product.colors.length > 0
+    ? product.colors
+    : Array.isArray(product?.variants)
+    ? Array.from(new Set(product.variants.map((v) => v.color).filter(Boolean)))
+    : [];
+
+  const availableSizes = Array.isArray(product?.sizes) && product.sizes.length > 0
+    ? product.sizes
+    : Array.isArray(product?.variants)
+    ? Array.from(new Set(product.variants.map((v) => v.size).filter(Boolean)))
+    : [];
+
+  const [selectedColor, setSelectedColor] = useState("");
+  const [selectedSize, setSelectedSize] = useState("");
+
   useEffect(() => {
     setCustomerSellingPrice("");
+    if (availableColors.length > 0) {
+      setSelectedColor(availableColors[0]);
+    } else {
+      setSelectedColor("");
+    }
+    if (availableSizes.length > 0) {
+      setSelectedSize(availableSizes[0]);
+    } else {
+      setSelectedSize("");
+    }
   }, [product]);
+
+  // When color changes, check if there's a variant image associated
+  const handleColorSelect = (color) => {
+    setSelectedColor(color);
+    if (Array.isArray(product.variants)) {
+      const variantWithImg = product.variants.find(
+        (v) => v.color && v.color.toLowerCase() === color.toLowerCase() && v.image
+      );
+      if (variantWithImg?.image) {
+        setActiveImage(variantWithImg.image);
+      }
+    }
+  };
 
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
@@ -85,14 +124,29 @@ export default function ProductDetails() {
       navigate("/login", { state: { from: location } });
       return;
     }
+
+    if (availableColors.length > 0 && !selectedColor) {
+      addToast("Please select your preferred color before adding to cart.", "error");
+      return;
+    }
+
+    if (availableSizes.length > 0 && !selectedSize) {
+      addToast("Please select your preferred size before adding to cart.", "error");
+      return;
+    }
+
     const finalPrice = customerSellingPrice !== "" && !isNaN(Number(customerSellingPrice))
       ? Number(customerSellingPrice)
       : "";
-    addToCart(product, quantity, finalPrice);
+    addToCart(product, quantity, finalPrice, selectedColor, selectedSize);
+
+    const variantLabel = [selectedColor, selectedSize].filter(Boolean).join(" / ");
+    const variantDesc = variantLabel ? ` (${variantLabel})` : "";
+
     addToast(
       finalPrice !== ""
-        ? `Added ${quantity} × ${product.name} (Customer Price: ₹${finalPrice}) to cart!`
-        : `Added ${quantity} × ${product.name} to cart! Set your customer price in cart or checkout.`,
+        ? `Added ${quantity} × ${product.name}${variantDesc} (Customer Price: ₹${finalPrice}) to cart!`
+        : `Added ${quantity} × ${product.name}${variantDesc} to cart! Set your customer price in cart or checkout.`,
       "success"
     );
   };
@@ -227,6 +281,82 @@ export default function ProductDetails() {
                     <span className="text-muted">{product.sku}</span>
                   </p>
                 </div>
+
+                {/* Product Variants: Colors & Sizes Selection */}
+                {(availableColors.length > 0 || availableSizes.length > 0) && (
+                  <div className="p-3 bg-light rounded-4 mb-4 border">
+                    {/* Color Selector */}
+                    {availableColors.length > 0 && (
+                      <div className={availableSizes.length > 0 ? "mb-3" : "mb-0"}>
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <label className="form-label small fw-bold text-dark mb-0">
+                            <i className="fa-solid fa-palette text-primary me-1"></i>
+                            Select Color: <span className="text-primary fw-semibold">{selectedColor || "None chosen"}</span>
+                          </label>
+                          <span className="badge bg-white text-muted border small">
+                            {availableColors.length} {availableColors.length === 1 ? "Option" : "Options"}
+                          </span>
+                        </div>
+                        <div className="d-flex flex-wrap gap-2">
+                          {availableColors.map((color, idx) => {
+                            const isSelected = selectedColor === color;
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                className={`btn btn-sm rounded-pill px-3 py-2 fw-semibold d-flex align-items-center gap-2 transition-all ${
+                                  isSelected
+                                    ? "btn-dark text-white shadow-sm"
+                                    : "btn-outline-secondary bg-white text-dark"
+                                }`}
+                                onClick={() => handleColorSelect(color)}
+                                style={{ fontSize: "13px" }}
+                              >
+                                {isSelected && <i className="fa-solid fa-check small text-success"></i>}
+                                <span>{color}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Size Selector */}
+                    {availableSizes.length > 0 && (
+                      <div className="mb-0">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <label className="form-label small fw-bold text-dark mb-0">
+                            <i className="fa-solid fa-ruler-combined text-primary me-1"></i>
+                            Select Size: <span className="text-primary fw-semibold">{selectedSize || "None chosen"}</span>
+                          </label>
+                          <span className="badge bg-white text-muted border small">
+                            {availableSizes.length} {availableSizes.length === 1 ? "Size" : "Sizes"}
+                          </span>
+                        </div>
+                        <div className="d-flex flex-wrap gap-2">
+                          {availableSizes.map((size, idx) => {
+                            const isSelected = selectedSize === size;
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                className={`btn btn-sm rounded-pill px-3 py-2 fw-semibold transition-all ${
+                                  isSelected
+                                    ? "btn-dark text-white shadow-sm"
+                                    : "btn-outline-secondary bg-white text-dark"
+                                }`}
+                                onClick={() => setSelectedSize(size)}
+                                style={{ minWidth: "48px", fontSize: "13px" }}
+                              >
+                                {size}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Reseller Customer Selling Price & Profit Estimator */}
                 <div className="p-3 bg-light rounded-4 mb-4 border">

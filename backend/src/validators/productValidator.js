@@ -8,6 +8,22 @@ const createProductSchema = z.object({
   shortDescription: z.string().optional().default(""),
   mainImage: z.string().min(1, "Main image is required"),
   gallery: z.array(z.string()).optional().default([]),
+  colors: z.array(z.string()).optional().default([]),
+  sizes: z.array(z.string()).optional().default([]),
+  variants: z
+    .array(
+      z.object({
+        sku: z.string().optional().default(""),
+        color: z.string().optional().default(""),
+        size: z.string().optional().default(""),
+        stockQuantity: z.number().int().min(0).optional().default(0),
+        pricePaise: z.number().min(0).optional().nullable(),
+        price: z.number().min(0).optional().nullable(),
+        image: z.string().optional().default(""),
+      })
+    )
+    .optional()
+    .default([]),
   regularPrice: z.number().positive("Regular price must be greater than zero"),
   resellerPrice: z.number().positive("Reseller wholesale price must be greater than zero"),
   stockQuantity: z.number().int().min(0, "Stock cannot be negative").default(0),

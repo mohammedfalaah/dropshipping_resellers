@@ -64,7 +64,7 @@ export const CartProvider = ({ children }) => {
     }
   }, [cart, isAuthenticated]);
 
-  const addToCart = (product, quantity = 1, customSellingPrice = null) => {
+  const addToCart = (product, quantity = 1, customSellingPrice = null, selectedColor = "", selectedSize = "") => {
     if (!isAuthenticated) {
       return false;
     }
@@ -75,11 +75,39 @@ export const CartProvider = ({ children }) => {
         ? customSellingPrice
         : "";
 
+    const colorKey = selectedColor ? String(selectedColor).trim() : "";
+    const sizeKey = selectedSize ? String(selectedSize).trim() : "";
+    const cartItemId = `${targetId}_${colorKey || "default"}_${sizeKey || "default"}`;
+
+    // Look for matching variant in product.variants if present
+    const matchedVariant = Array.isArray(product.variants)
+      ? product.variants.find(
+          (v) =>
+            (!colorKey || (v.color && v.color.toLowerCase() === colorKey.toLowerCase())) &&
+            (!sizeKey || (v.size && v.size.toLowerCase() === sizeKey.toLowerCase()))
+        )
+      : null;
+
+    const variantSku = matchedVariant?.sku || product.sku || "";
+    const itemImage = matchedVariant?.image || product.image || product.mainImage || "/images/product-earbuds.jpg";
+
     setCart((prev) => {
-      const existing = prev.find((item) => (item.id || item._id) === targetId);
+      const existing = prev.find(
+        (item) =>
+          (item.cartItemId && item.cartItemId === cartItemId) ||
+          ((item.id || item._id) === targetId &&
+            (item.selectedColor || "") === colorKey &&
+            (item.selectedSize || "") === sizeKey)
+      );
+
       if (existing) {
-        return prev.map((item) =>
-          (item.id || item._id) === targetId
+        return prev.map((item) => {
+          const isMatch =
+            (item.cartItemId && item.cartItemId === cartItemId) ||
+            ((item.id || item._id) === targetId &&
+              (item.selectedColor || "") === colorKey &&
+              (item.selectedSize || "") === sizeKey);
+          return isMatch
             ? {
                 ...item,
                 quantity: item.quantity + quantity,
@@ -87,44 +115,52 @@ export const CartProvider = ({ children }) => {
                   ? { customerSellingPrice: customSellingPrice }
                   : {}),
               }
-            : item
-        );
+            : item;
+        });
       }
+
       return [
         ...prev,
         {
           ...product,
           id: targetId,
+          cartItemId,
           quantity,
           wholesalePrice,
           price: wholesalePrice,
           customerSellingPrice: initialSellingPrice,
+          selectedColor: colorKey,
+          selectedSize: sizeKey,
+          color: colorKey,
+          size: sizeKey,
+          variantSku,
+          image: itemImage,
         },
       ];
     });
     return true;
   };
 
-  const updateQuantity = (productId, newQuantity) => {
+  const updateQuantity = (itemId, newQuantity) => {
     if (newQuantity <= 0) {
-      removeFromCart(productId);
+      removeFromCart(itemId);
       return;
     }
+    const targetStr = String(itemId);
     setCart((prev) =>
       prev.map((item) => {
-        const itemId = String(item.id || item._id);
-        const targetId = String(productId);
-        return itemId === targetId ? { ...item, quantity: newQuantity } : item;
+        const itemIdentifier = String(item.cartItemId || item.id || item._id);
+        return itemIdentifier === targetStr ? { ...item, quantity: newQuantity } : item;
       })
     );
   };
 
-  const updateCustomerSellingPrice = (productId, newSellingPrice) => {
+  const updateCustomerSellingPrice = (itemId, newSellingPrice) => {
+    const targetStr = String(itemId);
     setCart((prev) =>
       prev.map((item) => {
-        const itemId = String(item.id || item._id);
-        const targetId = String(productId);
-        if (itemId === targetId) {
+        const itemIdentifier = String(item.cartItemId || item.id || item._id);
+        if (itemIdentifier === targetStr) {
           return { ...item, customerSellingPrice: newSellingPrice };
         }
         return item;
@@ -132,12 +168,12 @@ export const CartProvider = ({ children }) => {
     );
   };
 
-  const commitCustomerSellingPrice = (productId) => {
+  const commitCustomerSellingPrice = (itemId) => {
+    const targetStr = String(itemId);
     setCart((prev) =>
       prev.map((item) => {
-        const itemId = String(item.id || item._id);
-        const targetId = String(productId);
-        if (itemId === targetId) {
+        const itemIdentifier = String(item.cartItemId || item.id || item._id);
+        if (itemIdentifier === targetStr) {
           if (
             item.customerSellingPrice === "" ||
             item.customerSellingPrice === undefined ||
@@ -155,8 +191,11 @@ export const CartProvider = ({ children }) => {
     );
   };
 
-  const removeFromCart = (productId) => {
-    setCart((prev) => prev.filter((item) => String(item.id || item._id) !== String(productId)));
+  const removeFromCart = (itemId) => {
+    const targetStr = String(itemId);
+    setCart((prev) =>
+      prev.filter((item) => String(item.cartItemId || item.id || item._id) !== targetStr)
+    );
   };
 
   const clearCart = () => {

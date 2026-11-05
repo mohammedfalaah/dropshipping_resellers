@@ -332,7 +332,15 @@ export default function Orders() {
                         const profit = it.resellerProfitPaise || (customerPrice - wholesale) * (it.quantity || 1);
                         return (
                           <tr key={idx}>
-                            <td className="fw-semibold">{it.name || it.product?.name || "Product"}</td>
+                            <td className="fw-semibold">
+                              {it.name || it.product?.name || "Product"}
+                              {(it.color || it.size) && (
+                                <div className="d-flex flex-wrap gap-1 mt-1">
+                                  {it.color && <span className="badge bg-light text-dark border" style={{ fontSize: "10px" }}>{it.color}</span>}
+                                  {it.size && <span className="badge bg-light text-dark border" style={{ fontSize: "10px" }}>Size: {it.size}</span>}
+                                </div>
+                              )}
+                            </td>
                             <td><code>{it.sku || "RES-SKU"}</code></td>
                             <td>{it.quantity}</td>
                             <td>₹{(wholesale / 100).toFixed(2)}</td>

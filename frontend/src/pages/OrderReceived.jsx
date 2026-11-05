@@ -119,7 +119,19 @@ export default function OrderReceived() {
                     />
                     <div>
                       <h6 className="mb-0" style={{ fontSize: "14px" }}>{item.name}</h6>
-                      <span className="text-muted small">Qty: {item.quantity}</span>
+                      <div className="d-flex flex-wrap align-items-center gap-1 text-muted small mt-1">
+                        <span>Qty: {item.quantity}</span>
+                        {(item.selectedColor || item.color) && (
+                          <span className="badge bg-light text-dark border" style={{ fontSize: "10px" }}>
+                            {item.selectedColor || item.color}
+                          </span>
+                        )}
+                        {(item.selectedSize || item.size) && (
+                          <span className="badge bg-light text-dark border" style={{ fontSize: "10px" }}>
+                            Size: {item.selectedSize || item.size}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <span className="fw-semibold">

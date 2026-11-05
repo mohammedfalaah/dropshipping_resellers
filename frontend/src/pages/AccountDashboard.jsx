@@ -1049,7 +1049,15 @@ export default function AccountDashboard() {
                                       const profit = ((it.resellerProfitPaise || 0) / 100).toFixed(2);
                                       return (
                                         <tr key={it._id || idx}>
-                                          <td className="fw-semibold">{it.name}</td>
+                                          <td className="fw-semibold">
+                                            {it.name}
+                                            {(it.color || it.size) && (
+                                              <div className="d-flex flex-wrap gap-1 mt-1">
+                                                {it.color && <span className="badge bg-light text-dark border" style={{ fontSize: "10px" }}>{it.color}</span>}
+                                                {it.size && <span className="badge bg-light text-dark border" style={{ fontSize: "10px" }}>Size: {it.size}</span>}
+                                              </div>
+                                            )}
+                                          </td>
                                           <td>{it.quantity}</td>
                                           <td>₹{wPrice}</td>
                                           <td className="fw-bold">₹{sPrice}</td>
