@@ -27,14 +27,14 @@ export default function Checkout() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
-    firstName: user?.name ? user.name.split(" ")[0] : "Sarah",
-    lastName: user?.name ? user.name.split(" ").slice(1).join(" ") || "Partner" : "Jenkins",
-    email: user?.email || "reseller@sparepro.com",
-    phone: user?.phone || "+91 98765 43210",
-    address: user?.businessInfo?.address || "Warehouse 4A, Industrial Complex",
-    city: user?.businessInfo?.city || "Mumbai",
-    state: user?.businessInfo?.state || "Maharashtra",
-    zip: user?.businessInfo?.postalCode || "400001",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    address: "",
+    city: "",
+    state: "",
+    zip: "",
     country: "India",
     notes: "",
   });
@@ -62,8 +62,17 @@ export default function Checkout() {
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
 
-    if (!form.firstName || !form.email || !form.address) {
-      addToast("Please fill in all required billing information.", "error");
+    if (
+      !form.firstName.trim() ||
+      !form.lastName.trim() ||
+      !form.email.trim() ||
+      !form.phone.trim() ||
+      !form.address.trim() ||
+      !form.city.trim() ||
+      !form.state.trim() ||
+      !form.zip.trim()
+    ) {
+      addToast("Please fill in all required customer billing and shipping fields.", "error");
       return;
     }
 
@@ -123,14 +132,14 @@ export default function Checkout() {
             ? "RAZORPAY"
             : "BANK_TRANSFER";
 
-        const cleanFirstName = (form.firstName || user?.name?.split(" ")[0] || "Customer").trim();
-        const cleanLastName = (form.lastName || user?.name?.split(" ").slice(1).join(" ") || "Reseller").trim();
-        const cleanEmail = (form.email || user?.email || "customer@example.com").trim();
-        const cleanPhone = (form.phone || user?.phone || "9999999999").trim();
-        const cleanAddress = (form.address || user?.businessInfo?.address || "Warehouse 4A, Industrial Complex").trim();
-        const cleanCity = (form.city || user?.businessInfo?.city || "Mumbai").trim();
-        const cleanState = (form.state || user?.businessInfo?.state || "Maharashtra").trim();
-        const cleanZip = (form.zip || user?.businessInfo?.postalCode || "400001").trim();
+        const cleanFirstName = form.firstName.trim();
+        const cleanLastName = form.lastName.trim();
+        const cleanEmail = form.email.trim();
+        const cleanPhone = form.phone.trim();
+        const cleanAddress = form.address.trim();
+        const cleanCity = form.city.trim();
+        const cleanState = form.state.trim();
+        const cleanZip = form.zip.trim();
 
         const orderPayload = {
           items: sanitizedItems.length > 0 ? sanitizedItems : orderItems,
@@ -475,6 +484,7 @@ export default function Checkout() {
                         type="text"
                         name="firstName"
                         className="form-control"
+                        placeholder="Customer's first name"
                         value={form.firstName}
                         onChange={handleChange}
                         required
@@ -487,6 +497,7 @@ export default function Checkout() {
                         type="text"
                         name="lastName"
                         className="form-control"
+                        placeholder="Customer's last name"
                         value={form.lastName}
                         onChange={handleChange}
                         required
@@ -499,6 +510,7 @@ export default function Checkout() {
                         type="email"
                         name="email"
                         className="form-control"
+                        placeholder="customer@example.com"
                         value={form.email}
                         onChange={handleChange}
                         required
@@ -511,6 +523,7 @@ export default function Checkout() {
                         type="tel"
                         name="phone"
                         className="form-control"
+                        placeholder="+91 98765 43210"
                         value={form.phone}
                         onChange={handleChange}
                         required
@@ -518,12 +531,12 @@ export default function Checkout() {
                     </div>
 
                     <div className="col-12">
-                      <label className="form-label small fw-semibold">Street Address / Warehouse Location *</label>
+                      <label className="form-label small fw-semibold">Street Address / Delivery Location *</label>
                       <input
                         type="text"
                         name="address"
                         className="form-control mb-2"
-                        placeholder="House / Warehouse number and street"
+                        placeholder="House / Flat / Building, Street name, Landmark"
                         value={form.address}
                         onChange={handleChange}
                         required
@@ -536,6 +549,7 @@ export default function Checkout() {
                         type="text"
                         name="city"
                         className="form-control"
+                        placeholder="Town / City"
                         value={form.city}
                         onChange={handleChange}
                         required
@@ -548,6 +562,7 @@ export default function Checkout() {
                         type="text"
                         name="state"
                         className="form-control"
+                        placeholder="State"
                         value={form.state}
                         onChange={handleChange}
                         required
@@ -560,6 +575,7 @@ export default function Checkout() {
                         type="text"
                         name="zip"
                         className="form-control"
+                        placeholder="6-digit PIN"
                         value={form.zip}
                         onChange={handleChange}
                         required
