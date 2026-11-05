@@ -1164,4 +1164,72 @@ header.main-header .header-sticky.active {
   }
 }
 
+/* ========================================================
+   RESPONSIVE CART PAGE & MOBILE UX ENHANCEMENTS
+   ======================================================== */
+.cart-page {
+  min-height: 70vh;
+}
+
+@media (max-width: 991px) {
+  .cart-page {
+    padding-bottom: 110px !important; /* Space for mobile sticky checkout footer */
+  }
+}
+
+.cart-mobile-card {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid #e5e7eb;
+}
+
+.cart-mobile-card:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06) !important;
+}
+
+.cart-qty-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #ffffff;
+  border: 1px solid #d1d5db;
+  color: #1f2937;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.cart-qty-btn:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+  color: #111827;
+}
+
+.cart-qty-btn:active {
+  transform: scale(0.92);
+}
+
+.cart-bottom-bar {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.08) !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+.cart-table th {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b5563;
+  padding: 12px 14px;
+  background-color: #f9fafb;
+}
+
+.cart-table td {
+  padding: 14px;
+  vertical-align: middle;
+}
+
 
