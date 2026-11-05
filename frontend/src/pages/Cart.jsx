@@ -38,6 +38,22 @@ export default function Cart() {
       navigate("/login", { state: { from: { pathname: "/checkout" } } });
       return;
     }
+    const emptyPriceItem = cart.find(
+      (item) => item.customerSellingPrice === "" || item.customerSellingPrice === undefined || item.customerSellingPrice === null
+    );
+    if (emptyPriceItem) {
+      addToast(`Please enter your customer selling price for "${emptyPriceItem.name}".`, "error");
+      return;
+    }
+    const underpricedItem = cart.find((item) => {
+      const wholesale = Number(item.wholesalePrice || item.price || 0);
+      return Number(item.customerSellingPrice) < wholesale;
+    });
+    if (underpricedItem) {
+      const wholesale = Number(underpricedItem.wholesalePrice || underpricedItem.price || 0);
+      addToast(`Selling price for "${underpricedItem.name}" cannot be less than wholesale ₹${wholesale}.`, "error");
+      return;
+    }
     navigate("/checkout");
   };
 
@@ -119,11 +135,11 @@ export default function Cart() {
                       {cart.map((item) => {
                         const itemId = item.id || item._id;
                         const wholesale = Number(item.wholesalePrice || item.price || 0);
-                        const rawSelling = item.customerSellingPrice !== undefined && item.customerSellingPrice !== null ? item.customerSellingPrice : wholesale;
-                        const numericSelling = Number(rawSelling);
-                        const effectiveSelling = !isNaN(numericSelling) && numericSelling >= wholesale ? numericSelling : wholesale;
-                        const profitPerUnit = Math.max(0, effectiveSelling - wholesale);
-                        const lineCustomerTotal = effectiveSelling * item.quantity;
+                        const rawSelling = item.customerSellingPrice !== undefined && item.customerSellingPrice !== null ? item.customerSellingPrice : "";
+                        const hasSelling = rawSelling !== "" && !isNaN(Number(rawSelling));
+                        const numericSelling = hasSelling ? Number(rawSelling) : 0;
+                        const profitPerUnit = hasSelling && numericSelling >= wholesale ? numericSelling - wholesale : 0;
+                        const lineCustomerTotal = hasSelling ? numericSelling * item.quantity : 0;
                         const lineTotalProfit = profitPerUnit * item.quantity;
 
                         return (
@@ -153,16 +169,17 @@ export default function Cart() {
                               ₹{wholesale.toLocaleString("en-IN")}
                             </td>
                             <td>
-                              <div className="input-group input-group-sm" style={{ maxWidth: "145px" }}>
+                              <div className="input-group input-group-sm" style={{ maxWidth: "150px" }}>
                                 <span className="input-group-text bg-light text-muted fw-bold">₹</span>
                                 <input
                                   type="number"
-                                  className="form-control fw-bold text-dark"
+                                  className={`form-control fw-bold ${!hasSelling ? "border-warning text-muted" : "text-dark"}`}
                                   min={wholesale}
+                                  placeholder="Enter price"
                                   value={rawSelling}
                                   onChange={(e) => updateCustomerSellingPrice(itemId, e.target.value)}
                                   onBlur={() => commitCustomerSellingPrice(itemId)}
-                                  title={`Minimum customer selling price is wholesale: ₹${wholesale}`}
+                                  title={`Enter customer price (min ₹${wholesale})`}
                                 />
                               </div>
                               <span className="text-muted d-block mt-1" style={{ fontSize: "11px" }}>
@@ -191,15 +208,27 @@ export default function Cart() {
                               </div>
                             </td>
                             <td className="fw-bold text-dark">
-                              ₹{lineCustomerTotal.toLocaleString("en-IN")}
+                              {hasSelling ? (
+                                `₹${lineCustomerTotal.toLocaleString("en-IN")}`
+                              ) : (
+                                <span className="text-muted small fst-italic">Enter price</span>
+                              )}
                             </td>
                             <td>
-                              <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fw-bold">
-                                +₹{lineTotalProfit.toLocaleString("en-IN")}
-                              </span>
-                              <div className="text-muted" style={{ fontSize: "11px" }}>
-                                ₹{profitPerUnit}/unit
-                              </div>
+                              {hasSelling && numericSelling >= wholesale ? (
+                                <>
+                                  <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fw-bold">
+                                    +₹{lineTotalProfit.toLocaleString("en-IN")}
+                                  </span>
+                                  <div className="text-muted" style={{ fontSize: "11px" }}>
+                                    ₹{profitPerUnit}/unit
+                                  </div>
+                                </>
+                              ) : (
+                                <span className="badge bg-warning-subtle text-dark border border-warning-subtle px-2 py-1 small">
+                                  Set Price
+                                </span>
+                              )}
                             </td>
                             <td className="text-end">
                               <button

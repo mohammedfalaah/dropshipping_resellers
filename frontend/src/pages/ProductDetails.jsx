@@ -60,13 +60,10 @@ export default function ProductDetails() {
   const [quickViewProduct, setQuickViewProduct] = useState(null);
 
   const wholesalePrice = Number(product?.price ?? product?.resellerPrice ?? 0);
-  const defaultSelling = Number(product?.customerSellingPrice ?? product?.regularPrice ?? (wholesalePrice > 0 ? wholesalePrice * 1.4 : 0));
-  const [customerSellingPrice, setCustomerSellingPrice] = useState(defaultSelling > wholesalePrice ? defaultSelling : wholesalePrice);
+  const [customerSellingPrice, setCustomerSellingPrice] = useState("");
 
   useEffect(() => {
-    const wholesale = Number(product?.price ?? product?.resellerPrice ?? 0);
-    const initial = Number(product?.customerSellingPrice ?? product?.regularPrice ?? (wholesale > 0 ? Math.round(wholesale * 1.4) : 0));
-    setCustomerSellingPrice(initial >= wholesale ? initial : wholesale);
+    setCustomerSellingPrice("");
   }, [product]);
 
   const { addToCart } = useCart();
@@ -88,9 +85,16 @@ export default function ProductDetails() {
       navigate("/login", { state: { from: location } });
       return;
     }
-    const finalPrice = Math.max(wholesalePrice, Number(customerSellingPrice) || wholesalePrice);
+    const finalPrice = customerSellingPrice !== "" && !isNaN(Number(customerSellingPrice))
+      ? Number(customerSellingPrice)
+      : "";
     addToCart(product, quantity, finalPrice);
-    addToast(`Added ${quantity} × ${product.name} (Selling Price: ₹${finalPrice}) to cart!`, "success");
+    addToast(
+      finalPrice !== ""
+        ? `Added ${quantity} × ${product.name} (Customer Price: ₹${finalPrice}) to cart!`
+        : `Added ${quantity} × ${product.name} to cart! Set your customer price in cart or checkout.`,
+      "success"
+    );
   };
 
   const handleToggleWishlist = () => {
@@ -248,12 +252,14 @@ export default function ProductDetails() {
                           value={customerSellingPrice}
                           onChange={(e) => setCustomerSellingPrice(e.target.value)}
                           onBlur={() => {
-                            const parsed = Number(customerSellingPrice);
-                            if (isNaN(parsed) || parsed < wholesalePrice) {
-                              setCustomerSellingPrice(wholesalePrice);
+                            if (customerSellingPrice !== "") {
+                              const parsed = Number(customerSellingPrice);
+                              if (isNaN(parsed) || parsed < wholesalePrice) {
+                                setCustomerSellingPrice(wholesalePrice);
+                              }
                             }
                           }}
-                          placeholder={String(wholesalePrice)}
+                          placeholder="Enter your customer price"
                         />
                       </div>
                       <div className="text-muted mt-1" style={{ fontSize: "11px" }}>
@@ -264,13 +270,19 @@ export default function ProductDetails() {
                       <div className="p-2 rounded-3 bg-white border d-flex justify-content-between align-items-center">
                         <div>
                           <span className="text-muted d-block" style={{ fontSize: "11px" }}>Expected Profit</span>
-                          <strong className="text-success fs-6">
-                            +₹{((Math.max(wholesalePrice, Number(customerSellingPrice) || wholesalePrice) - wholesalePrice) * quantity).toLocaleString("en-IN")}
-                          </strong>
+                          {customerSellingPrice !== "" && Number(customerSellingPrice) >= wholesalePrice ? (
+                            <strong className="text-success fs-6">
+                              +₹{((Number(customerSellingPrice) - wholesalePrice) * quantity).toLocaleString("en-IN")}
+                            </strong>
+                          ) : (
+                            <span className="text-muted small fst-italic">Enter selling price</span>
+                          )}
                         </div>
-                        <span className="badge bg-light text-muted border" style={{ fontSize: "11px" }}>
-                          ₹{Math.max(0, Math.max(wholesalePrice, Number(customerSellingPrice) || wholesalePrice) - wholesalePrice)}/unit
-                        </span>
+                        {customerSellingPrice !== "" && Number(customerSellingPrice) >= wholesalePrice && (
+                          <span className="badge bg-light text-muted border" style={{ fontSize: "11px" }}>
+                            ₹{Number(customerSellingPrice) - wholesalePrice}/unit
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -76,6 +76,24 @@ export default function Checkout() {
       return;
     }
 
+    const emptyPriceItem = cart.find(
+      (item) => item.customerSellingPrice === "" || item.customerSellingPrice === undefined || item.customerSellingPrice === null
+    );
+    if (emptyPriceItem) {
+      addToast(`Please enter your customer selling price for "${emptyPriceItem.name}".`, "error");
+      return;
+    }
+
+    const underpricedItem = cart.find((item) => {
+      const wholesale = Number(item.wholesalePrice || item.price || 0);
+      return Number(item.customerSellingPrice) < wholesale;
+    });
+    if (underpricedItem) {
+      const wholesale = Number(underpricedItem.wholesalePrice || underpricedItem.price || 0);
+      addToast(`Customer selling price for "${underpricedItem.name}" must be at least ₹${wholesale}.`, "error");
+      return;
+    }
+
     if (isAuthenticated && approvalStatus === "pending") {
       addToast("Order blocked: Reseller account is pending admin approval.", "error");
       return;
@@ -104,7 +122,7 @@ export default function Checkout() {
 
           const resolvedId = directId || matchedDb?._id || dbProducts[0]?._id;
           const wholesale = Number(item.wholesalePrice || item.price || 0);
-          const sellingPrice = Number(item.customerSellingPrice !== undefined ? item.customerSellingPrice : wholesale);
+          const sellingPrice = Number(item.customerSellingPrice);
 
           return {
             productId: resolvedId ? String(resolvedId) : undefined,
@@ -685,10 +703,10 @@ export default function Checkout() {
                     {cart.map((item) => {
                       const itemId = item.id || item._id;
                       const wholesale = Number(item.wholesalePrice || item.price || 0);
-                      const rawSelling = item.customerSellingPrice !== undefined && item.customerSellingPrice !== null ? item.customerSellingPrice : wholesale;
-                      const numericSelling = Number(rawSelling);
-                      const effectiveSelling = !isNaN(numericSelling) && numericSelling >= wholesale ? numericSelling : wholesale;
-                      const profitPerUnit = Math.max(0, effectiveSelling - wholesale);
+                      const rawSelling = item.customerSellingPrice !== undefined && item.customerSellingPrice !== null ? item.customerSellingPrice : "";
+                      const hasSelling = rawSelling !== "" && !isNaN(Number(rawSelling));
+                      const numericSelling = hasSelling ? Number(rawSelling) : 0;
+                      const profitPerUnit = hasSelling && numericSelling >= wholesale ? numericSelling - wholesale : 0;
                       const totalProfit = profitPerUnit * item.quantity;
 
                       return (
@@ -720,30 +738,41 @@ export default function Checkout() {
                                 <span className="text-dark small fw-semibold" style={{ fontSize: "11px", whiteSpace: "nowrap" }}>
                                   <i className="fa-solid fa-pen-to-square text-primary me-1"></i>Customer Price:
                                 </span>
-                                <div className="input-group input-group-sm" style={{ width: "115px" }}>
+                                <div className="input-group input-group-sm" style={{ width: "125px" }}>
                                   <span className="input-group-text px-1 bg-white text-muted fw-bold" style={{ fontSize: "11px" }}>₹</span>
                                   <input
                                     type="number"
                                     min={wholesale}
+                                    placeholder="Enter price"
                                     value={rawSelling}
                                     onChange={(e) => updateCustomerSellingPrice(itemId, e.target.value)}
                                     onBlur={() => commitCustomerSellingPrice(itemId)}
-                                    className="form-control px-2 text-end fw-bold bg-white text-dark"
+                                    className={`form-control px-2 text-end fw-bold bg-white ${!hasSelling ? "border-warning text-muted" : "text-dark"}`}
                                     style={{ fontSize: "13px" }}
-                                    title={`Minimum selling price: ₹${wholesale}`}
+                                    title={`Enter customer price (min ₹${wholesale})`}
                                   />
                                 </div>
                               </div>
                               <div className="text-end">
-                                <span className="badge bg-success-subtle text-success border border-success-subtle fw-semibold" style={{ fontSize: "11px" }}>
-                                  +₹{totalProfit.toLocaleString("en-IN")} profit
-                                </span>
-                                <div className="text-muted" style={{ fontSize: "10px" }}>₹{profitPerUnit}/unit</div>
+                                {hasSelling && numericSelling >= wholesale ? (
+                                  <>
+                                    <span className="badge bg-success-subtle text-success border border-success-subtle fw-semibold" style={{ fontSize: "11px" }}>
+                                      +₹{totalProfit.toLocaleString("en-IN")} profit
+                                    </span>
+                                    <div className="text-muted" style={{ fontSize: "10px" }}>₹{profitPerUnit}/unit</div>
+                                  </>
+                                ) : (
+                                  <span className="badge bg-warning-subtle text-dark border border-warning-subtle" style={{ fontSize: "10px" }}>
+                                    Enter price
+                                  </span>
+                                )}
                               </div>
                             </div>
                             <div className="d-flex justify-content-between align-items-center mt-1 pt-1 border-top" style={{ fontSize: "10px" }}>
                               <span className="text-muted">Wholesale: ₹{wholesale}</span>
-                              <span className="text-muted">Customer Total: <strong className="text-dark">₹{(effectiveSelling * item.quantity).toLocaleString("en-IN")}</strong></span>
+                              <span className="text-muted">
+                                Customer Total: <strong className="text-dark">{hasSelling ? `₹${(numericSelling * item.quantity).toLocaleString("en-IN")}` : "Enter price"}</strong>
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -761,11 +790,23 @@ export default function Checkout() {
                       </div>
                       <div className="d-flex justify-content-between mb-2 text-muted small">
                         <span>Customer selling amount</span>
-                        <span className="fw-bold text-dark">₹{Number(cartCustomerSellingTotal).toLocaleString("en-IN")}</span>
+                        <span className="fw-bold text-dark">
+                          {cartCustomerSellingTotal > 0 ? (
+                            `₹${Number(cartCustomerSellingTotal).toLocaleString("en-IN")}`
+                          ) : (
+                            <span className="text-muted fst-italic">Pending price entry</span>
+                          )}
+                        </span>
                       </div>
                       <div className="d-flex justify-content-between mb-2 text-success small fw-semibold">
                         <span>Expected reseller profit</span>
-                        <span>+₹{Number(cartExpectedProfit).toLocaleString("en-IN")}</span>
+                        <span>
+                          {cartExpectedProfit > 0 ? (
+                            `+₹${Number(cartExpectedProfit).toLocaleString("en-IN")}`
+                          ) : (
+                            <span className="text-muted fst-italic">Pending price entry</span>
+                          )}
+                        </span>
                       </div>
                       <div className="d-flex justify-content-between mb-3 text-muted small">
                         <span>Delivery charge</span>
@@ -782,7 +823,13 @@ export default function Checkout() {
                       </div>
                       <div className="p-2 mb-4 rounded-3 bg-light border d-flex justify-content-between align-items-center">
                         <span className="small text-primary fw-semibold">Amount to collect from customer on delivery</span>
-                        <strong className="text-primary">₹{Number(cartCustomerSellingTotal).toLocaleString("en-IN")}</strong>
+                        <strong className="text-primary">
+                          {cartCustomerSellingTotal > 0 ? (
+                            `₹${Number(cartCustomerSellingTotal).toLocaleString("en-IN")}`
+                          ) : (
+                            "Enter prices above"
+                          )}
+                        </strong>
                       </div>
 
                       <button

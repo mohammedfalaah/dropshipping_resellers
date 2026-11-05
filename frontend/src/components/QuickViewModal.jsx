@@ -11,8 +11,7 @@ export default function QuickViewModal({ product, onClose }) {
   const [activeImg, setActiveImg] = useState(product.image);
   const [quantity, setQuantity] = useState(1);
   const wholesale = Number(product.price ?? product.resellerPrice ?? 0);
-  const defaultSelling = Number(product.customerSellingPrice ?? product.regularPrice ?? (wholesale > 0 ? Math.round(wholesale * 1.4) : 0));
-  const [customerSellingPrice, setCustomerSellingPrice] = useState(defaultSelling >= wholesale ? defaultSelling : wholesale);
+  const [customerSellingPrice, setCustomerSellingPrice] = useState("");
 
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
@@ -30,9 +29,16 @@ export default function QuickViewModal({ product, onClose }) {
       navigate("/login", { state: { from: location } });
       return;
     }
-    const finalPrice = Math.max(wholesale, Number(customerSellingPrice) || wholesale);
+    const finalPrice = customerSellingPrice !== "" && !isNaN(Number(customerSellingPrice))
+      ? Number(customerSellingPrice)
+      : "";
     addToCart(product, quantity, finalPrice);
-    addToast(`Added ${quantity} × ${product.name} (Selling Price: ₹${finalPrice}) to cart!`, "success");
+    addToast(
+      finalPrice !== ""
+        ? `Added ${quantity} × ${product.name} (Customer Price: ₹${finalPrice}) to cart!`
+        : `Added ${quantity} × ${product.name} to cart! Set your customer price in cart or checkout.`,
+      "success"
+    );
     if (onClose) onClose();
   };
 
@@ -142,9 +148,13 @@ export default function QuickViewModal({ product, onClose }) {
                       <span className="small fw-bold text-dark">
                         <i className="fa-solid fa-pen-to-square text-primary me-1"></i> Customer Selling Price
                       </span>
-                      <span className="small text-success fw-semibold">
-                        +₹{((Math.max(wholesale, Number(customerSellingPrice) || wholesale) - wholesale) * quantity).toLocaleString("en-IN")} Profit
-                      </span>
+                      {customerSellingPrice !== "" && Number(customerSellingPrice) >= wholesale ? (
+                        <span className="small text-success fw-semibold">
+                          +₹{((Number(customerSellingPrice) - wholesale) * quantity).toLocaleString("en-IN")} Profit
+                        </span>
+                      ) : (
+                        <span className="small text-muted fst-italic">Enter price</span>
+                      )}
                     </div>
                     <div className="input-group input-group-sm">
                       <span className="input-group-text bg-white fw-bold">₹</span>
@@ -152,11 +162,14 @@ export default function QuickViewModal({ product, onClose }) {
                         type="number"
                         min={wholesale}
                         className="form-control fw-bold bg-white text-dark"
+                        placeholder="Enter your customer price"
                         value={customerSellingPrice}
                         onChange={(e) => setCustomerSellingPrice(e.target.value)}
                         onBlur={() => {
-                          const parsed = Number(customerSellingPrice);
-                          if (isNaN(parsed) || parsed < wholesale) setCustomerSellingPrice(wholesale);
+                          if (customerSellingPrice !== "") {
+                            const parsed = Number(customerSellingPrice);
+                            if (isNaN(parsed) || parsed < wholesale) setCustomerSellingPrice(wholesale);
+                          }
                         }}
                       />
                       <span className="input-group-text bg-light text-muted small">
