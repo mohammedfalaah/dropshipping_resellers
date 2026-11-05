@@ -4,6 +4,7 @@ const CodCollection = require("../models/CodCollection");
 const Cart = require("../models/Cart");
 const AuditLog = require("../models/AuditLog");
 const ledgerService = require("./ledgerService");
+const settingsService = require("./settingsService");
 const { razorpayInstance } = require("../config/razorpay");
 const { RAZORPAY_KEY_ID, FRONTEND_URL } = require("../config/env");
 
@@ -109,8 +110,8 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
     });
   }
 
-  // Standard delivery charge for dropshipping
-  const deliveryChargePaise = 5000; // ₹50.00 standard delivery charge
+  // Delivery charge from platform settings (admin-managed, default ₹50 = 5000 paise)
+  const deliveryChargePaise = await settingsService.getDeliveryChargePaise();
   const discountPaise = 0;
 
   // Determine financial amounts based on payment method

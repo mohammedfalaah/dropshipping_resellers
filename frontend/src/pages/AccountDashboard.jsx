@@ -1000,28 +1000,29 @@ export default function AccountDashboard() {
                               {/* Financial Summary Cards */}
                               <div className="row g-3 mb-4">
                                 <div className="col-sm-3">
-                                  <div className="p-3 bg-light rounded-3 text-center border">
+                                  <div className="p-3 bg-light rounded-3 text-center border h-100">
                                     <div className="text-muted small">Wholesale Cost</div>
                                     <div className="h5 fw-bold mb-0">₹{((selectedResellerOrder.wholesaleCostPaise || selectedResellerOrder.subtotalPaise || 0) / 100).toFixed(2)}</div>
                                   </div>
                                 </div>
                                 <div className="col-sm-3">
-                                  <div className="p-3 bg-light rounded-3 text-center border">
+                                  <div className="p-3 bg-light rounded-3 text-center border h-100">
                                     <div className="text-muted small">Customer Selling Amount</div>
                                     <div className="h5 fw-bold mb-0 text-dark">₹{((selectedResellerOrder.customerSellingTotalPaise || selectedResellerOrder.totalPaise || 0) / 100).toFixed(2)}</div>
                                   </div>
                                 </div>
                                 <div className="col-sm-3">
-                                  <div className="p-3 bg-success-subtle rounded-3 text-center border border-success-subtle">
+                                  <div className="p-3 bg-success-subtle rounded-3 text-center border border-success-subtle h-100">
                                     <div className="text-success small fw-semibold">Expected Profit</div>
                                     <div className="h5 fw-bold mb-0 text-success">+₹{((selectedResellerOrder.expectedResellerProfitPaise || 0) / 100).toFixed(2)}</div>
                                   </div>
                                 </div>
                                 <div className="col-sm-3">
-                                  <div className="p-3 bg-light rounded-3 text-center border">
-                                    <div className="text-muted small">Settlement Status</div>
-                                    <span className={`badge ${selectedResellerOrder.resellerSettlementStatus === "SETTLED" ? "bg-success" : "bg-secondary"} text-uppercase mt-1`}>
-                                      {selectedResellerOrder.resellerSettlementStatus || "UNSETTLED"}
+                                  <div className="p-3 bg-primary-subtle rounded-3 text-center border border-primary-subtle h-100">
+                                    <div className="text-primary small fw-semibold">Delivery Charge</div>
+                                    <div className="h5 fw-bold mb-0 text-primary">₹{((selectedResellerOrder.deliveryChargePaise || 5000) / 100).toFixed(2)}</div>
+                                    <span className={`badge ${selectedResellerOrder.deliveryChargeStatus === "PAID" ? "bg-success" : "bg-warning text-dark"} mt-1`} style={{ fontSize: "10px" }}>
+                                      {selectedResellerOrder.deliveryChargeStatus || "PENDING"}
                                     </span>
                                   </div>
                                 </div>

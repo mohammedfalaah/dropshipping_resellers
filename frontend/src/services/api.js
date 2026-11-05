@@ -123,6 +123,15 @@ export const adminApi = {
   getBalanceSheet: (params) => api.get("/admin/reports/balance-sheet", { params }),
   getSalesReport: (params) => api.get("/admin/reports/sales", { params }),
   getCollectionsReport: (params) => api.get("/admin/reports/collections", { params }),
+  getSettings: () => api.get("/admin/settings"),
+  updateSettings: (data) => api.put("/admin/settings", data),
+};
+
+// Settings APIs
+export const settingsApi = {
+  getPublic: () => api.get("/settings/public"),
+  getAdmin: () => api.get("/admin/settings"),
+  updateAdmin: (data) => api.put("/admin/settings", data),
 };
 
 export default api;

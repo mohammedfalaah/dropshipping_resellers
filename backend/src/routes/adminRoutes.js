@@ -7,6 +7,7 @@ const categoryController = require("../controllers/categoryController");
 const codController = require("../controllers/codController");
 const paymentController = require("../controllers/paymentController");
 const reportController = require("../controllers/reportController");
+const settingsController = require("../controllers/settingsController");
 const { protect, restrictTo } = require("../middleware/auth");
 const validate = require("../middleware/validate");
 const {
@@ -78,5 +79,10 @@ router.get("/reports/sales", reportController.getSales);
 router.get("/reports/balance-sheet", reportController.getBalanceSheet);
 router.get("/reports/export", reportController.exportReport);
 router.get("/reports/sales/csv", reportController.exportReport);
+
+// Platform Settings (Delivery charges, Platform settings)
+router.get("/settings", settingsController.getAdminSettings);
+router.put("/settings", settingsController.updateAdminSettings);
+router.patch("/settings", settingsController.updateAdminSettings);
 
 module.exports = router;

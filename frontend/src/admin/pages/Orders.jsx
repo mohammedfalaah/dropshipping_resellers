@@ -319,27 +319,109 @@ export default function Orders() {
                         <th>Item</th>
                         <th>SKU</th>
                         <th>Qty</th>
-                        <th>Unit Price</th>
-                        <th>Total</th>
+                        <th>Wholesale</th>
+                        <th>Customer Price</th>
+                        <th>Reseller Profit</th>
+                        <th>Subtotal</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {selectedOrder.items?.map((it, idx) => (
-                        <tr key={idx}>
-                          <td className="fw-semibold">{it.name || it.product?.name || "Product"}</td>
-                          <td><code>{it.sku || "RES-SKU"}</code></td>
-                          <td>{it.quantity}</td>
-                          <td>₹{(it.pricePaise / 100).toFixed(2)}</td>
-                          <td className="fw-bold">₹{((it.pricePaise * it.quantity) / 100).toFixed(2)}</td>
-                        </tr>
-                      ))}
+                      {selectedOrder.items?.map((it, idx) => {
+                        const wholesale = it.pricePaise || 0;
+                        const customerPrice = it.customerSellingPricePaise || wholesale;
+                        const profit = it.resellerProfitPaise || (customerPrice - wholesale) * (it.quantity || 1);
+                        return (
+                          <tr key={idx}>
+                            <td className="fw-semibold">{it.name || it.product?.name || "Product"}</td>
+                            <td><code>{it.sku || "RES-SKU"}</code></td>
+                            <td>{it.quantity}</td>
+                            <td>₹{(wholesale / 100).toFixed(2)}</td>
+                            <td>₹{(customerPrice / 100).toFixed(2)}</td>
+                            <td className="text-success fw-semibold">
+                              +₹{(profit / 100).toFixed(2)}
+                            </td>
+                            <td className="fw-bold">₹{((wholesale * it.quantity) / 100).toFixed(2)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
 
-                <div className="d-flex justify-content-between p-3 bg-light rounded-3 fw-bold">
-                  <span>Grand Total</span>
-                  <span className="fs-5 text-dark">₹{(selectedOrder.totalAmountPaise / 100).toFixed(2)}</span>
+                {/* Financial Summary & Delivery Charge Breakdown */}
+                <div className="p-3 bg-light rounded-3 border mb-3">
+                  <h6 className="fw-bold text-dark mb-3">
+                    <i className="fa-solid fa-receipt me-2 text-primary"></i>
+                    Financial & Delivery Charge Breakdown
+                  </h6>
+                  <div className="row g-3">
+                    <div className="col-sm-6">
+                      <div className="d-flex justify-content-between py-1 border-bottom small">
+                        <span className="text-muted">Wholesale Product Cost:</span>
+                        <strong className="text-dark">
+                          ₹{((selectedOrder.wholesaleCostPaise || selectedOrder.items?.reduce((s, i) => s + (i.pricePaise * i.quantity), 0) || 0) / 100).toFixed(2)}
+                        </strong>
+                      </div>
+                      <div className="d-flex justify-content-between py-1 border-bottom small">
+                        <span className="text-muted">Customer Selling Amount:</span>
+                        <strong className="text-dark">
+                          ₹{((selectedOrder.customerSellingTotalPaise || selectedOrder.items?.reduce((s, i) => s + ((i.customerSellingPricePaise || i.pricePaise) * i.quantity), 0) || 0) / 100).toFixed(2)}
+                        </strong>
+                      </div>
+                      <div className="d-flex justify-content-between py-1 small text-success">
+                        <span>Expected Reseller Profit:</span>
+                        <strong>
+                          +₹{((selectedOrder.expectedResellerProfitPaise || 0) / 100).toFixed(2)}
+                        </strong>
+                      </div>
+                    </div>
+                    <div className="col-sm-6">
+                      <div className="d-flex justify-content-between py-1 border-bottom small align-items-center">
+                        <span className="text-muted">
+                          <i className="fa-solid fa-truck-fast text-primary me-1"></i> Delivery Charge:
+                        </span>
+                        <div>
+                          <strong className="text-primary fs-6 me-2">
+                            ₹{((selectedOrder.deliveryChargePaise || 5000) / 100).toFixed(2)}
+                          </strong>
+                          <span
+                            className={`badge ${
+                              selectedOrder.deliveryChargeStatus === "PAID"
+                                ? "bg-success-subtle text-success"
+                                : "bg-warning-subtle text-warning"
+                            }`}
+                            style={{ fontSize: "11px" }}
+                          >
+                            {selectedOrder.deliveryChargeStatus === "PAID" ? "PAID" : "PENDING"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="d-flex justify-content-between py-1 border-bottom small">
+                        <span className="text-muted">Payment Method:</span>
+                        <span className="badge bg-secondary-subtle text-dark">
+                          {selectedOrder.paymentMethod || "COD"}
+                        </span>
+                      </div>
+                      <div className="d-flex justify-content-between py-1 small">
+                        <span className="text-muted">Reseller Paid Upfront:</span>
+                        <strong className="text-dark">
+                          ₹{((selectedOrder.totalAmountPaise || selectedOrder.totalPaise || 0) / 100).toFixed(2)}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedOrder.paymentMethod === "COD" && (
+                    <div className="mt-3 pt-2 border-top d-flex justify-content-between align-items-center bg-white p-2 rounded-2 border">
+                      <span className="small text-muted">
+                        <i className="fa-solid fa-hand-holding-dollar text-warning me-1"></i>
+                        Amount to Collect from Customer on Delivery (COD):
+                      </span>
+                      <strong className="fs-6 text-dark">
+                        ₹{((selectedOrder.customerCollectionPaise || selectedOrder.customerSellingTotalPaise || 0) / 100).toFixed(2)}
+                      </strong>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="modal-footer border-top">

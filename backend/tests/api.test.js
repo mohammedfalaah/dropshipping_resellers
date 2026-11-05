@@ -388,3 +388,52 @@ test("Financial reports and Balance Sheet endpoint return reconciled data", asyn
   assert.ok(bsRes.body.data.revenueAndEquity);
   assert.strictEqual(bsRes.body.data.reconciliation.verifiedLedgerReconciled, true);
 });
+
+test("Platform settings: Admin can manage delivery charges and orders reflect updated delivery charge", async () => {
+  // 1. Check public settings returns delivery charge
+  const publicRes = await request({
+    method: "GET",
+    path: "/api/settings/public",
+  });
+  assert.strictEqual(publicRes.status, 200);
+  assert.strictEqual(publicRes.body.success, true);
+  assert.ok(typeof publicRes.body.data.deliveryChargePaise === "number");
+
+  // 2. Admin logs in and updates delivery charge to ₹65 (6500 paise)
+  const adminLogin = await request({
+    method: "POST",
+    path: "/api/auth/login",
+    body: { email: "admin@sparepro.com", password: "Admin@SparePro2026!" },
+  });
+  const adminToken = adminLogin.body.data.token;
+
+  const updateRes = await request({
+    method: "PUT",
+    path: "/api/admin/settings",
+    headers: { Authorization: `Bearer ${adminToken}` },
+    body: {
+      deliveryCharge: 65,
+      platformName: "VEXORA Resellers Platform",
+    },
+  });
+  assert.strictEqual(updateRes.status, 200);
+  assert.strictEqual(updateRes.body.success, true);
+  assert.strictEqual(updateRes.body.data.settings.deliveryChargePaise, 6500);
+  assert.strictEqual(updateRes.body.data.settings.deliveryChargeRupees, 65);
+
+  // 3. Verify public settings immediately reflect the new ₹65 delivery charge
+  const publicUpdated = await request({
+    method: "GET",
+    path: "/api/settings/public",
+  });
+  assert.strictEqual(publicUpdated.body.data.deliveryCharge, 65);
+  assert.strictEqual(publicUpdated.body.data.deliveryChargePaise, 6500);
+
+  // Reset back to standard ₹50 for platform baseline
+  await request({
+    method: "PUT",
+    path: "/api/admin/settings",
+    headers: { Authorization: `Bearer ${adminToken}` },
+    body: { deliveryCharge: 50 },
+  });
+});

@@ -21,6 +21,7 @@ const cartRoutes = require("./routes/cartRoutes");
 const wishlistRoutes = require("./routes/wishlistRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const paymentController = require("./controllers/paymentController");
+const settingsController = require("./controllers/settingsController");
 
 const app = express();
 
@@ -136,6 +137,10 @@ app.get("/api/health", (req, res) => {
 // Razorpay Direct Endpoints
 app.post("/api/create-order", paymentController.createRazorpayOrder);
 app.post("/api/verify-payment", paymentController.verifyPayment);
+
+// Public Settings Endpoints (for delivery fee and platform configs)
+app.get("/api/settings/public", settingsController.getPublicSettings);
+app.get("/api/settings", settingsController.getPublicSettings);
 
 // API Routes
 app.use("/api/auth", authRoutes);

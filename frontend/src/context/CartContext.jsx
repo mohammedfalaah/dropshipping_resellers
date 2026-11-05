@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
+import { settingsApi } from "../services/api";
 
 const CartContext = createContext();
 
@@ -18,6 +19,27 @@ export const CartProvider = ({ children }) => {
   });
 
   const [coupon, setCoupon] = useState({ code: "", discountPercent: 0, applied: false });
+  const [adminDeliveryCharge, setAdminDeliveryCharge] = useState(50);
+
+  // Fetch configured delivery charge from platform settings
+  useEffect(() => {
+    let isMounted = true;
+    settingsApi
+      .getPublic()
+      .then((res) => {
+        const data = res?.data || res;
+        if (isMounted && typeof data?.deliveryCharge === "number") {
+          setAdminDeliveryCharge(data.deliveryCharge);
+        }
+      })
+      .catch((err) => {
+        // Fallback to default ₹50 quietly if server is initializing
+        console.log("[CartContext] Settings delivery charge fetch fallback to ₹50:", err.message);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Ensure cart is cleared if user is not authenticated
   useEffect(() => {
@@ -183,8 +205,8 @@ export const CartProvider = ({ children }) => {
 
   const cartExpectedProfit = Math.max(0, cartCustomerSellingTotal - cartWholesaleSubtotal);
 
-  // Standard delivery charge for dropshipping is ₹50
-  const deliveryCharge = cart.length > 0 ? 50 : 0;
+  // Platform managed delivery charge for dropshipping
+  const deliveryCharge = cart.length > 0 ? adminDeliveryCharge : 0;
   const shipping = deliveryCharge;
 
   const discountAmount = coupon.applied ? (cartSubtotal * coupon.discountPercent) / 100 : 0;

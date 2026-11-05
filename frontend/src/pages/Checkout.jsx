@@ -197,9 +197,15 @@ export default function Checkout() {
             orderId: orderNumber,
             date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
             items: [...cart],
-            total: cartTotal,
+            total: paymentMethod === "cash_on_delivery" ? codPayableNow : cartTotal,
             subtotal: cartSubtotal,
-            shipping: shipping,
+            wholesaleCost: cartWholesaleSubtotal,
+            customerSellingTotal: cartCustomerSellingTotal,
+            expectedProfit: cartExpectedProfit,
+            deliveryCharge: deliveryCharge,
+            shipping: deliveryCharge,
+            codPayableNow: codPayableNow,
+            codCollectionAmount: codCollectionAmount,
             paymentMethod:
               paymentMethod === "cash_on_delivery"
                 ? "Cash on Delivery (COD)"
@@ -234,9 +240,15 @@ export default function Checkout() {
         orderId: guestOrderNumber,
         date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
         items: [...cart],
-        total: cartTotal,
+        total: paymentMethod === "cash_on_delivery" ? codPayableNow : cartTotal,
         subtotal: cartSubtotal,
-        shipping: shipping,
+        wholesaleCost: cartWholesaleSubtotal,
+        customerSellingTotal: cartCustomerSellingTotal,
+        expectedProfit: cartExpectedProfit,
+        deliveryCharge: deliveryCharge,
+        shipping: deliveryCharge,
+        codPayableNow: codPayableNow,
+        codCollectionAmount: codCollectionAmount,
         paymentMethod:
           paymentMethod === "cash_on_delivery"
             ? "Cash on Delivery"

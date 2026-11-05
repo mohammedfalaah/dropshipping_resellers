@@ -127,11 +127,50 @@ export default function OrderReceived() {
                   </span>
                 </div>
               ))}
-              <div className="d-flex justify-content-between pt-3">
-                <span className="fw-bold">Total Amount</span>
-                <span className="fw-bold h5 mb-0 text-dark">
-                  ₹{Number(currentOrder.total).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                </span>
+
+              <div className="pt-3">
+                <div className="d-flex justify-content-between py-1 text-muted small">
+                  <span>Wholesale Subtotal:</span>
+                  <span className="fw-semibold text-dark">
+                    ₹{Number(currentOrder.wholesaleCost || currentOrder.subtotal || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+
+                <div className="d-flex justify-content-between py-1 small align-items-center">
+                  <span className="text-muted">
+                    <i className="fa-solid fa-truck-fast text-primary me-1"></i> Delivery Charge:
+                  </span>
+                  <span className="badge bg-primary-subtle text-primary fs-6">
+                    ₹{Number(currentOrder.deliveryCharge ?? currentOrder.shipping ?? 50).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+
+                {currentOrder.paymentMethod?.toLowerCase().includes("cod") || currentOrder.paymentMethod?.toLowerCase().includes("cash on delivery") ? (
+                  <div className="mt-2 pt-2 border-top">
+                    <div className="d-flex justify-content-between py-1 small">
+                      <span className="fw-semibold text-dark">Paid at Checkout (Delivery Charge only):</span>
+                      <strong className="text-success">
+                        ₹{Number(currentOrder.codPayableNow ?? currentOrder.deliveryCharge ?? 50).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </strong>
+                    </div>
+                    <div className="d-flex justify-content-between py-1 small bg-light p-2 rounded-2 mt-1 border">
+                      <span className="text-muted">
+                        <i className="fa-solid fa-hand-holding-dollar text-warning me-1"></i>
+                        To Collect from Customer on Delivery:
+                      </span>
+                      <strong className="text-dark">
+                        ₹{Number(currentOrder.codCollectionAmount || currentOrder.customerSellingTotal || currentOrder.total).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </strong>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="d-flex justify-content-between pt-3 border-top mt-2">
+                    <span className="fw-bold">Total Amount Paid</span>
+                    <span className="fw-bold h5 mb-0 text-dark">
+                      ₹{Number(currentOrder.total).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
