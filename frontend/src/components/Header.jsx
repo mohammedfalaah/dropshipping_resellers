@@ -309,7 +309,7 @@ export default function Header() {
                           <span className="text-muted small">{prod.category}</span>
                         </div>
                         <span className="fw-bold" style={{ color: "var(--accent-color, #FA7EAA)" }}>
-                          ${prod.price.toFixed(2)}
+                          ₹{prod.price.toFixed(2)}
                         </span>
                       </div>
                     ))

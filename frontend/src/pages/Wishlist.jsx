@@ -95,7 +95,7 @@ export default function Wishlist() {
                       </td>
                       <td>
                         <span className="fw-bold" style={{ color: "var(--accent-color, #FA7EAA)" }}>
-                          ${item.price.toFixed(2)}
+                          ₹{item.price.toFixed(2)}
                         </span>
                       </td>
                       <td>

@@ -58,7 +58,7 @@ export const blogPosts = [
     content: `Scaling an independent e-commerce brand or reseller business hinges on identifying products with compelling perceived value and healthy margins. In 2026, tech accessories and smart lifestyle gear continue to outpace traditional retail categories in both search volume and repeat purchases.
 
 ### 1. Active Noise Cancelling Audio
-Wireless earbuds are no longer luxury items—they are essential daily tools. Modern consumers look for premium sound, low latency, and long battery life without paying $250+ for legacy brand names.
+Wireless earbuds are no longer luxury items—they are essential daily tools. Modern consumers look for premium sound, low latency, and long battery life without paying ₹2,500+ for legacy brand names.
 
 ### 2. High-Density Magnetic Power Banks
 With smartphones handling heavier workloads, magnetic snap-on battery packs with digital charge displays have become rapid impulse buys with exceptionally high conversion rates.

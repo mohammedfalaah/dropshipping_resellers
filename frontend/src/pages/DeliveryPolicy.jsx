@@ -27,17 +27,17 @@ export default function DeliveryPolicy() {
                   <tr>
                     <td>Standard Shipping</td>
                     <td>3 – 5 Business Days</td>
-                    <td>$5.99 (Free on orders $50+)</td>
+                    <td>₹50 (Free on orders ₹500+)</td>
                   </tr>
                   <tr>
                     <td>Expedited Courier</td>
                     <td>2 Business Days</td>
-                    <td>$12.99</td>
+                    <td>₹120</td>
                   </tr>
                   <tr>
                     <td>Next Day Air</td>
                     <td>1 Business Day</td>
-                    <td>$24.99</td>
+                    <td>₹250</td>
                   </tr>
                   <tr>
                     <td>International Express</td>

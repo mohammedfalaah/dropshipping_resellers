@@ -334,7 +334,7 @@ export default function ProductDetails() {
                 <div className="p-3 bg-light rounded-4 small border">
                   <div className="row g-2 text-muted">
                     <div className="col-6">
-                      <i className="fa-solid fa-truck-fast me-2 text-dark"></i> Free shipping over $50
+                      <i className="fa-solid fa-truck-fast me-2 text-dark"></i> Free shipping on orders over ₹499
                     </div>
                     <div className="col-6">
                       <i className="fa-solid fa-shield-halved me-2 text-dark"></i> 30-Day Money Back
