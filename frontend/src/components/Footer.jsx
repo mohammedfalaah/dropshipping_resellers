@@ -36,11 +36,11 @@ export default function Footer() {
 
                 <div className="footer-benefit-item">
                   <div className="icon-box">
-                    <img src="/images/icon-footer-benefit-2.svg" alt="Easy Returns" />
+                    <img src="/images/icon-footer-benefit-2.svg" alt="Replacement Policy" />
                   </div>
                   <div className="footer-benefit-item-content">
-                    <h2><Link to="/refund-policy">Easy Returns</Link></h2>
-                    <p>Hassle-Free 30-Day Returns</p>
+                    <h2><Link to="/refund-policy">Replacement Policy</Link></h2>
+                    <p>Damaged / Defect Replacement</p>
                   </div>
                 </div>
 
@@ -124,6 +124,7 @@ export default function Footer() {
                   <ul>
                     <li><Link to="/privacy-policy">Privacy Policy</Link></li>
                     <li><Link to="/terms-conditions">Terms & Conditions</Link></li>
+                    <li><Link to="/refund-policy">Return &amp; Replacement Policy</Link></li>
                     <li><Link to="/faqs">FAQs</Link></li>
                     <li><Link to="/testimonials">Customer Reviews</Link></li>
                     <li><Link to="/account">My Account</Link></li>

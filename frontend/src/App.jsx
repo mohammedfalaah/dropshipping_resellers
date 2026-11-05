@@ -106,6 +106,8 @@ export default function App() {
           <Route path="/terms-conditions" element={<TermsConditions />} />
           <Route path="/delivery-policy" element={<DeliveryPolicy />} />
           <Route path="/refund-policy" element={<RefundPolicy />} />
+          <Route path="/return-policy" element={<RefundPolicy />} />
+          <Route path="/replacement-policy" element={<RefundPolicy />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
