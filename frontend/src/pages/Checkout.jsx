@@ -511,7 +511,7 @@ export default function Checkout() {
                   <h4 className="fw-bold mb-4">Billing & Shipping Details</h4>
 
                   <div className="row g-3">
-                    <div className="col-sm-6">
+                    <div className="col-6 col-sm-6">
                       <label className="form-label small fw-semibold">First Name *</label>
                       <input
                         type="text"
@@ -524,7 +524,7 @@ export default function Checkout() {
                       />
                     </div>
 
-                    <div className="col-sm-6">
+                    <div className="col-6 col-sm-6">
                       <label className="form-label small fw-semibold">Last Name *</label>
                       <input
                         type="text"
@@ -576,7 +576,7 @@ export default function Checkout() {
                       />
                     </div>
 
-                    <div className="col-sm-6">
+                    <div className="col-12 col-sm-6">
                       <label className="form-label small fw-semibold">Town / City *</label>
                       <input
                         type="text"
@@ -589,7 +589,7 @@ export default function Checkout() {
                       />
                     </div>
 
-                    <div className="col-sm-3">
+                    <div className="col-6 col-sm-3">
                       <label className="form-label small fw-semibold">State *</label>
                       <input
                         type="text"
@@ -602,7 +602,7 @@ export default function Checkout() {
                       />
                     </div>
 
-                    <div className="col-sm-3">
+                    <div className="col-6 col-sm-3">
                       <label className="form-label small fw-semibold">PIN / Postal Code *</label>
                       <input
                         type="text"

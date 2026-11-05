@@ -385,9 +385,12 @@ header.main-header .header-sticky.active {
 }
 
 @media (max-width: 575px) {
+  .product-item-list {
+    gap: 12px !important;
+  }
   .product-item-list .product-item {
-    width: 100% !important;
-    max-width: 100% !important;
+    width: calc(50% - 6px) !important;
+    max-width: calc(50% - 6px) !important;
   }
 }
 
@@ -1230,6 +1233,134 @@ header.main-header .header-sticky.active {
 .cart-table td {
   padding: 14px;
   vertical-align: middle;
+}
+
+/* ========================================================
+   GLOBAL MOBILE-FIRST RESPONSIVENESS & TOUCH OPTIMIZATIONS
+   ======================================================== */
+html, body, #root, .site-wrapper {
+  overflow-x: hidden !important;
+  max-width: 100vw;
+}
+
+/* Touch-friendly scrollable bars with hidden scrollbars */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Mobile Product Card Action Buttons (always accessible on touch devices) */
+@media (max-width: 991px) {
+  .product-item .product-item-action {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+    bottom: 8px !important;
+  }
+
+  .product-item .product-item-action ul li button {
+    width: 32px !important;
+    height: 32px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+  }
+
+  .product-item .product-item-content h2 {
+    font-size: 14px !important;
+    line-height: 1.35 !important;
+    margin-bottom: 6px !important;
+  }
+
+  .product-pricing-box .current-price {
+    font-size: 15px !important;
+  }
+}
+
+@media (max-width: 575px) {
+  /* 2-Column Mobile Grid for Products */
+  .product-item {
+    padding: 10px !important;
+    border-radius: 14px !important;
+  }
+
+  .product-item .product-item-header {
+    margin-bottom: 8px !important;
+  }
+
+  .product-item .product-item-image img {
+    max-height: 140px !important;
+    object-fit: contain !important;
+  }
+
+  .product-item-content h2 {
+    font-size: 13px !important;
+    line-height: 1.3 !important;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .product-pricing-box {
+    flex-wrap: wrap;
+    gap: 4px !important;
+  }
+
+  .product-pricing-box .current-price {
+    font-size: 14px !important;
+  }
+
+  .product-pricing-box .original-price {
+    font-size: 11px !important;
+  }
+
+  .reseller-margin-pill {
+    font-size: 9px !important;
+    padding: 2px 6px !important;
+  }
+
+  /* Responsive Hero section */
+  .hero-content .section-title h1 {
+    font-size: 28px !important;
+    line-height: 1.25 !important;
+  }
+
+  .hero-sub-heading p {
+    font-size: 13px !important;
+  }
+
+  .hero-content-btn {
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100%;
+  }
+
+  .hero-content-btn .btn-default {
+    width: 100% !important;
+    text-align: center;
+  }
+
+  /* Responsive Breadcrumb */
+  .breadcrumb-wrapper {
+    padding: 24px 0 !important;
+  }
+
+  .breadcrumb-content h1 {
+    font-size: 22px !important;
+  }
+
+  /* Quick View Modal on mobile */
+  .modal-dialog {
+    margin: 0.5rem auto !important;
+    max-width: 95vw !important;
+  }
+
+  .modal-content {
+    max-height: 92vh !important;
+    overflow-y: auto !important;
+  }
 }
 
 

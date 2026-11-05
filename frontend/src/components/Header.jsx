@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import { useProducts } from "../context/ProductContext";
@@ -13,6 +13,11 @@ export default function Header() {
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -190,55 +195,57 @@ export default function Header() {
 
           {/* Mobile Navigation Drawer */}
           {mobileMenuOpen && (
-            <div className="mobile-menu-drawer d-lg-none py-3 px-4 position-relative" style={{ zIndex: 1000 }}>
-              <ul className="navbar-nav">
-                <li className="nav-item py-1">
-                  <Link className="nav-link fw-semibold" to="/" onClick={() => setMobileMenuOpen(false)}>
-                    Home
-                  </Link>
-                </li>
-                <li className="nav-item py-1">
-                  <Link className="nav-link fw-semibold" to="/shop" onClick={() => setMobileMenuOpen(false)}>
-                    Shop All
-                  </Link>
-                </li>
-                <li className="nav-item py-1">
-                  <Link className="nav-link fw-semibold" to="/about" onClick={() => setMobileMenuOpen(false)}>
-                    About Us
-                  </Link>
-                </li>
-                <li className="nav-item py-1">
-                  <Link className="nav-link fw-semibold" to="/blog" onClick={() => setMobileMenuOpen(false)}>
-                    Blog
-                  </Link>
-                </li>
-                <li className="nav-item py-1">
-                  <Link className="nav-link fw-semibold" to="/wishlist" onClick={() => setMobileMenuOpen(false)}>
-                    Wishlist ({wishlistCount})
-                  </Link>
-                </li>
-                <li className="nav-item py-1">
-                  <Link className="nav-link fw-semibold" to="/cart" onClick={() => setMobileMenuOpen(false)}>
-                    Cart ({cartCount})
-                  </Link>
-                </li>
-                <li className="nav-item py-1">
-                  <Link className="nav-link fw-semibold" to="/account" onClick={() => setMobileMenuOpen(false)}>
-                    My Account
-                  </Link>
-                </li>
-                <li className="nav-item py-1">
-                  <Link className="nav-link fw-semibold" to="/faqs" onClick={() => setMobileMenuOpen(false)}>
-                    FAQs
-                  </Link>
-                </li>
-                <li className="nav-item py-1">
-                  <Link className="nav-link fw-semibold" to="/contact" onClick={() => setMobileMenuOpen(false)}>
-                    Contact Us
-                  </Link>
-                </li>
-              </ul>
-            </div>
+            <>
+              <div
+                className="position-fixed top-0 start-0 w-100 h-100 d-lg-none"
+                style={{ zIndex: 999, backgroundColor: "rgba(0,0,0,0.5)" }}
+                onClick={() => setMobileMenuOpen(false)}
+              />
+              <div className="mobile-menu-drawer d-lg-none py-3 px-4 position-relative" style={{ zIndex: 1000 }}>
+                <ul className="navbar-nav">
+                  <li className="nav-item py-1">
+                    <Link className="nav-link fw-semibold" to="/" onClick={() => setMobileMenuOpen(false)}>
+                      <i className="fa-solid fa-house me-2 text-primary"></i> Home
+                    </Link>
+                  </li>
+                  <li className="nav-item py-1">
+                    <Link className="nav-link fw-semibold" to="/shop" onClick={() => setMobileMenuOpen(false)}>
+                      <i className="fa-solid fa-store me-2 text-primary"></i> Shop All Products
+                    </Link>
+                  </li>
+                  <li className="nav-item py-1">
+                    <Link className="nav-link fw-semibold" to="/cart" onClick={() => setMobileMenuOpen(false)}>
+                      <i className="fa-solid fa-basket-shopping me-2 text-primary"></i> Cart ({cartCount})
+                    </Link>
+                  </li>
+                  <li className="nav-item py-1">
+                    <Link className="nav-link fw-semibold" to="/wishlist" onClick={() => setMobileMenuOpen(false)}>
+                      <i className="fa-solid fa-heart me-2 text-danger"></i> Wishlist ({wishlistCount})
+                    </Link>
+                  </li>
+                  <li className="nav-item py-1">
+                    <Link className="nav-link fw-semibold" to="/account" onClick={() => setMobileMenuOpen(false)}>
+                      <i className="fa-solid fa-user me-2 text-primary"></i> My Account
+                    </Link>
+                  </li>
+                  <li className="nav-item py-1">
+                    <Link className="nav-link fw-semibold" to="/about" onClick={() => setMobileMenuOpen(false)}>
+                      <i className="fa-solid fa-circle-info me-2 text-primary"></i> About Us
+                    </Link>
+                  </li>
+                  <li className="nav-item py-1">
+                    <Link className="nav-link fw-semibold" to="/contact" onClick={() => setMobileMenuOpen(false)}>
+                      <i className="fa-solid fa-envelope me-2 text-primary"></i> Contact Us
+                    </Link>
+                  </li>
+                  <li className="nav-item py-1">
+                    <Link className="nav-link fw-semibold" to="/faqs" onClick={() => setMobileMenuOpen(false)}>
+                      <i className="fa-solid fa-circle-question me-2 text-primary"></i> FAQs
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+            </>
           )}
         </div>
       </header>

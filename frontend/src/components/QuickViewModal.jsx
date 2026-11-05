@@ -103,8 +103,8 @@ export default function QuickViewModal({ product, onClose }) {
         className="modal-dialog modal-dialog-centered modal-lg"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="modal-content overflow-hidden border-0 shadow-lg" style={{ borderRadius: "20px" }}>
-          <div className="modal-body p-4 p-md-5 position-relative">
+        <div className="modal-content border-0 shadow-lg" style={{ borderRadius: "20px", maxHeight: "92vh", overflowY: "auto" }}>
+          <div className="modal-body p-3 p-md-4 p-lg-5 position-relative">
             <button
               type="button"
               className="btn-close position-absolute top-0 end-0 m-4"

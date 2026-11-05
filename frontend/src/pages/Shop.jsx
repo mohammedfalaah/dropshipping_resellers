@@ -26,6 +26,7 @@ export default function Shop() {
   const [maxPrice, setMaxPrice] = useState(null);
   const effectiveMaxPrice = maxPrice ?? catalogMaxPrice;
   const [quickViewProduct, setQuickViewProduct] = useState(null);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   // Protect Reseller Shop: Must be logged in to view catalog
   if (authLoading) {
@@ -104,11 +105,60 @@ export default function Shop() {
         links={[{ label: "Shop", to: "/shop" }]}
       />
 
-      <div className="shop-page py-5">
+      <div className="shop-page py-4 py-md-5">
         <div className="container">
-          <div className="row g-4">
-            {/* Sidebar Filters */}
-            <div className="col-lg-3">
+          {/* Mobile Category Quick-Filter Horizontal Swipe Bar */}
+          <div className="d-flex d-lg-none overflow-x-auto gap-2 mb-3 pb-1 no-scrollbar">
+            <button
+              type="button"
+              className={`btn btn-sm rounded-pill px-3 py-2 text-nowrap fw-semibold ${
+                currentCategory === "all" ? "btn-dark text-white shadow-sm" : "btn-light text-dark border"
+              }`}
+              onClick={() => handleCategorySelect("all")}
+              style={{ fontSize: "12px" }}
+            >
+              All ({products.length})
+            </button>
+            {categories.map((cat) => {
+              const count = products.filter((p) => p.categorySlug === cat.slug).length;
+              const isSelected = currentCategory === cat.slug;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  className={`btn btn-sm rounded-pill px-3 py-2 text-nowrap fw-semibold ${
+                    isSelected ? "btn-dark text-white shadow-sm" : "btn-light text-dark border"
+                  }`}
+                  onClick={() => handleCategorySelect(cat.slug)}
+                  style={{ fontSize: "12px" }}
+                >
+                  {cat.name} ({count})
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Mobile Filter Toggle Button */}
+          <div className="d-block d-lg-none mb-3">
+            <button
+              type="button"
+              className="btn btn-outline-dark rounded-pill w-100 py-2 d-flex align-items-center justify-content-between px-3 fw-semibold small shadow-sm"
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+            >
+              <span>
+                <i className="fa-solid fa-sliders me-2 text-primary"></i>
+                <span>Filter by Price &amp; Search</span>
+                {(currentSearch || maxPrice !== null) && (
+                  <span className="badge bg-primary text-white rounded-pill ms-2">Active</span>
+                )}
+              </span>
+              <i className={`fa-solid ${showMobileFilters ? "fa-chevron-up" : "fa-chevron-down"}`}></i>
+            </button>
+          </div>
+
+          <div className="row g-3 g-md-4">
+            {/* Sidebar Filters (Always visible on desktop, toggleable on mobile) */}
+            <div className={`col-lg-3 ${showMobileFilters ? "d-block mb-3 mb-lg-0" : "d-none d-lg-block"}`}>
               <div className="shop-sidebar bg-white p-4 rounded-4 shadow-sm border">
                 {/* Search in Shop */}
                 <div className="mb-4">
@@ -247,11 +297,11 @@ export default function Shop() {
                   </button>
                 </div>
               ) : (
-                <div className="row g-4">
+                <div className="row g-2 g-sm-3 g-md-4">
                   {filteredProducts.map((product, idx) => (
                     <div
                       key={product.id || product._id || idx}
-                      className="col-md-4 col-sm-6"
+                      className="col-6 col-sm-6 col-md-4"
                     >
                       <ProductCard
                         product={product}

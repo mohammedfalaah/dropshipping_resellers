@@ -39,58 +39,58 @@ export default function Contact() {
       <div className="contact-page py-5">
         <div className="container">
           {/* Top Info Cards */}
-          <div className="row g-4 mb-5">
-            <div className="col-md-3 col-sm-6 wow fadeInUp" data-wow-delay="0s">
-              <div className="card h-100 border-0 shadow-sm p-4 rounded-4 text-center bg-white">
+          <div className="row g-3 g-md-4 mb-4 mb-md-5">
+            <div className="col-6 col-md-3 wow fadeInUp" data-wow-delay="0s">
+              <div className="card h-100 border-0 shadow-sm p-3 p-md-4 rounded-4 text-center bg-white">
                 <div
                   className="rounded-circle d-inline-flex align-items-center justify-content-center mx-auto mb-3"
-                  style={{ width: "60px", height: "60px", backgroundColor: "rgba(250, 126, 170, 0.15)", color: "var(--accent-color, #FA7EAA)" }}
+                  style={{ width: "52px", height: "52px", backgroundColor: "rgba(250, 126, 170, 0.15)", color: "var(--accent-color, #FA7EAA)" }}
                 >
-                  <i className="fa-solid fa-phone fs-4"></i>
+                  <i className="fa-solid fa-phone fs-5"></i>
                 </div>
-                <h5 className="fw-bold mb-2">Call Us</h5>
+                <h5 className="fw-bold mb-1" style={{ fontSize: "15px" }}>Call Us</h5>
                 <p className="text-muted small mb-0">+91 1234 56789</p>
                 <p className="text-muted small mb-0">+1 (800) 555-0199</p>
               </div>
             </div>
 
-            <div className="col-md-3 col-sm-6 wow fadeInUp" data-wow-delay="0.15s">
-              <div className="card h-100 border-0 shadow-sm p-4 rounded-4 text-center bg-white">
+            <div className="col-6 col-md-3 wow fadeInUp" data-wow-delay="0.15s">
+              <div className="card h-100 border-0 shadow-sm p-3 p-md-4 rounded-4 text-center bg-white">
                 <div
                   className="rounded-circle d-inline-flex align-items-center justify-content-center mx-auto mb-3"
-                  style={{ width: "60px", height: "60px", backgroundColor: "rgba(250, 126, 170, 0.15)", color: "var(--accent-color, #FA7EAA)" }}
+                  style={{ width: "52px", height: "52px", backgroundColor: "rgba(250, 126, 170, 0.15)", color: "var(--accent-color, #FA7EAA)" }}
                 >
-                  <i className="fa-solid fa-envelope fs-4"></i>
+                  <i className="fa-solid fa-envelope fs-5"></i>
                 </div>
-                <h5 className="fw-bold mb-2">Email Us</h5>
+                <h5 className="fw-bold mb-1" style={{ fontSize: "15px" }}>Email Us</h5>
                 <p className="text-muted small mb-0">support@sparepro.com</p>
                 <p className="text-muted small mb-0">wholesale@sparepro.com</p>
               </div>
             </div>
 
-            <div className="col-md-3 col-sm-6 wow fadeInUp" data-wow-delay="0.3s">
-              <div className="card h-100 border-0 shadow-sm p-4 rounded-4 text-center bg-white">
+            <div className="col-6 col-md-3 wow fadeInUp" data-wow-delay="0.3s">
+              <div className="card h-100 border-0 shadow-sm p-3 p-md-4 rounded-4 text-center bg-white">
                 <div
                   className="rounded-circle d-inline-flex align-items-center justify-content-center mx-auto mb-3"
-                  style={{ width: "60px", height: "60px", backgroundColor: "rgba(250, 126, 170, 0.15)", color: "var(--accent-color, #FA7EAA)" }}
+                  style={{ width: "52px", height: "52px", backgroundColor: "rgba(250, 126, 170, 0.15)", color: "var(--accent-color, #FA7EAA)" }}
                 >
-                  <i className="fa-solid fa-location-dot fs-4"></i>
+                  <i className="fa-solid fa-location-dot fs-5"></i>
                 </div>
-                <h5 className="fw-bold mb-2">Visit Atelier</h5>
-                <p className="text-muted small mb-0">124 Regent Street</p>
-                <p className="text-muted small mb-0">London, W1B 5SR, UK</p>
+                <h5 className="fw-bold mb-1" style={{ fontSize: "15px" }}>Warehouse</h5>
+                <p className="text-muted small mb-0">Commercial Hub, Sector 18</p>
+                <p className="text-muted small mb-0">Mumbai, Maharashtra 400001</p>
               </div>
             </div>
 
-            <div className="col-md-3 col-sm-6 wow fadeInUp" data-wow-delay="0.45s">
-              <div className="card h-100 border-0 shadow-sm p-4 rounded-4 text-center bg-white">
+            <div className="col-6 col-md-3 wow fadeInUp" data-wow-delay="0.45s">
+              <div className="card h-100 border-0 shadow-sm p-3 p-md-4 rounded-4 text-center bg-white">
                 <div
                   className="rounded-circle d-inline-flex align-items-center justify-content-center mx-auto mb-3"
-                  style={{ width: "60px", height: "60px", backgroundColor: "rgba(250, 126, 170, 0.15)", color: "var(--accent-color, #FA7EAA)" }}
+                  style={{ width: "52px", height: "52px", backgroundColor: "rgba(250, 126, 170, 0.15)", color: "var(--accent-color, #FA7EAA)" }}
                 >
-                  <i className="fa-solid fa-clock fs-4"></i>
+                  <i className="fa-solid fa-clock fs-5"></i>
                 </div>
-                <h5 className="fw-bold mb-2">Working Hours</h5>
+                <h5 className="fw-bold mb-1" style={{ fontSize: "15px" }}>Working Hours</h5>
                 <p className="text-muted small mb-0">Mon – Fri: 9am – 8pm</p>
                 <p className="text-muted small mb-0">Sat – Sun: 10am – 6pm</p>
               </div>
@@ -98,12 +98,12 @@ export default function Contact() {
           </div>
 
           {/* Form & Map */}
-          <div className="row g-5 align-items-center">
+          <div className="row g-4 g-lg-5 align-items-center">
             <div className="col-lg-6 wow fadeInLeft">
-              <div className="bg-white p-4 p-md-5 rounded-4 shadow-sm border">
+              <div className="bg-white p-3 p-md-5 rounded-4 shadow-sm border">
                 <h3 className="fw-bold mb-2">Send us a message</h3>
                 <p className="text-muted small mb-4">
-                  Have questions about ingredients, shades, or custom orders? Drop us a note below.
+                  Have questions about bulk wholesale pricing, dropship orders, or product catalogs? Drop us a note below.
                 </p>
 
                 <form onSubmit={handleSubmit}>

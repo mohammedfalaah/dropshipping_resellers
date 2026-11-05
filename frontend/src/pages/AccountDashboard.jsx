@@ -243,8 +243,8 @@ export default function AccountDashboard() {
                   </div>
                 </div>
 
-                {/* Role Specific Nav Items */}
-                <div className="nav flex-column gap-2">
+                {/* Role Specific Nav Items - Scrollable horizontal bar on mobile, vertical stack on desktop */}
+                <div className="nav flex-row flex-lg-column gap-2 overflow-x-auto text-nowrap pb-2 mb-3 mb-lg-0 no-scrollbar">
                   <button
                     type="button"
                     className={`btn text-start rounded-pill px-3 py-2 ${activeTab === "dashboard" ? "btn-dark text-white" : "btn-light"}`}

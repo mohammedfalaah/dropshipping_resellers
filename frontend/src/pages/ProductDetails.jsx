@@ -464,16 +464,16 @@ export default function ProductDetails() {
                 <div className="p-3 bg-light rounded-4 small border">
                   <div className="row g-2 text-muted">
                     <div className="col-6">
-                      <i className="fa-solid fa-truck-fast me-2 text-dark"></i> Free shipping on orders over ₹499
+                      <i className="fa-solid fa-truck-fast me-2 text-primary"></i> Fast Doorstep Dispatch
                     </div>
                     <div className="col-6">
-                      <i className="fa-solid fa-shield-halved me-2 text-dark"></i> 30-Day Money Back
+                      <i className="fa-solid fa-box-open me-2 text-primary"></i> 24-Hr Unboxing Replacement
                     </div>
                     <div className="col-6">
-                      <i className="fa-solid fa-leaf me-2 text-dark"></i> 100% Certified Vegan
+                      <i className="fa-solid fa-handshake me-2 text-primary"></i> Factory Direct Wholesale
                     </div>
                     <div className="col-6">
-                      <i className="fa-solid fa-flask-vial me-2 text-dark"></i> Dermatologist Tested
+                      <i className="fa-solid fa-wallet me-2 text-primary"></i> COD &amp; Reseller Margins
                     </div>
                   </div>
                 </div>
