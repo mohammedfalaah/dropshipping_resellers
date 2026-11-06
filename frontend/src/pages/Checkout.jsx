@@ -65,7 +65,6 @@ export default function Checkout() {
     if (
       !form.firstName.trim() ||
       !form.lastName.trim() ||
-      !form.email.trim() ||
       !form.phone.trim() ||
       !form.address.trim() ||
       !form.city.trim() ||
@@ -538,15 +537,14 @@ export default function Checkout() {
                     </div>
 
                     <div className="col-sm-6">
-                      <label className="form-label small fw-semibold">Email Address *</label>
+                      <label className="form-label small fw-semibold">Email Address (Optional)</label>
                       <input
                         type="email"
                         name="email"
                         className="form-control"
-                        placeholder="customer@example.com"
+                        placeholder="customer@example.com (optional)"
                         value={form.email}
                         onChange={handleChange}
-                        required
                       />
                     </div>
 

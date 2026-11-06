@@ -31,7 +31,7 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
 
   // Ensure shipping address has email and names
   if (!shippingAddress.email) {
-    shippingAddress.email = userObj?.email || "customer@example.com";
+    shippingAddress.email = userObj?.email || "";
   }
   if (!shippingAddress.firstName) {
     const parts = (userObj?.name || "Customer").trim().split(" ");
