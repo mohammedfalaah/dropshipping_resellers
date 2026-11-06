@@ -4,6 +4,7 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const path = require("path");
 const rateLimit = require("express-rate-limit");
+const compression = require("compression");
 
 const { FRONTEND_URL, NODE_ENV } = require("./config/env");
 const errorHandler = require("./middleware/errorHandler");
@@ -29,6 +30,17 @@ const connectDB = require("./config/db");
 
 // Security HTTP headers
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+
+// High-performance gzip/brotli response compression
+app.use(
+  compression({
+    threshold: 1024, // Only compress responses above 1KB
+    filter: (req, res) => {
+      if (req.headers["x-no-compression"]) return false;
+      return compression.filter(req, res);
+    },
+  })
+);
 
 // CORS configuration supporting local dev (all ports), FRONTEND_URL and Vercel deployments
 const allowedOrigins = [

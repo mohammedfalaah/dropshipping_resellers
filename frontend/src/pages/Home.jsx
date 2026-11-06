@@ -87,7 +87,7 @@ export default function Home() {
           <div className="scrolling-content">
             {[...tickerItems, ...tickerItems].map((item, idx) => (
               <span key={`ticker-a-${idx}`}>
-                <img src={item.img} alt="" />
+                <img src={item.img} alt="" loading="lazy" decoding="async" />
                 {item.text}
               </span>
             ))}
@@ -96,7 +96,7 @@ export default function Home() {
           <div className="scrolling-content" aria-hidden="true">
             {[...tickerItems, ...tickerItems].map((item, idx) => (
               <span key={`ticker-b-${idx}`}>
-                <img src={item.img} alt="" />
+                <img src={item.img} alt="" loading="lazy" decoding="async" />
                 {item.text}
               </span>
             ))}
@@ -130,6 +130,8 @@ export default function Home() {
                           <img
                             src={cat.image || "/images/category-gadgets.jpg"}
                             alt={cat.name}
+                            loading="lazy"
+                            decoding="async"
                             onError={(e) => {
                               e.target.onerror = null;
                               e.target.src = "/images/category-gadgets.jpg";
@@ -193,7 +195,7 @@ export default function Home() {
           {/* Product Grid Viewport */}
           <div className="row">
             <div className="col-lg-12">
-              {loading ? (
+              {loading && products.length === 0 ? (
                 <div className="text-center py-5">
                   <div className="spinner-border text-dark" role="status">
                     <span className="visually-hidden">Loading products...</span>

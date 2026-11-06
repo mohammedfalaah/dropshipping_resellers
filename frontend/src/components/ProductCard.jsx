@@ -90,7 +90,14 @@ export default function ProductCard({ product, onQuickView, className = "", isDr
         <div className="product-item-image">
           <Link to={`/product/${product.slug}`} onClick={handleLinkClick}>
             <figure className="mb-0">
-              <img src={product.image || product.mainImage || "/images/product-earbuds.jpg"} alt={product.name} draggable="false" />
+              <img
+                src={product.image || product.mainImage || "/images/product-earbuds.jpg"}
+                alt={product.name}
+                draggable="false"
+                loading="lazy"
+                decoding="async"
+                style={{ objectFit: "contain", aspectRatio: "1/1" }}
+              />
             </figure>
           </Link>
         </div>

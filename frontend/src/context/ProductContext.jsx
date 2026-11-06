@@ -63,13 +63,42 @@ export const ProductProvider = ({ children }) => {
     };
   };
 
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState(() => initialCategories.map(normalizeCategory));
-  const [loading, setLoading] = useState(false);
+  const CACHE_KEY_PRODUCTS = "sparepro_cached_products_v1";
+  const CACHE_KEY_CATEGORIES = "sparepro_cached_categories_v1";
+  const CACHE_KEY_TIME = "sparepro_cached_time_v1";
+  const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
+
+  const [products, setProducts] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem(CACHE_KEY_PRODUCTS);
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [categories, setCategories] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem(CACHE_KEY_CATEGORIES);
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return initialCategories.map(normalizeCategory);
+  });
+
+  const [loading, setLoading] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem(CACHE_KEY_PRODUCTS);
+      const time = sessionStorage.getItem(CACHE_KEY_TIME);
+      if (cached && time && Date.now() - Number(time) < CACHE_TTL_MS) {
+        return false; // Valid cache exists, don't show loading spinner
+      }
+    } catch {}
+    return true;
+  });
+
   const [error, setError] = useState(null);
 
-  const fetchProducts = useCallback(async () => {
-    setLoading(true);
+  const fetchProducts = useCallback(async (force = false) => {
     try {
       // Parallel fetch products and categories
       const [prodRes, catRes] = await Promise.allSettled([
@@ -85,12 +114,13 @@ export const ProductProvider = ({ children }) => {
         if (Array.isArray(rawProducts)) {
           const normalizedDbProducts = rawProducts.map(normalizeProduct);
           setProducts(normalizedDbProducts);
-        } else {
-          setProducts([]);
+          try {
+            sessionStorage.setItem(CACHE_KEY_PRODUCTS, JSON.stringify(normalizedDbProducts));
+            sessionStorage.setItem(CACHE_KEY_TIME, Date.now().toString());
+          } catch {}
         }
       } else {
-        console.warn("Backend products API failed or unreachable:", prodRes.reason);
-        setProducts([]);
+        console.warn("Backend products API fallback:", prodRes.reason?.message);
       }
 
       if (catRes.status === "fulfilled") {
@@ -99,12 +129,16 @@ export const ProductProvider = ({ children }) => {
           catRes.value?.categories ||
           (Array.isArray(catRes.value) ? catRes.value : []);
         if (Array.isArray(rawCategories) && rawCategories.length > 0) {
-          setCategories(rawCategories.map(normalizeCategory));
+          const normCats = rawCategories.map(normalizeCategory);
+          setCategories(normCats);
+          try {
+            sessionStorage.setItem(CACHE_KEY_CATEGORIES, JSON.stringify(normCats));
+          } catch {}
         } else {
           setCategories(initialCategories.map(normalizeCategory));
         }
       } else {
-        console.warn("Backend categories API failed or unreachable, keeping fallback categories:", catRes.reason);
+        console.warn("Backend categories fallback:", catRes.reason?.message);
         setCategories((prev) => (prev && prev.length > 0 ? prev : initialCategories.map(normalizeCategory)));
       }
 
@@ -112,7 +146,6 @@ export const ProductProvider = ({ children }) => {
     } catch (err) {
       console.warn("Could not fetch live products from API:", err.message);
       setError(err.message);
-      setProducts([]);
     } finally {
       setLoading(false);
     }

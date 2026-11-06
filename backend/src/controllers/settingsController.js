@@ -7,6 +7,7 @@ const { successResponse, errorResponse } = require("../utils/response");
 const getPublicSettings = async (req, res, next) => {
   try {
     const settings = await settingsService.getSettings();
+    res.set("Cache-Control", "public, max-age=60, stale-while-revalidate=120");
     return successResponse(res, "Public platform settings retrieved", {
       deliveryChargePaise: settings.deliveryChargePaise,
       deliveryCharge: Number((settings.deliveryChargePaise / 100).toFixed(2)),

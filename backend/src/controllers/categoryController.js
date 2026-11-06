@@ -43,25 +43,29 @@ const getCategories = async (req, res, next) => {
       });
     }
 
-    // Calculate productCount for each category
-    const categoriesWithCount = await Promise.all(
-      categories.map(async (cat) => {
-        const catNameRegex = cat.name ? new RegExp(`^${escapeRegex(cat.name)}$`, "i") : null;
-        const countQuery = {
-          $or: [
-            { categorySlug: (cat.slug || "").toLowerCase() },
-            ...(catNameRegex ? [{ category: catNameRegex }] : []),
-          ],
-        };
-        const productCount = await Product.countDocuments(countQuery).catch(() => 0);
-        return {
-          ...cat,
-          id: cat._id || cat.id,
-          image: cat.image || `/images/category-${(cat.slug || "gadgets").toLowerCase()}.jpg`,
-          productCount,
-        };
-      })
-    );
+    // Fast single aggregation for product counts by categorySlug
+    const countsAggregate = await Product.aggregate([
+      { $match: { isActive: true } },
+      { $group: { _id: { $toLower: "$categorySlug" }, count: { $sum: 1 } } },
+    ]).catch(() => []);
+
+    const countMap = {};
+    countsAggregate.forEach((c) => {
+      if (c._id) countMap[c._id] = c.count;
+    });
+
+    const categoriesWithCount = categories.map((cat) => {
+      const slugKey = (cat.slug || "").toLowerCase();
+      const productCount = countMap[slugKey] || 0;
+      return {
+        ...cat,
+        id: cat._id || cat.id,
+        image: cat.image || `/images/category-${slugKey || "gadgets"}.jpg`,
+        productCount,
+      };
+    });
+
+    res.set("Cache-Control", "public, max-age=60, stale-while-revalidate=120");
 
     return successResponse(res, "Categories retrieved successfully.", {
       categories: categoriesWithCount,

@@ -60,7 +60,7 @@ const getProducts = async (req, res, next) => {
     const skip = (Number(page) - 1) * Number(limit);
 
     const [products, total] = await Promise.all([
-      Product.find(query).sort(sort).skip(skip).limit(Number(limit)),
+      Product.find(query).sort(sort).skip(skip).limit(Number(limit)).lean(),
       Product.countDocuments(query),
     ]);
 
@@ -70,25 +70,31 @@ const getProducts = async (req, res, next) => {
       (req.user.role === "admin" || (req.user.role === "reseller" && req.user.approvalStatus === "approved"));
 
     const formattedProducts = products.map((p) => {
-      const obj = p.toObject();
-      obj.id = p._id.toString();
-      obj.price = paiseToRupees(p.resellerPricePaise || p.regularPricePaise || 0);
-      obj.originalPrice = paiseToRupees(p.regularPricePaise || p.resellerPricePaise || 0);
-      obj.resellerPrice = paiseToRupees(p.resellerPricePaise || 0);
-      obj.regularPrice = paiseToRupees(p.regularPricePaise || 0);
-      obj.image = p.mainImage || "/images/product-earbuds.jpg";
-      obj.thumbnails = p.gallery && p.gallery.length ? p.gallery : [p.mainImage || "/images/product-earbuds.jpg"];
-      obj.colors = p.colors || [];
-      obj.sizes = p.sizes || [];
-      obj.variants = (p.variants || []).map((v) => {
-        const vObj = v.toObject ? v.toObject() : v;
-        return {
-          ...vObj,
-          price: vObj.pricePaise ? paiseToRupees(vObj.pricePaise) : obj.price,
-        };
-      });
-      return obj;
+      const id = p._id ? p._id.toString() : p.id;
+      const price = paiseToRupees(p.resellerPricePaise || p.regularPricePaise || 0);
+      const originalPrice = paiseToRupees(p.regularPricePaise || p.resellerPricePaise || 0);
+      const resellerPrice = paiseToRupees(p.resellerPricePaise || 0);
+      const regularPrice = paiseToRupees(p.regularPricePaise || 0);
+      return {
+        ...p,
+        id,
+        _id: id,
+        price,
+        originalPrice,
+        resellerPrice,
+        regularPrice,
+        image: p.mainImage || "/images/product-earbuds.jpg",
+        thumbnails: p.gallery && p.gallery.length ? p.gallery : [p.mainImage || "/images/product-earbuds.jpg"],
+        colors: p.colors || [],
+        sizes: p.sizes || [],
+        variants: (p.variants || []).map((v) => ({
+          ...v,
+          price: v.pricePaise ? paiseToRupees(v.pricePaise) : price,
+        })),
+      };
     });
+
+    res.set("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
 
     return successResponse(res, "Products retrieved successfully.", {
       products: formattedProducts,
@@ -110,7 +116,7 @@ const getProducts = async (req, res, next) => {
  */
 const getProductBySlug = async (req, res, next) => {
   try {
-    const product = await Product.findOne({ slug: req.params.slug });
+    const product = await Product.findOne({ slug: req.params.slug }).lean();
     if (!product) {
       return errorResponse(res, "Product not found", "PRODUCT_NOT_FOUND", 404);
     }
@@ -119,23 +125,30 @@ const getProductBySlug = async (req, res, next) => {
       req.user &&
       (req.user.role === "admin" || (req.user.role === "reseller" && req.user.approvalStatus === "approved"));
 
-    const obj = product.toObject();
-    obj.id = product._id.toString();
-    obj.price = paiseToRupees(product.resellerPricePaise || product.regularPricePaise || 0);
-    obj.originalPrice = paiseToRupees(product.regularPricePaise || product.resellerPricePaise || 0);
-    obj.resellerPrice = paiseToRupees(product.resellerPricePaise || 0);
-    obj.regularPrice = paiseToRupees(product.regularPricePaise || 0);
-    obj.image = product.mainImage || "/images/product-earbuds.jpg";
-    obj.thumbnails = product.gallery && product.gallery.length ? product.gallery : [product.mainImage || "/images/product-earbuds.jpg"];
-    obj.colors = product.colors || [];
-    obj.sizes = product.sizes || [];
-    obj.variants = (product.variants || []).map((v) => {
-      const vObj = v.toObject ? v.toObject() : v;
-      return {
-        ...vObj,
-        price: vObj.pricePaise ? paiseToRupees(vObj.pricePaise) : obj.price,
-      };
-    });
+    const id = product._id ? product._id.toString() : product.id;
+    const price = paiseToRupees(product.resellerPricePaise || product.regularPricePaise || 0);
+    const originalPrice = paiseToRupees(product.regularPricePaise || product.resellerPricePaise || 0);
+    const resellerPrice = paiseToRupees(product.resellerPricePaise || 0);
+    const regularPrice = paiseToRupees(product.regularPricePaise || 0);
+    const obj = {
+      ...product,
+      id,
+      _id: id,
+      price,
+      originalPrice,
+      resellerPrice,
+      regularPrice,
+      image: product.mainImage || "/images/product-earbuds.jpg",
+      thumbnails: product.gallery && product.gallery.length ? product.gallery : [product.mainImage || "/images/product-earbuds.jpg"],
+      colors: product.colors || [],
+      sizes: product.sizes || [],
+      variants: (product.variants || []).map((v) => ({
+        ...v,
+        price: v.pricePaise ? paiseToRupees(v.pricePaise) : price,
+      })),
+    };
+
+    res.set("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
 
     return successResponse(res, "Product details retrieved.", {
       product: obj,

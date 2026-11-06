@@ -35,4 +35,7 @@ const CategorySchema = new mongoose.Schema(
   }
 );
 
+// High-performance index for active categories
+CategorySchema.index({ isActive: 1, createdAt: 1 });
+
 module.exports = mongoose.model("Category", CategorySchema);

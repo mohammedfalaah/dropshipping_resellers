@@ -136,6 +136,12 @@ const ProductSchema = new mongoose.Schema(
   }
 );
 
+// High-performance compound indexes for storefront queries and sorting
+ProductSchema.index({ isActive: 1, categorySlug: 1, createdAt: -1 });
+ProductSchema.index({ isActive: 1, isFeatured: 1 });
+ProductSchema.index({ isActive: 1, isTrending: 1 });
+ProductSchema.index({ isActive: 1, resellerPricePaise: 1 });
+
 // Virtuals for Rupees representation (e.g. for frontend compatibility)
 ProductSchema.virtual("price").get(function () {
   return Number((this.resellerPricePaise / 100).toFixed(2));
