@@ -77,20 +77,7 @@ export default function Cart() {
     navigate("/checkout");
   };
 
-  const handleApplyCoupon = (e) => {
-    e.preventDefault();
-    if (!couponInput.trim()) {
-      addToast("Please enter a valid coupon code.", "warning");
-      return;
-    }
-    const res = applyCoupon(couponInput);
-    if (res.success) {
-      addToast(res.message, "success");
-      setCouponInput("");
-    } else {
-      addToast(res.message, "error");
-    }
-  };
+
 
   if (cart.length === 0) {
     return (
@@ -602,7 +589,7 @@ export default function Cart() {
                 <div className="border-top pt-4 mt-3">
                   <div className="row align-items-center g-3">
                     <div className="col-md-7">
-                      <form onSubmit={handleApplyCoupon} className="d-flex gap-2">
+                      {/* <form onSubmit={handleApplyCoupon} className="d-flex gap-2">
                         <input
                           type="text"
                           className="form-control rounded-pill px-3"
@@ -613,7 +600,7 @@ export default function Cart() {
                         <button type="submit" className="btn btn-dark rounded-pill px-4 text-nowrap fw-semibold">
                           Apply Code
                         </button>
-                      </form>
+                      </form> */}
                       {coupon.applied && (
                         <div className="mt-2 text-success small d-flex align-items-center gap-2">
                           <span>
