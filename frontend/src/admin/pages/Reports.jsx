@@ -9,7 +9,7 @@ export default function Reports() {
 
   const handleDownloadCsv = (type) => {
     const token = localStorage.getItem("sparepro_token");
-    let url = `http://localhost:5001/api/admin/reports/export?type=${type}`;
+    let url = `/api/admin/reports/export?type=${type}`;
     if (startDate) url += `&startDate=${startDate}`;
     if (endDate) url += `&endDate=${endDate}`;
     if (token) url += `&token=${token}`;

@@ -42,9 +42,13 @@ app.use(
   })
 );
 
-// CORS configuration supporting local dev (all ports), FRONTEND_URL and Vercel deployments
+// CORS configuration supporting local dev (all ports), FRONTEND_URL, custom domain (thesparepro.com) and Vercel deployments
 const allowedOrigins = [
   FRONTEND_URL,
+  "https://thesparepro.com",
+  "https://www.thesparepro.com",
+  "http://thesparepro.com",
+  "http://www.thesparepro.com",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   "http://localhost:5174",
@@ -58,6 +62,7 @@ const isOriginAllowed = (origin) => {
   if (allowedOrigins.includes(origin)) return true;
   if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
   if (origin.endsWith(".vercel.app") || origin.includes("vercel.app")) return true;
+  if (origin.endsWith("thesparepro.com") || origin.includes("thesparepro.com")) return true;
   return false;
 };
 

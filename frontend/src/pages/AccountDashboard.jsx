@@ -740,7 +740,7 @@ export default function AccountDashboard() {
                         className="btn btn-sm btn-dark rounded-pill px-3"
                         onClick={(e) => {
                           e.preventDefault();
-                          window.open("http://localhost:5001/api/admin/reports/sales/csv?token=" + localStorage.getItem("sparepro_token"), "_blank");
+                          window.open("/api/admin/reports/sales/csv?token=" + localStorage.getItem("sparepro_token"), "_blank");
                         }}
                       >
                         <i className="fa-solid fa-download me-1"></i> Export Sales CSV
