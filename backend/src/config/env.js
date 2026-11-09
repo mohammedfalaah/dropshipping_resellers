@@ -11,7 +11,7 @@ module.exports = {
     process.env.RAZORPAY_KEY_SECRET ||
     Buffer.from("Nk1KckRIMDNOMWx3T290Z2xhNzNUVUJB", "base64").toString("utf-8"),
   RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || "rzp_webhook_secret_key_98765",
-  FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:5173",
+  FRONTEND_URL: process.env.FRONTEND_URL || "https://thesparepro.com",
   ADMIN_INITIAL_EMAIL: process.env.ADMIN_INITIAL_EMAIL || "admin@sparepro.com",
   ADMIN_INITIAL_PASSWORD: process.env.ADMIN_INITIAL_PASSWORD || "Admin@SparePro2026!",
   ADMIN_INITIAL_NAME: process.env.ADMIN_INITIAL_NAME || "SPARE PRO Admin",
