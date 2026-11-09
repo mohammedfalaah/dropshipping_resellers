@@ -295,7 +295,7 @@ export default function Checkout() {
       let rzpOrderId = existingOrderId || null;
       let rzpAmount = amountPaise;
       let rzpCurrency = "INR";
-      let keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_TuV8GLC7nWbF1R";
+      let keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Ty2y2q6NmAHJka";
 
       if (!rzpOrderId) {
         try {
