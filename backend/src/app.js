@@ -29,7 +29,7 @@ const app = express();
 const connectDB = require("./config/db");
 
 // Security HTTP headers
-app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" }, contentSecurityPolicy: false }));
 
 // High-performance gzip/brotli response compression
 app.use(

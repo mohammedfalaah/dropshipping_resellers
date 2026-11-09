@@ -292,10 +292,14 @@ export default function Checkout() {
 
   const handleRazorpayPayment = async ({ orderNumber, amountPaise, customerDetails, existingOrderId, isSimulated = false }) => {
     try {
+      const DEPRECATED_KEYS = ["rzp_test_TuV8GLC7nWbF1R", "rzp_live_tJm8f0aX037r67", "rzp_test_1DP5mmOlF5G5ag"];
       let rzpOrderId = existingOrderId || null;
       let rzpAmount = amountPaise;
       let rzpCurrency = "INR";
       let keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Ty2y2q6NmAHJka";
+      if (DEPRECATED_KEYS.includes(keyId) || keyId.startsWith("rzp_live_")) {
+        keyId = "rzp_test_Ty2y2q6NmAHJka";
+      }
 
       if (!rzpOrderId) {
         try {
@@ -317,7 +321,10 @@ export default function Checkout() {
             rzpOrderId = resolvedOrderId;
             rzpAmount = dataObj?.amount || orderRes?.amount || rzpAmount;
             rzpCurrency = dataObj?.currency || orderRes?.currency || "INR";
-            keyId = dataObj?.key_id || orderRes?.key_id || keyId;
+            const candidateKey = dataObj?.key_id || orderRes?.key_id;
+            if (candidateKey && !DEPRECATED_KEYS.includes(candidateKey) && !candidateKey.startsWith("rzp_live_")) {
+              keyId = candidateKey;
+            }
             if (dataObj?.is_simulated || resolvedOrderId.startsWith("order_sim_")) {
               isSimulated = true;
             }
@@ -351,7 +358,14 @@ export default function Checkout() {
       }
 
       if (!window.Razorpay) {
-        throw new Error("Razorpay SDK not loaded. Please ensure you have internet access and refresh.");
+        await new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "https://checkout.razorpay.com/v1/checkout.js";
+          script.async = true;
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error("Failed to load Razorpay payment SDK. Check network connection."));
+          document.body.appendChild(script);
+        });
       }
 
       if (!rzpOrderId) {
