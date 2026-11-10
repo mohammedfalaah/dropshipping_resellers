@@ -177,8 +177,16 @@ const verifyRazorpayPayment = async ({
   }
 
   // 1. Update Order status
-  order.paymentStatus = "PAID";
-  order.orderStatus = "CONFIRMED";
+  const isCodOrder = order.paymentMethod === "COD";
+  if (isCodOrder) {
+    order.deliveryChargeStatus = "PAID";
+    order.paymentStatus = "PARTIALLY_PAID"; // Delivery charge paid online, goods amount collected on delivery
+    order.orderStatus = "CONFIRMED";
+  } else {
+    order.paymentStatus = "PAID";
+    order.orderStatus = "CONFIRMED";
+    order.deliveryChargeStatus = "PAID";
+  }
   order.razorpay = {
     orderId: razorpayOrderId,
     paymentId: razorpayPaymentId,
@@ -186,45 +194,61 @@ const verifyRazorpayPayment = async ({
   };
   await order.save();
 
-  // 2. Create Payment record
+  if (isCodOrder) {
+    await CodCollection.findOneAndUpdate(
+      { order: order._id },
+      { deliveryChargeStatus: "PAID" }
+    );
+  }
+
+  // 2. Create Payment record for the exact amount paid online
+  const paidAmountPaise = isCodOrder ? order.deliveryChargePaise : order.totalPaise;
   const paymentNumber = generatePaymentNumber();
   const payment = await Payment.create({
     paymentNumber,
     reseller: order.reseller,
     order: order._id,
-    amountPaise: order.totalPaise,
+    amountPaise: paidAmountPaise,
     method: "RAZORPAY",
     status: "PAID",
     transactionReference: razorpayPaymentId,
     razorpayOrderId,
     razorpayPaymentId,
-    notes: `Online payment via Razorpay for order ${order.orderNumber}`,
+    notes: isCodOrder
+      ? `Online payment via Razorpay for COD Delivery Charge (Order ${order.orderNumber})`
+      : `Online payment via Razorpay for order ${order.orderNumber}`,
     recordedBy: user._id,
   });
 
-  // 3. Record DEBIT (for order confirmation) and CREDIT (for payment) in Ledger
-  await ledgerService.recordEntry({
-    resellerId: order.reseller,
-    type: "DEBIT",
-    amountPaise: order.totalPaise,
-    referenceType: "ORDER",
-    referenceId: order.orderNumber,
-    orderId: order._id,
-    description: `Order Confirmed - ${order.orderNumber}`,
-    reason: "Razorpay order payment confirmed",
-    recordedById: user._id,
-  });
+  // 3. Record DEBIT (for prepaid order confirmation) and CREDIT (for payment) in Ledger
+  if (!isCodOrder) {
+    await ledgerService.recordEntry({
+      resellerId: order.reseller,
+      type: "DEBIT",
+      amountPaise: paidAmountPaise,
+      referenceType: "ORDER",
+      referenceId: order.orderNumber,
+      orderId: order._id,
+      description: `Order Confirmed - ${order.orderNumber}`,
+      reason: "Razorpay order payment confirmed",
+      recordedById: user._id,
+    });
+  }
 
   await ledgerService.recordEntry({
     resellerId: order.reseller,
     type: "CREDIT",
-    amountPaise: order.totalPaise,
+    amountPaise: paidAmountPaise,
     referenceType: "PAYMENT",
     referenceId: payment.paymentNumber,
     orderId: order._id,
     paymentId: payment._id,
-    description: `Online Payment Verified - ${payment.paymentNumber} (Razorpay: ${razorpayPaymentId})`,
-    reason: "Cryptographically verified Razorpay payment",
+    description: isCodOrder
+      ? `COD Delivery Charge Paid - ${payment.paymentNumber} (Razorpay: ${razorpayPaymentId})`
+      : `Online Payment Verified - ${payment.paymentNumber} (Razorpay: ${razorpayPaymentId})`,
+    reason: isCodOrder
+      ? `Delivery charge paid online via Razorpay for COD Order ${order.orderNumber}`
+      : "Cryptographically verified Razorpay payment",
     recordedById: user._id,
   });
 

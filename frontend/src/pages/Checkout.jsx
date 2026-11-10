@@ -227,8 +227,25 @@ export default function Checkout() {
             existingOrderId: razorpayData?.id,
             existingKeyId: razorpayData?.keyId,
             isSimulated,
+            isCod: false,
           });
           return;
+        }
+
+        if (paymentMethod === "cash_on_delivery") {
+          const codDeliveryPaise = Math.round(Number(deliveryCharge || codPayableNow || 0) * 100);
+          if (codDeliveryPaise > 0) {
+            await handleRazorpayPayment({
+              orderNumber,
+              amountPaise: codDeliveryPaise,
+              customerDetails: form,
+              existingOrderId: razorpayData?.id,
+              existingKeyId: razorpayData?.keyId,
+              isSimulated,
+              isCod: true,
+            });
+            return;
+          }
         }
 
         clearCart();
@@ -268,8 +285,22 @@ export default function Checkout() {
           orderNumber: guestOrderNumber,
           amountPaise: Math.round(cartTotal * 100),
           customerDetails: form,
+          isCod: false,
         });
         return;
+      }
+
+      if (paymentMethod === "cash_on_delivery") {
+        const codDeliveryPaise = Math.round(Number(deliveryCharge || codPayableNow || 0) * 100);
+        if (codDeliveryPaise > 0) {
+          await handleRazorpayPayment({
+            orderNumber: guestOrderNumber,
+            amountPaise: codDeliveryPaise,
+            customerDetails: form,
+            isCod: true,
+          });
+          return;
+        }
       }
 
       clearCart();
@@ -298,6 +329,7 @@ export default function Checkout() {
     existingOrderId,
     existingKeyId,
     isSimulated = false,
+    isCod = false,
   }) => {
     try {
       const DEPRECATED_KEYS = [
@@ -327,6 +359,7 @@ export default function Checkout() {
               orderNumber,
               customerName: `${customerDetails.firstName} ${customerDetails.lastName}`.trim(),
               customerEmail: customerDetails.email,
+              type: isCod ? "COD_DELIVERY_CHARGE" : "FULL_PREPAID",
             },
           });
 
@@ -353,7 +386,7 @@ export default function Checkout() {
 
       // If in Sandbox Simulation Mode (e.g. while Razorpay merchant onboarding / KYC is pending or credentials in test mode)
       if (isSimulated || (rzpOrderId && rzpOrderId.startsWith("order_sim_"))) {
-        addToast("Authorizing order in Razorpay Sandbox Mode...", "info");
+        addToast(isCod ? "Authorizing COD delivery charge in Sandbox Mode..." : "Authorizing order in Razorpay Sandbox Mode...", "info");
         const simPaymentId = `pay_sim_${Date.now()}`;
         const verifyRes = await paymentsApi.verifyPayment({
           order_id: rzpOrderId || `order_sim_${Date.now()}`,
@@ -365,7 +398,7 @@ export default function Checkout() {
         const vData = verifyRes?.data || verifyRes;
         if (vData?.success || vData?.is_valid) {
           clearCart();
-          addToast(`Order ${orderNumber} placed & verified in Razorpay Test Mode!`, "success");
+          addToast(isCod ? `COD Order ${orderNumber} placed! Delivery charge verified in Test Mode.` : `Order ${orderNumber} placed & verified in Razorpay Test Mode!`, "success");
           navigate(`/order-received?order_id=${orderNumber}&payment_id=${simPaymentId}`);
           return;
         } else {
@@ -393,7 +426,9 @@ export default function Checkout() {
         amount: rzpAmount,
         currency: rzpCurrency,
         name: "SPARE PRO WHOLESALE",
-        description: `Order ${orderNumber} Payment`,
+        description: isCod
+          ? `Order ${orderNumber} - COD Delivery Charge (₹${(rzpAmount / 100).toFixed(2)})`
+          : `Order ${orderNumber} Payment`,
         image: "/images/logo.png",
         order_id: rzpOrderId,
         prefill: {
@@ -425,7 +460,11 @@ export default function Checkout() {
             const vData = verifyRes?.data || verifyRes;
             if (vData?.success || vData?.is_valid) {
               clearCart();
-              addToast(`Payment of ₹${(rzpAmount / 100).toFixed(2)} verified successfully!`, "success");
+              if (isCod) {
+                addToast(`Delivery charge of ₹${(rzpAmount / 100).toFixed(2)} paid via Razorpay! COD Order ${orderNumber} confirmed.`, "success");
+              } else {
+                addToast(`Payment of ₹${(rzpAmount / 100).toFixed(2)} verified successfully!`, "success");
+              }
               navigate(`/order-received?order_id=${orderNumber}&payment_id=${response.razorpay_payment_id}`);
             } else {
               throw new Error(vData?.message || "Signature verification failed.");
@@ -702,7 +741,7 @@ export default function Checkout() {
                     {/* Cash On Delivery */}
                     <div
                       className={`form-check p-3 border rounded-3 mb-2 cursor-pointer ${
-                        paymentMethod === "cash_on_delivery" ? "border-dark bg-light" : ""
+                        paymentMethod === "cash_on_delivery" ? "border-primary bg-primary-subtle bg-opacity-10" : ""
                       }`}
                       style={{ transition: "all 0.2s ease" }}
                     >
@@ -715,15 +754,22 @@ export default function Checkout() {
                         onChange={() => setPaymentMethod("cash_on_delivery")}
                       />
                       <label
-                        className="form-check-label fw-semibold ms-2 d-flex justify-content-between align-items-center w-100"
+                        className="form-check-label fw-semibold ms-2 d-flex flex-column gap-1 w-100"
                         htmlFor="paymentCod"
                         style={{ cursor: "pointer" }}
                       >
-                        <div>
-                          <div className="text-dark">Cash on Delivery (COD)</div>
-                          <div className="text-muted small fw-normal">Pay upon receipt at your delivery address</div>
+                        <div className="d-flex justify-content-between align-items-center">
+                          <span className="text-dark fw-bold d-flex align-items-center gap-2">
+                            <span>Cash on Delivery (COD)</span>
+                            <span className="badge bg-warning text-dark" style={{ fontSize: "11px" }}>
+                              Pay ₹{Number(deliveryCharge).toLocaleString("en-IN")} Delivery Charge Online
+                            </span>
+                          </span>
+                          <span className="badge bg-secondary-subtle text-secondary">Dropshipping Policy</span>
                         </div>
-                        <span className="badge bg-secondary-subtle text-secondary">Reseller Standard</span>
+                        <span className="text-muted small fw-normal">
+                          Pay ₹{Number(deliveryCharge).toLocaleString("en-IN")} delivery charge now via Razorpay &bull; Balance ₹{cartCustomerSellingTotal > 0 ? Number(cartCustomerSellingTotal).toLocaleString("en-IN") : "0"} will be collected in cash on delivery
+                        </span>
                       </label>
                     </div>
 

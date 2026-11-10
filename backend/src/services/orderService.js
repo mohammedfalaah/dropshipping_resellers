@@ -207,18 +207,23 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
     });
   }
 
-  // 5. If Razorpay, initiate Razorpay Order
+  // 5. If Razorpay OR COD (pay delivery charge via Razorpay upfront)
   let razorpayOrderData = null;
-  if (normalizedPaymentMethod === "RAZORPAY") {
+  const isPrepaidRazorpay = normalizedPaymentMethod === "RAZORPAY";
+  const isCodWithDeliveryCharge = normalizedPaymentMethod === "COD" && deliveryChargePaise > 0;
+
+  if (isPrepaidRazorpay || isCodWithDeliveryCharge) {
+    const chargePaise = isCodWithDeliveryCharge ? deliveryChargePaise : totalPaise;
     try {
       if (razorpayInstance) {
         const rzpOrder = await razorpayInstance.orders.create({
-          amount: totalPaise, // in paise
+          amount: chargePaise, // in paise: delivery charge for COD, full total for prepaid
           currency: "INR",
           receipt: order.orderNumber,
           notes: {
             orderId: order._id.toString(),
             resellerId: resellerId.toString(),
+            chargeType: isCodWithDeliveryCharge ? "COD_DELIVERY_CHARGE" : "FULL_PREPAID",
           },
         });
         order.razorpay.orderId = rzpOrder.id;
@@ -228,6 +233,7 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
           amount: rzpOrder.amount,
           currency: rzpOrder.currency,
           keyId: RAZORPAY_KEY_ID,
+          isCodDeliveryCharge: isCodWithDeliveryCharge,
         };
       } else {
         // Mock fallback for testing if API credentials aren't live
@@ -236,10 +242,11 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
         await order.save();
         razorpayOrderData = {
           id: mockRzpId,
-          amount: totalPaise,
+          amount: chargePaise,
           currency: "INR",
           keyId: RAZORPAY_KEY_ID,
           isSimulated: true,
+          isCodDeliveryCharge: isCodWithDeliveryCharge,
         };
       }
     } catch (err) {
@@ -250,10 +257,11 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
       await order.save();
       razorpayOrderData = {
         id: fallbackRzpId,
-        amount: totalPaise,
+        amount: chargePaise,
         currency: "INR",
         keyId: RAZORPAY_KEY_ID,
         isSimulated: true,
+        isCodDeliveryCharge: isCodWithDeliveryCharge,
       };
     }
   }
