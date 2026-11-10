@@ -27,6 +27,12 @@ export default function AccountDashboard() {
   const [resellerLedger, setResellerLedger] = useState([]);
   const [selectedResellerOrder, setSelectedResellerOrder] = useState(null);
 
+  // Live Tracking Modal & Search States
+  const [trackQuery, setTrackQuery] = useState("");
+  const [showTrackingModal, setShowTrackingModal] = useState(false);
+  const [trackingData, setTrackingData] = useState(null);
+  const [loadingTracking, setLoadingTracking] = useState(false);
+
   // Fetch initial data based on role
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -89,6 +95,57 @@ export default function AccountDashboard() {
       console.error("Failed to load reseller data", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Delivery & Tracking Helpers
+  const getDeliveryProgressInfo = (order) => {
+    const status = (order?.deliveryStatus || order?.orderStatus || "CONFIRMED").toUpperCase();
+    switch (status) {
+      case "PENDING":
+        return { stage: "PENDING", percent: 20, label: "Order Placed", badgeClass: "bg-secondary text-white" };
+      case "BOOKED":
+      case "CONFIRMED":
+        return { stage: "BOOKED", percent: 35, label: "Consignment Booked", badgeClass: "bg-info text-dark" };
+      case "PROCESSING":
+        return { stage: "PROCESSING", percent: 45, label: "Warehouse Processing", badgeClass: "bg-info text-dark" };
+      case "DISPATCHED":
+      case "SHIPPED":
+        return { stage: "DISPATCHED", percent: 60, label: "Dispatched from Hub", badgeClass: "bg-primary text-white" };
+      case "IN_TRANSIT":
+        return { stage: "IN_TRANSIT", percent: 75, label: "In Transit", badgeClass: "bg-primary text-white" };
+      case "OUT_FOR_DELIVERY":
+        return { stage: "OUT_FOR_DELIVERY", percent: 90, label: "Out for Delivery", badgeClass: "bg-warning text-dark" };
+      case "DELIVERED":
+        return { stage: "DELIVERED", percent: 100, label: "Delivered", badgeClass: "bg-success text-white" };
+      case "CANCELLED":
+      case "FAILED":
+      case "RETURNED":
+        return { stage: status, percent: 100, label: status === "RETURNED" ? "Returned" : "Cancelled", badgeClass: "bg-danger text-white" };
+      default:
+        return { stage: status, percent: 50, label: status.replace(/_/g, " "), badgeClass: "bg-primary text-white" };
+    }
+  };
+
+  const handleTrackOrder = async (identifier) => {
+    const query = (identifier || trackQuery || "").trim();
+    if (!query) {
+      addToast("Please enter an Order Number or Consignment / Tracking ID", "error");
+      return;
+    }
+    setLoadingTracking(true);
+    setShowTrackingModal(true);
+    try {
+      const res = await ordersApi.getTracking(query);
+      const data = res.data?.data || res.data;
+      setTrackingData(data);
+    } catch (err) {
+      console.error("Failed to load tracking details:", err);
+      const errMsg = err.response?.data?.message || "Could not retrieve parcel tracking details.";
+      addToast(errMsg, "error");
+      setTrackingData(null);
+    } finally {
+      setLoadingTracking(false);
     }
   };
 
@@ -712,7 +769,15 @@ export default function AccountDashboard() {
                                   <option value="cancelled">Cancelled</option>
                                 </select>
                               </td>
-                              <td>
+                              <td className="text-nowrap">
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-danger rounded-pill px-3 me-2"
+                                  onClick={() => handleTrackOrder(o.trackingNumber || o.orderNumber)}
+                                  title="Track Consignment Delivery"
+                                >
+                                  <i className="fa-solid fa-location-crosshairs me-1"></i> Track
+                                </button>
                                 <button
                                   type="button"
                                   className="btn btn-sm btn-outline-dark rounded-pill px-3"
@@ -842,21 +907,51 @@ export default function AccountDashboard() {
                           <tr>
                             <th>Order #</th>
                             <th>Date</th>
-                            <th>Status</th>
+                            <th>Delivery & Status</th>
                             <th>Payment</th>
                             <th>Total</th>
+                            <th className="text-end">Action</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {resellerOrders.slice(0, 5).map((o) => (
-                            <tr key={o._id}>
-                              <td className="fw-semibold">{o.orderNumber}</td>
-                              <td>{new Date(o.createdAt).toLocaleDateString()}</td>
-                              <td><span className="badge bg-success-subtle text-success text-capitalize">{o.orderStatus}</span></td>
-                              <td><span className="badge bg-light text-dark border">{o.paymentMethod.toUpperCase()} ({o.paymentStatus})</span></td>
-                              <td className="fw-bold">₹{(o.totalAmountPaise / 100).toFixed(2)}</td>
-                            </tr>
-                          ))}
+                          {resellerOrders.slice(0, 5).map((o) => {
+                            const pInfo = getDeliveryProgressInfo(o);
+                            return (
+                              <tr key={o._id}>
+                                <td className="fw-semibold">
+                                  <div>{o.orderNumber}</div>
+                                  {o.trackingNumber && (
+                                    <small className="text-muted font-monospace" style={{ fontSize: "11px" }}>{o.trackingNumber}</small>
+                                  )}
+                                </td>
+                                <td>{new Date(o.createdAt).toLocaleDateString()}</td>
+                                <td>
+                                  <div className="d-flex align-items-center gap-2 mb-1">
+                                    <span className={`badge ${pInfo.badgeClass}`} style={{ fontSize: "10px" }}>{pInfo.label}</span>
+                                    <span className="small text-muted" style={{ fontSize: "10px" }}>{pInfo.percent}%</span>
+                                  </div>
+                                  <div className="progress" style={{ height: "4px", width: "100px" }}>
+                                    <div
+                                      className={`progress-bar ${pInfo.percent === 100 ? "bg-success" : "bg-danger"}`}
+                                      style={{ width: `${pInfo.percent}%` }}
+                                    ></div>
+                                  </div>
+                                </td>
+                                <td><span className="badge bg-light text-dark border">{o.paymentMethod.toUpperCase()} ({o.paymentStatus})</span></td>
+                                <td className="fw-bold">₹{(o.totalAmountPaise / 100).toFixed(2)}</td>
+                                <td className="text-end">
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                    onClick={() => handleTrackOrder(o.trackingNumber || o.orderNumber)}
+                                    title="Track Consignment Delivery"
+                                  >
+                                    <i className="fa-solid fa-location-crosshairs me-1"></i> Track
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -864,10 +959,81 @@ export default function AccountDashboard() {
                 )}
 
                 {/* RESELLER VIEW: Orders Tab */}
-                {role === "reseller" && activeTab === "orders" && (
+                {(role === "reseller" || role !== "admin") && activeTab === "orders" && (
                   <div>
-                    <h4 className="fw-bold mb-3">Wholesale Order History</h4>
-                    <p className="text-muted small mb-4">Complete history of placed wholesale orders with dispatch tracking.</p>
+                    <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+                      <div>
+                        <h4 className="fw-bold mb-1">Wholesale Order History</h4>
+                        <p className="text-muted small mb-0">Complete history of placed wholesale orders with live dispatch and delivery tracking.</p>
+                      </div>
+                      <span className="badge bg-dark rounded-pill px-3 py-2">
+                        {resellerOrders.length} {resellerOrders.length === 1 ? "Order" : "Orders"} Total
+                      </span>
+                    </div>
+
+                    {/* Quick Order & Consignment Tracking Field */}
+                    <div
+                      className="card border-0 shadow-sm rounded-4 mb-4"
+                      style={{ background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)", color: "#fff" }}
+                    >
+                      <div className="card-body p-4">
+                        <div className="row align-items-center g-3">
+                          <div className="col-lg-5">
+                            <div className="d-flex align-items-center gap-3">
+                              <div
+                                className="rounded-3 bg-danger text-white d-flex align-items-center justify-content-center shadow"
+                                style={{ width: "46px", height: "46px", minWidth: "46px" }}
+                              >
+                                <i className="fa-solid fa-truck-fast fa-lg"></i>
+                              </div>
+                              <div>
+                                <h6 className="fw-bold mb-1 text-white">Track Order & Parcel Delivery</h6>
+                                <p className="text-light text-opacity-75 small mb-0" style={{ fontSize: "12px" }}>
+                                  Live consignment tracking with checkpoint timeline & delivery progress.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="col-lg-7">
+                            <form
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                handleTrackOrder();
+                              }}
+                              className="d-flex gap-2"
+                            >
+                              <div className="input-group">
+                                <span className="input-group-text bg-white border-0 text-muted">
+                                  <i className="fa-solid fa-barcode"></i>
+                                </span>
+                                <input
+                                  type="text"
+                                  className="form-control border-0 py-2"
+                                  placeholder="Enter Order # (ORD-...) or India Post Consignment ID (e.g. RM019388105IN)"
+                                  value={trackQuery}
+                                  onChange={(e) => setTrackQuery(e.target.value)}
+                                />
+                              </div>
+                              <button
+                                type="submit"
+                                className="btn btn-danger rounded-pill px-4 text-nowrap fw-semibold shadow"
+                                disabled={loadingTracking}
+                              >
+                                {loadingTracking ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-1" role="status"></span> Tracking...
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="fa-solid fa-location-crosshairs me-1"></i> Track Order
+                                  </>
+                                )}
+                              </button>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
                     {resellerOrders.length === 0 ? (
                       <div className="text-center py-5 bg-light rounded-4">
@@ -884,14 +1050,15 @@ export default function AccountDashboard() {
                           <thead className="table-light">
                             <tr>
                               <th>Order #</th>
+                              <th>Delivery & Tracking</th>
                               <th>Wholesale Cost</th>
-                              <th>Customer Selling Price</th>
+                              <th>Customer Price</th>
                               <th>Expected Profit</th>
                               <th>Delivery Charge</th>
                               <th>Customer Collection</th>
                               <th>COD Status</th>
-                              <th>Settlement Status</th>
-                              <th className="text-end">Details</th>
+                              <th>Settlement</th>
+                              <th className="text-end">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -904,12 +1071,43 @@ export default function AccountDashboard() {
                               const targetCollection = ((o.customerCollectionPaise || o.cod?.codAmountPaise || 0) / 100).toFixed(2);
                               const codStatus = o.codCollectionStatus || o.cod?.collectionStatus || (o.paymentMethod === "COD" ? "PENDING" : "PREPAID");
                               const settlementStatus = o.resellerSettlementStatus || "UNSETTLED";
+                              const progInfo = getDeliveryProgressInfo(o);
 
                               return (
                                 <tr key={o._id}>
                                   <td>
                                     <div className="fw-bold">{o.orderNumber}</div>
                                     <small className="text-muted">{new Date(o.createdAt).toLocaleDateString()}</small>
+                                  </td>
+                                  <td>
+                                    <div className="d-flex align-items-center gap-2 mb-1">
+                                      <span className={`badge ${progInfo.badgeClass}`} style={{ fontSize: "11px" }}>
+                                        {progInfo.label}
+                                      </span>
+                                      <span className="small text-muted fw-semibold" style={{ fontSize: "11px" }}>
+                                        {progInfo.percent}%
+                                      </span>
+                                    </div>
+                                    <div className="progress mb-1" style={{ height: "6px", width: "120px" }}>
+                                      <div
+                                        className={`progress-bar progress-bar-striped progress-bar-animated ${
+                                          progInfo.percent === 100 ? "bg-success" : "bg-danger"
+                                        }`}
+                                        style={{ width: `${progInfo.percent}%` }}
+                                      ></div>
+                                    </div>
+                                    <div className="small text-muted" style={{ fontSize: "11px" }}>
+                                      {o.courierName || "India Post (Speed Post)"}
+                                    </div>
+                                    {o.trackingNumber ? (
+                                      <div className="small text-dark font-monospace fw-semibold" style={{ fontSize: "11px" }}>
+                                        {o.trackingNumber}
+                                      </div>
+                                    ) : (
+                                      <span className="text-muted" style={{ fontSize: "10px" }}>
+                                        AWB Assigned Upon Dispatch
+                                      </span>
+                                    )}
                                   </td>
                                   <td className="fw-semibold text-secondary">
                                     ₹{wholesaleCost}
@@ -962,7 +1160,15 @@ export default function AccountDashboard() {
                                       {settlementStatus}
                                     </span>
                                   </td>
-                                  <td className="text-end">
+                                  <td className="text-end text-nowrap">
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-outline-danger rounded-pill px-3 me-2"
+                                      onClick={() => handleTrackOrder(o.trackingNumber || o.orderNumber)}
+                                      title="Track Delivery Progress"
+                                    >
+                                      <i className="fa-solid fa-location-crosshairs me-1"></i> Track
+                                    </button>
                                     <button
                                       type="button"
                                       className="btn btn-sm btn-outline-dark rounded-pill px-3"
@@ -997,6 +1203,56 @@ export default function AccountDashboard() {
                               ></button>
                             </div>
                             <div className="modal-body p-4">
+                              {/* Live Delivery Progress & Tracking Card */}
+                              {(() => {
+                                const progInfo = getDeliveryProgressInfo(selectedResellerOrder);
+                                return (
+                                  <div className="p-3 bg-light rounded-3 border mb-4">
+                                    <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-2">
+                                      <div>
+                                        <div className="d-flex align-items-center gap-2 mb-1">
+                                          <span className="badge bg-danger-subtle text-danger border border-danger" style={{ fontSize: "11px" }}>
+                                            {selectedResellerOrder.courierName || "India Post (Speed Post / Parcel)"}
+                                          </span>
+                                          <span className={`badge ${progInfo.badgeClass}`} style={{ fontSize: "11px" }}>
+                                            {progInfo.label}
+                                          </span>
+                                          <span className="small text-muted fw-bold">{progInfo.percent}%</span>
+                                        </div>
+                                        <div className="small text-muted">
+                                          Consignment / Tracking AWB:{" "}
+                                          <strong className="text-dark font-monospace">
+                                            {selectedResellerOrder.trackingNumber || selectedResellerOrder.orderNumber}
+                                          </strong>
+                                        </div>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-danger rounded-pill px-3 shadow-sm"
+                                        onClick={() => handleTrackOrder(selectedResellerOrder.trackingNumber || selectedResellerOrder.orderNumber)}
+                                      >
+                                        <i className="fa-solid fa-location-crosshairs me-1"></i> Open Live Checkpoint History
+                                      </button>
+                                    </div>
+                                    <div className="progress mt-2" style={{ height: "8px" }}>
+                                      <div
+                                        className={`progress-bar progress-bar-striped progress-bar-animated ${
+                                          progInfo.percent === 100 ? "bg-success" : "bg-danger"
+                                        }`}
+                                        role="progressbar"
+                                        style={{ width: `${progInfo.percent}%` }}
+                                      ></div>
+                                    </div>
+                                    <div className="d-flex justify-content-between small text-muted mt-2">
+                                      <span>Current Stage: <strong>{progInfo.label}</strong></span>
+                                      {selectedResellerOrder.shippingAddress && (
+                                        <span>Destination: <strong>{selectedResellerOrder.shippingAddress.city}, {selectedResellerOrder.shippingAddress.state}</strong></span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+
                               {/* Financial Summary Cards */}
                               <div className="row g-3 mb-4">
                                 <div className="col-sm-3">
@@ -1201,6 +1457,241 @@ export default function AccountDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Live Order & Parcel Tracking Modal */}
+      {showTrackingModal && (
+        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.6)", zIndex: 1055 }}>
+          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div className="modal-content rounded-4 border-0 shadow">
+              <div className="modal-header border-bottom bg-light rounded-top-4 px-4 py-3">
+                <div className="d-flex align-items-center gap-3">
+                  <div
+                    className="p-2 rounded-3 bg-danger text-white d-flex align-items-center justify-content-center shadow-sm"
+                    style={{ width: "40px", height: "40px" }}
+                  >
+                    <i className="fa-solid fa-truck-fast"></i>
+                  </div>
+                  <div>
+                    <h5 className="modal-title fw-bold text-dark mb-0">Order & Parcel Tracking</h5>
+                    <span className="text-muted small">
+                      {trackingData?.courierName || "India Post (Speed Post / Parcel)"} •{" "}
+                      <span className="font-monospace fw-semibold">{trackingData?.trackingNumber || trackQuery}</span>
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => {
+                    setShowTrackingModal(false);
+                    setTrackingData(null);
+                  }}
+                ></button>
+              </div>
+
+              <div className="modal-body p-4">
+                {loadingTracking ? (
+                  <div className="text-center py-5">
+                    <div className="spinner-border text-danger" role="status" style={{ width: "3rem", height: "3rem" }}></div>
+                    <h6 className="fw-bold mt-3 mb-1">Connecting to Parcel Logistics Network...</h6>
+                    <p className="text-muted small">Retrieving live consignment checkpoints and delivery status</p>
+                  </div>
+                ) : !trackingData ? (
+                  <div className="text-center py-5">
+                    <div
+                      className="rounded-circle bg-warning-subtle text-warning d-inline-flex align-items-center justify-content-center mb-3"
+                      style={{ width: "64px", height: "64px" }}
+                    >
+                      <i className="fa-solid fa-triangle-exclamation fa-2x"></i>
+                    </div>
+                    <h5 className="fw-bold text-dark mb-1">Tracking Information Unavailable</h5>
+                    <p className="text-muted small mb-4">
+                      We could not find active postal records for <strong>{trackQuery}</strong>.
+                      <br />
+                      Orders are booked and assigned consignment AWB numbers upon warehouse dispatch.
+                    </p>
+                    <button
+                      type="button"
+                      className="btn btn-outline-dark rounded-pill px-4"
+                      onClick={() => {
+                        setShowTrackingModal(false);
+                        setTrackingData(null);
+                      }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {/* Status Header Banner */}
+                    <div className="p-4 rounded-4 border mb-4" style={{ backgroundColor: "#f8fafc" }}>
+                      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                        <div>
+                          <div className="d-flex align-items-center gap-2 mb-2">
+                            <span className="badge bg-danger text-white px-2 py-1" style={{ fontSize: "11px" }}>
+                              {trackingData.courierName}
+                            </span>
+                            <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                              {trackingData.statusStage || "IN TRANSIT"}
+                            </span>
+                          </div>
+                          <h4 className="fw-bold text-dark mb-1">{trackingData.currentStatus}</h4>
+                          <div className="small text-muted">
+                            Consignment / AWB:{" "}
+                            <code className="fw-bold text-dark fs-6 bg-white px-2 py-0.5 rounded border">
+                              {trackingData.trackingNumber}
+                            </code>
+                          </div>
+                        </div>
+
+                        {trackingData.officialTrackingUrl && (
+                          <a
+                            href={trackingData.officialTrackingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-sm btn-outline-danger rounded-pill px-3 py-2 shadow-sm"
+                          >
+                            <i className="fa-solid fa-arrow-up-right-from-square me-1"></i> Official Portal
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Visual 5-Step Stepper & Progress */}
+                      <div className="mt-4 pt-3 border-top">
+                        <div className="progress mb-3" style={{ height: "8px" }}>
+                          <div
+                            className={`progress-bar progress-bar-striped progress-bar-animated ${
+                              trackingData.progressPercent === 100 ? "bg-success" : "bg-danger"
+                            }`}
+                            role="progressbar"
+                            style={{ width: `${trackingData.progressPercent || 40}%` }}
+                          ></div>
+                        </div>
+
+                        <div className="row text-center g-2 small">
+                          <div className="col">
+                            <div className={`fw-bold ${(trackingData.progressPercent || 0) >= 20 ? "text-danger" : "text-muted"}`}>
+                              <i className="fa-solid fa-box mb-1 d-block"></i>
+                              <span>Booked</span>
+                            </div>
+                          </div>
+                          <div className="col">
+                            <div className={`fw-bold ${(trackingData.progressPercent || 0) >= 50 ? "text-danger" : "text-muted"}`}>
+                              <i className="fa-solid fa-warehouse mb-1 d-block"></i>
+                              <span>Dispatched</span>
+                            </div>
+                          </div>
+                          <div className="col">
+                            <div className={`fw-bold ${(trackingData.progressPercent || 0) >= 70 ? "text-danger" : "text-muted"}`}>
+                              <i className="fa-solid fa-truck mb-1 d-block"></i>
+                              <span>In Transit</span>
+                            </div>
+                          </div>
+                          <div className="col">
+                            <div className={`fw-bold ${(trackingData.progressPercent || 0) >= 90 ? "text-danger" : "text-muted"}`}>
+                              <i className="fa-solid fa-person-biking mb-1 d-block"></i>
+                              <span>Out for Delivery</span>
+                            </div>
+                          </div>
+                          <div className="col">
+                            <div className={`fw-bold ${(trackingData.progressPercent || 0) >= 100 ? "text-success" : "text-muted"}`}>
+                              <i className="fa-solid fa-circle-check mb-1 d-block"></i>
+                              <span>Delivered</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="d-flex flex-column flex-sm-row justify-content-between small text-muted mt-3 pt-2 border-top">
+                          <span>Origin Hub: <strong>{trackingData.origin || "SPARE PRO Central Hub, Delhi"}</strong></span>
+                          <span>Destination: <strong>{trackingData.destination || "Destination Hub, India"}</strong></span>
+                        </div>
+
+                        {trackingData.estimatedDelivery && (
+                          <div className="small text-success fw-semibold mt-2">
+                            <i className="fa-regular fa-calendar-check me-1"></i>
+                            Estimated Delivery Date:{" "}
+                            {new Date(trackingData.estimatedDelivery).toLocaleDateString("en-IN", {
+                              weekday: "short",
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Checkpoint Timeline History */}
+                    <h6 className="fw-bold text-dark mb-3">
+                      <i className="fa-solid fa-timeline me-2 text-danger"></i>
+                      Consignment Checkpoint History
+                    </h6>
+
+                    {!trackingData.history || trackingData.history.length === 0 ? (
+                      <p className="text-muted small">No tracking checkpoints posted yet.</p>
+                    ) : (
+                      <div className="position-relative ps-4 border-start border-2 border-danger ms-2">
+                        {trackingData.history.map((h, i) => (
+                          <div key={i} className="mb-3 position-relative">
+                            <div
+                              className="position-absolute bg-danger rounded-circle border border-2 border-white"
+                              style={{ width: "12px", height: "12px", left: "-23px", top: "5px" }}
+                            ></div>
+                            <div className="p-3 bg-white rounded-3 border shadow-sm">
+                              <div className="d-flex justify-content-between align-items-center mb-1">
+                                <strong className="text-dark fs-6">{h.status}</strong>
+                                <span className="small text-muted" style={{ fontSize: "11px" }}>
+                                  {new Date(h.timestamp).toLocaleString("en-IN", {
+                                    day: "numeric",
+                                    month: "short",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </span>
+                              </div>
+                              <div className="small text-muted mb-1">
+                                <i className="fa-solid fa-location-dot me-1 text-danger"></i> {h.location}
+                              </div>
+                              {h.details && (
+                                <div className="small text-secondary" style={{ fontSize: "11px" }}>
+                                  {h.details}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="modal-footer border-top bg-light rounded-bottom-4 px-4 py-3">
+                {trackingData?.officialTrackingUrl && (
+                  <a
+                    href={trackingData.officialTrackingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-outline-danger rounded-pill px-4 me-auto small"
+                  >
+                    <i className="fa-solid fa-external-link me-1"></i> Track on India Post Portal
+                  </a>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-secondary rounded-pill px-4"
+                  onClick={() => {
+                    setShowTrackingModal(false);
+                    setTrackingData(null);
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -71,6 +71,7 @@ export const ordersApi = {
   getAll: (params) => api.get("/orders", { params }),
   getMyOrders: (params) => api.get("/orders", { params }),
   getById: (id) => api.get(`/orders/${id}`),
+  getTracking: (trackingNumber) => api.get(`/orders/tracking/${encodeURIComponent(trackingNumber)}`),
 };
 
 // Payments & Ledger APIs
