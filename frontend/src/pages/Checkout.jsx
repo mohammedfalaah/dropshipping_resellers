@@ -225,6 +225,7 @@ export default function Checkout() {
             amountPaise: Math.round(cartTotal * 100),
             customerDetails: form,
             existingOrderId: razorpayData?.id,
+            existingKeyId: razorpayData?.keyId,
             isSimulated,
           });
           return;
@@ -290,15 +291,30 @@ export default function Checkout() {
     }
   };
 
-  const handleRazorpayPayment = async ({ orderNumber, amountPaise, customerDetails, existingOrderId, isSimulated = false }) => {
+  const handleRazorpayPayment = async ({
+    orderNumber,
+    amountPaise,
+    customerDetails,
+    existingOrderId,
+    existingKeyId,
+    isSimulated = false,
+  }) => {
     try {
-      const DEPRECATED_KEYS = ["rzp_test_TuV8GLC7nWbF1R", "rzp_live_tJm8f0aX037r67", "rzp_test_1DP5mmOlF5G5ag"];
+      const DEPRECATED_KEYS = [
+        "rzp_test_TuV8GLC7nWbF1R",
+        "rzp_live_tJm8f0aX037r67",
+        "rzp_test_1DP5mmOlF5G5ag",
+        "rzp_test_Ty2y2q6NmAHJka",
+        "rzp_test_Ty43ORjkMVdbCx",
+      ];
+      const ACTIVE_LIVE_KEY = "rzp_live_TyLo7eXzFHYXh4";
+
       let rzpOrderId = existingOrderId || null;
       let rzpAmount = amountPaise;
       let rzpCurrency = "INR";
-      let keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Ty2y2q6NmAHJka";
-      if (DEPRECATED_KEYS.includes(keyId) || keyId.startsWith("rzp_live_")) {
-        keyId = "rzp_test_Ty2y2q6NmAHJka";
+      let keyId = existingKeyId || import.meta.env.VITE_RAZORPAY_KEY_ID || ACTIVE_LIVE_KEY;
+      if (!keyId || DEPRECATED_KEYS.includes(keyId) || keyId === "rzp_live_tJm8f0aX037r67") {
+        keyId = ACTIVE_LIVE_KEY;
       }
 
       if (!rzpOrderId) {
@@ -322,7 +338,7 @@ export default function Checkout() {
             rzpAmount = dataObj?.amount || orderRes?.amount || rzpAmount;
             rzpCurrency = dataObj?.currency || orderRes?.currency || "INR";
             const candidateKey = dataObj?.key_id || orderRes?.key_id;
-            if (candidateKey && !DEPRECATED_KEYS.includes(candidateKey) && !candidateKey.startsWith("rzp_live_")) {
+            if (candidateKey && !DEPRECATED_KEYS.includes(candidateKey) && candidateKey !== "rzp_live_tJm8f0aX037r67") {
               keyId = candidateKey;
             }
             if (dataObj?.is_simulated || resolvedOrderId.startsWith("order_sim_")) {

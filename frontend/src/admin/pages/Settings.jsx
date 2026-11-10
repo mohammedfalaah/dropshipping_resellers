@@ -10,7 +10,7 @@ export default function Settings() {
   const [autoApprove, setAutoApprove] = useState(false);
   const [defaultMoq, setDefaultMoq] = useState("1");
   const [deliveryCharge, setDeliveryCharge] = useState("50");
-  const [razorpayKey, setRazorpayKey] = useState("rzp_test_sparepro2026");
+  const [razorpayKey, setRazorpayKey] = useState("rzp_live_TyLo7eXzFHYXh4");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
