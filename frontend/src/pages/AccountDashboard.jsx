@@ -1174,6 +1174,15 @@ export default function AccountDashboard() {
                                     </span>
                                   </td>
                                   <td className="text-end text-nowrap">
+                                    <a
+                                      href={`/api/orders/${o._id}/shipping-label?view=print&autoPrint=1&token=${localStorage.getItem("sparepro_token") || ""}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="btn btn-sm btn-outline-dark rounded-pill px-2 me-1"
+                                      title="Download / Print Shipping Label with Barcode"
+                                    >
+                                      <i className="fa-solid fa-barcode"></i> Label
+                                    </a>
                                     <button
                                       type="button"
                                       className="btn btn-sm btn-outline-danger rounded-pill px-3 me-2"
@@ -1239,13 +1248,23 @@ export default function AccountDashboard() {
                                           </strong>
                                         </div>
                                       </div>
-                                      <button
-                                        type="button"
-                                        className="btn btn-sm btn-danger rounded-pill px-3 shadow-sm"
-                                        onClick={() => handleTrackOrder(selectedResellerOrder.trackingNumber || selectedResellerOrder.orderNumber)}
-                                      >
-                                        <i className="fa-solid fa-location-crosshairs me-1"></i> Open Live Checkpoint History
-                                      </button>
+                                      <div className="d-flex gap-2">
+                                        <a
+                                          href={`/api/orders/${selectedResellerOrder._id}/shipping-label?view=print&autoPrint=1&token=${localStorage.getItem("sparepro_token") || ""}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="btn btn-sm btn-outline-dark rounded-pill px-3 shadow-sm"
+                                        >
+                                          <i className="fa-solid fa-barcode me-1"></i> Print / Download Label
+                                        </a>
+                                        <button
+                                          type="button"
+                                          className="btn btn-sm btn-danger rounded-pill px-3 shadow-sm"
+                                          onClick={() => handleTrackOrder(selectedResellerOrder.trackingNumber || selectedResellerOrder.orderNumber)}
+                                        >
+                                          <i className="fa-solid fa-location-crosshairs me-1"></i> Track Progress
+                                        </button>
+                                      </div>
                                     </div>
                                     <div className="progress mt-2" style={{ height: "8px" }}>
                                       <div

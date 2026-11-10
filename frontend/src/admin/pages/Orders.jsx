@@ -205,6 +205,14 @@ export default function Orders() {
     }
   };
 
+  // Open / Download 4x6" Printable Shipping Label
+  const handlePrintShippingLabel = (orderId) => {
+    const printUrl = adminApi.getShippingLabelPrintUrl
+      ? adminApi.getShippingLabelPrintUrl(orderId)
+      : `/api/orders/${orderId}/shipping-label?view=print&autoPrint=1&token=${localStorage.getItem("sparepro_token") || ""}`;
+    window.open(printUrl, "_blank", "noopener,noreferrer,width=850,height=950");
+  };
+
   // Aggregated totals across current view
   const totalCustomerSum = orders.reduce((s, o) => s + (o.customerSellingTotalPaise || o.totalPaise || 0), 0);
   const totalCompanySum = orders.reduce(
@@ -595,6 +603,15 @@ export default function Orders() {
                       {/* Actions */}
                       <td className="text-end">
                         <div className="btn-group btn-group-sm">
+                          {/* Printable Shipping Label button */}
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-dark"
+                            title="Download / Print 4x6 Shipping Label with Barcode"
+                            onClick={() => handlePrintShippingLabel(o._id)}
+                          >
+                            <i className="fa-solid fa-barcode"></i> Label
+                          </button>
                           {/* Live Track Delivery button */}
                           <button
                             type="button"
@@ -1230,7 +1247,26 @@ export default function Orders() {
                   </div>
                 </div>
               </div>
-              <div className="modal-footer border-top">
+              <div className="modal-footer border-top d-flex justify-content-between">
+                <div className="d-flex gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-outline-dark rounded-pill px-3 shadow-sm"
+                    onClick={() => handlePrintShippingLabel(selectedOrder._id)}
+                  >
+                    <i className="fa-solid fa-barcode me-1"></i> Print / Download Shipping Label
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline-danger rounded-pill px-3 shadow-sm"
+                    onClick={() => {
+                      setShowDetailModal(false);
+                      handleTrackConsignment(selectedOrder.trackingNumber || selectedOrder.orderNumber);
+                    }}
+                  >
+                    <i className="fa-solid fa-location-dot me-1"></i> Live Tracking
+                  </button>
+                </div>
                 <button type="button" className="btn btn-secondary rounded-pill px-4" onClick={() => setShowDetailModal(false)}>
                   Close
                 </button>

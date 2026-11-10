@@ -36,6 +36,9 @@ router.get("/tracking/:trackingNumber", orderController.getPublicTracking);
 // Single order details (Reseller own or Admin)
 router.get("/:id", protect, orderController.getOrderById);
 
+// Shipping Label generation & printable download
+router.get("/:id/shipping-label", protect, orderController.getShippingLabel);
+
 // Order list: admin gets system orders, reseller gets own orders
 router.get("/", protect, (req, res, next) => {
   if (req.user.role === "admin") {

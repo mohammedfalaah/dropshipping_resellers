@@ -115,8 +115,15 @@ const OrderSchema = new mongoose.Schema(
       country: { type: String, default: "India" },
       notes: { type: String, default: "" },
     },
-    trackingNumber: { type: String, default: "" },
-    courierName: { type: String, default: "" },
+    trackingNumber: { type: String, default: "", index: true },
+    courierName: { type: String, default: "India Post (Speed Post / Parcel)" },
+    shippingLabel: {
+      barcode: { type: String, default: "" },
+      base64Image: { type: String, default: "" },
+      labelUrl: { type: String, default: "" },
+      generatedAt: { type: Date, default: null },
+      serviceType: { type: String, default: "SPEED_POST" },
+    },
     deliveryStatus: {
       type: String,
       enum: ["PENDING", "BOOKED", "DISPATCHED", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED", "FAILED", "RETURNED"],

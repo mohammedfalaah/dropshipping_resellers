@@ -72,6 +72,8 @@ export const ordersApi = {
   getMyOrders: (params) => api.get("/orders/my-orders", { params }),
   getById: (id) => api.get(`/orders/${id}`),
   getTracking: (trackingNumber) => api.get(`/orders/tracking/${encodeURIComponent(trackingNumber)}`),
+  getShippingLabel: (id) => api.get(`/orders/${id}/shipping-label`),
+  getShippingLabelPrintUrl: (id) => `/api/orders/${id}/shipping-label?view=print&autoPrint=1&token=${localStorage.getItem("sparepro_token") || ""}`,
 };
 
 // Payments & Ledger APIs
@@ -126,6 +128,8 @@ export const adminApi = {
   updateOrderCodCollection: (id, data) => api.patch(`/admin/orders/${id}/cod-collection`, data),
   updateDeliveryProgress: (id, data) => api.patch(`/admin/orders/${id}/delivery-progress`, data),
   getTrackingInfo: (trackingNumber) => api.get(`/admin/tracking/${trackingNumber}`),
+  getShippingLabel: (id) => api.get(`/orders/${id}/shipping-label`),
+  getShippingLabelPrintUrl: (id) => `/api/orders/${id}/shipping-label?view=print&autoPrint=1&token=${localStorage.getItem("sparepro_token") || ""}`,
   getBalanceSheet: (params) => api.get("/admin/reports/balance-sheet", { params }),
   getSalesReport: (params) => api.get("/admin/reports/sales", { params }),
   getCollectionsReport: (params) => api.get("/admin/reports/collections", { params }),

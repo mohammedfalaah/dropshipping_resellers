@@ -371,6 +371,50 @@ const getPublicTracking = async (req, res, next) => {
   }
 };
 
+/**
+ * Get / Download Shipping Label
+ */
+const getShippingLabel = async (req, res, next) => {
+  try {
+    const shippingLabelService = require("../services/shippingLabelService");
+    const labelData = await shippingLabelService.getOrCreateShippingLabel(req.params.id);
+
+    // Check ownership if not admin
+    if (req.user && req.user.role !== "admin") {
+      const isOwner =
+        (labelData.order.reseller && labelData.order.reseller._id.toString() === req.user._id.toString()) ||
+        (req.user.email && labelData.order.shippingAddress?.email?.toLowerCase() === req.user.email.toLowerCase());
+      if (!isOwner) {
+        return errorResponse(res, "Access denied to this shipping label.", "FORBIDDEN", 403);
+      }
+    }
+
+    // If query format is html / view is print / download is 1, return the standalone printable HTML
+    if (req.query.format === "html" || req.query.view === "print" || req.query.download === "1") {
+      const html = shippingLabelService.generateLabelHtml(labelData.order, {
+        barcode: labelData.barcode,
+        svg: labelData.barcodeSvg,
+      });
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      return res.send(html);
+    }
+
+    // Otherwise return JSON API response
+    return successResponse(res, "Shipping label retrieved successfully.", {
+      orderId: labelData.order._id,
+      orderNumber: labelData.order.orderNumber,
+      trackingNumber: labelData.barcode,
+      barcode: labelData.barcode,
+      base64Image: labelData.barcodeDataUri,
+      serviceType: labelData.serviceType,
+      labelUrl: `/api/orders/${labelData.order._id}/shipping-label?view=print`,
+      order: labelData.order,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   createOrder,
   getMyOrders,
@@ -380,5 +424,6 @@ module.exports = {
   updateOrderCodCollection,
   updateDeliveryProgress,
   getPublicTracking,
+  getShippingLabel,
   verifyRazorpayPayment,
 };

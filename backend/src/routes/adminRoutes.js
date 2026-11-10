@@ -61,6 +61,7 @@ router.patch("/orders/:id/status", validate(updateOrderStatusSchema), orderContr
 router.patch("/orders/:id/cod-collection", orderController.updateOrderCodCollection);
 router.patch("/orders/:id/delivery-progress", orderController.updateDeliveryProgress);
 router.get("/tracking/:trackingNumber", adminController.getTrackingInfo);
+router.get("/orders/:id/shipping-label", orderController.getShippingLabel);
 
 // COD Pending & Remittance Management
 router.get("/cod", codController.getCodList);

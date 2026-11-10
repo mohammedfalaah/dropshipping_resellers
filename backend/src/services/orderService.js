@@ -146,6 +146,11 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
   const orderStatus = normalizedPaymentMethod === "RAZORPAY" ? "PENDING" : "CONFIRMED";
   const paymentStatus = normalizedPaymentMethod === "COD" ? "PENDING" : "PENDING";
 
+  // Generate automated India Post consignment tracking ID & shipping label barcode
+  const shippingLabelService = require("./shippingLabelService");
+  const consignmentBarcode = shippingLabelService.generateConsignmentNumber(orderNumber);
+  const barcodeMeta = shippingLabelService.generateBarcodeSvg(consignmentBarcode);
+
   // 3. Create Order document
   const order = await Order.create({
     orderNumber,
@@ -171,6 +176,23 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
     paymentStatus,
     orderStatus,
     shippingAddress,
+    trackingNumber: consignmentBarcode,
+    courierName: "India Post (Speed Post / Parcel)",
+    deliveryStatus: "BOOKED",
+    shippingLabel: {
+      barcode: consignmentBarcode,
+      base64Image: barcodeMeta.dataUri,
+      generatedAt: new Date(),
+      serviceType: "SPEED_POST",
+    },
+    trackingHistory: [
+      {
+        timestamp: new Date(),
+        location: "SPARE PRO Central Logistics Hub, New Delhi",
+        status: "Consignment Manifest Generated",
+        details: `Article ${consignmentBarcode} booked under Speed Post / Parcel Logistics. Ready for dispatch.`,
+      },
+    ],
     cod:
       normalizedPaymentMethod === "COD"
         ? {
