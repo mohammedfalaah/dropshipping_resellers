@@ -37,7 +37,7 @@ export default function CodPending() {
 
       const res = await codApi.getPending(params);
       const data = res.data?.codPendingOrders ? res.data : res.data?.data || res.data;
-      setCodList(data.codPendingOrders || []);
+      setCodList(data.records || data.codPendingOrders || []);
       if (data.pagination) setPagination(data.pagination);
     } catch (err) {
       console.error(err);

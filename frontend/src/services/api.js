@@ -120,6 +120,7 @@ export const adminApi = {
   toggleResellerStatus: (id, status) => api.patch(`/admin/resellers/${id}/status`, { accountStatus: status }),
   getOrders: (params) => api.get("/admin/orders", { params }),
   updateOrderStatus: (id, orderStatus) => api.patch(`/admin/orders/${id}/status`, { orderStatus }),
+  updateOrderCodCollection: (id, data) => api.patch(`/admin/orders/${id}/cod-collection`, data),
   getBalanceSheet: (params) => api.get("/admin/reports/balance-sheet", { params }),
   getSalesReport: (params) => api.get("/admin/reports/sales", { params }),
   getCollectionsReport: (params) => api.get("/admin/reports/collections", { params }),

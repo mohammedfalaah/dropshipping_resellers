@@ -31,6 +31,49 @@ export default function AdminDashboard() {
   const recentOrders = stats?.recentOrders || [];
   const recentActivities = stats?.recentActivities || [];
 
+  const totalResellers = overview.totalResellers ?? overview.resellers?.total ?? 0;
+  const pendingResellers = overview.pendingResellers ?? overview.resellers?.pendingApproval ?? 0;
+  const approvedResellers = overview.approvedResellers ?? overview.resellers?.approved ?? 0;
+  const totalOrders = overview.totalOrders ?? overview.orders?.total ?? 0;
+  const pendingOrders = overview.pendingOrders ?? overview.orders?.pending ?? 0;
+  const deliveredOrders = overview.deliveredOrders ?? overview.orders?.delivered ?? 0;
+
+  const totalSalesFormatted =
+    overview.totalSalesFormatted ||
+    (overview.orders?.totalSalesRupees !== undefined
+      ? `₹${Number(overview.orders.totalSalesRupees).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+      : "₹0.00");
+
+  const companyAmountFormatted =
+    overview.companyAmountFormatted ||
+    (overview.orders?.companyAmountRupees !== undefined
+      ? `₹${Number(overview.orders.companyAmountRupees).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+      : totalSalesFormatted);
+
+  const resellerProfitFormatted =
+    overview.resellerProfitFormatted ||
+    (overview.orders?.resellerProfitRupees !== undefined
+      ? `+₹${Number(overview.orders.resellerProfitRupees).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+      : "+₹0.00");
+
+  const totalCodPendingFormatted =
+    overview.totalCodPendingFormatted ||
+    (overview.receivables?.totalCodPendingRupees !== undefined
+      ? `₹${Number(overview.receivables.totalCodPendingRupees).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+      : "₹0.00");
+
+  const totalOutstandingFormatted =
+    overview.totalOutstandingFormatted ||
+    (overview.receivables?.totalOutstandingRupees !== undefined
+      ? `₹${Number(overview.receivables.totalOutstandingRupees).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+      : "₹0.00");
+
+  const totalPaymentsCollectedFormatted =
+    overview.totalPaymentsCollectedFormatted ||
+    (overview.collections?.totalCollectedRupees !== undefined
+      ? `₹${Number(overview.collections.totalCollectedRupees).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+      : "₹0.00");
+
   return (
     <div>
       {/* Page Header */}
@@ -72,47 +115,46 @@ export default function AdminDashboard() {
         </div>
       ) : (
         <>
-          {/* Top 4 Primary KPIs */}
+          {/* Primary Financial KPIs: Company Amount, Reseller Margin, COD In-Transit, Reseller Outstanding */}
           <div className="row g-3 mb-4">
             <div className="col-sm-6 col-xl-3">
-              <div className="admin-stat-card">
-                <div className="admin-stat-icon" style={{ backgroundColor: "#EEF2FF", color: "#4F46E5" }}>
-                  <i className="fa-solid fa-users"></i>
+              <div className="admin-stat-card shadow-sm border-0" style={{ backgroundColor: "#F0FDF4" }}>
+                <div className="admin-stat-icon" style={{ backgroundColor: "#DCFCE7", color: "#16A34A" }}>
+                  <i className="fa-solid fa-building-columns"></i>
                 </div>
                 <div>
-                  <div className="text-muted small">Total Resellers</div>
-                  <h4 className="fw-bold mb-0 text-dark">{overview.totalResellers ?? 0}</h4>
-                  <div className="small text-warning mt-1" style={{ fontSize: "11px" }}>
-                    <i className="fa-solid fa-clock me-1"></i>
-                    {overview.pendingResellers ?? 0} Pending Approvals
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="col-sm-6 col-xl-3">
-              <div className="admin-stat-card">
-                <div className="admin-stat-icon" style={{ backgroundColor: "#ECFDF5", color: "#059669" }}>
-                  <i className="fa-solid fa-indian-rupee-sign"></i>
-                </div>
-                <div>
-                  <div className="text-muted small">Total Sales Booked</div>
-                  <h4 className="fw-bold mb-0 text-dark">{overview.totalSalesFormatted || "₹0.00"}</h4>
+                  <div className="text-muted small fw-semibold">Our Company Amount</div>
+                  <h4 className="fw-bold mb-0 text-success">{companyAmountFormatted}</h4>
                   <div className="small text-muted mt-1" style={{ fontSize: "11px" }}>
-                    {overview.totalOrders ?? 0} confirmed orders
+                    {totalOrders} confirmed orders
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="col-sm-6 col-xl-3">
-              <div className="admin-stat-card">
-                <div className="admin-stat-icon" style={{ backgroundColor: "#FFFBEB", color: "#D97706" }}>
+              <div className="admin-stat-card shadow-sm border-0" style={{ backgroundColor: "#EEF2FF" }}>
+                <div className="admin-stat-icon" style={{ backgroundColor: "#E0E7FF", color: "#4F46E5" }}>
+                  <i className="fa-solid fa-coins"></i>
+                </div>
+                <div>
+                  <div className="text-muted small fw-semibold">Reseller Amount (Profit)</div>
+                  <h4 className="fw-bold mb-0 text-primary">{resellerProfitFormatted}</h4>
+                  <div className="small text-muted mt-1" style={{ fontSize: "11px" }}>
+                    Total reseller margins
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="col-sm-6 col-xl-3">
+              <div className="admin-stat-card shadow-sm border-0" style={{ backgroundColor: "#FFFBEB" }}>
+                <div className="admin-stat-icon" style={{ backgroundColor: "#FEF3C7", color: "#D97706" }}>
                   <i className="fa-solid fa-hand-holding-dollar"></i>
                 </div>
                 <div>
-                  <div className="text-muted small">COD In Transit</div>
-                  <h4 className="fw-bold mb-0 text-warning">{overview.totalCodPendingFormatted || "₹0.00"}</h4>
+                  <div className="text-muted small fw-semibold">COD In Transit</div>
+                  <h4 className="fw-bold mb-0 text-warning">{totalCodPendingFormatted}</h4>
                   <div className="small text-muted mt-1" style={{ fontSize: "11px" }}>
                     Awaiting courier collection
                   </div>
@@ -121,15 +163,15 @@ export default function AdminDashboard() {
             </div>
 
             <div className="col-sm-6 col-xl-3">
-              <div className="admin-stat-card">
-                <div className="admin-stat-icon" style={{ backgroundColor: "#FEF2F2", color: "#DC2626" }}>
+              <div className="admin-stat-card shadow-sm border-0" style={{ backgroundColor: "#FEF2F2" }}>
+                <div className="admin-stat-icon" style={{ backgroundColor: "#FEE2E2", color: "#DC2626" }}>
                   <i className="fa-solid fa-scale-balanced"></i>
                 </div>
                 <div>
-                  <div className="text-muted small">Reseller Outstanding</div>
-                  <h4 className="fw-bold mb-0 text-danger">{overview.totalOutstandingFormatted || "₹0.00"}</h4>
+                  <div className="text-muted small fw-semibold">Reseller Outstanding</div>
+                  <h4 className="fw-bold mb-0 text-danger">{totalOutstandingFormatted}</h4>
                   <div className="small text-success mt-1 fw-semibold" style={{ fontSize: "11px" }}>
-                    {overview.totalPaymentsCollectedFormatted || "₹0.00"} Collected
+                    {totalPaymentsCollectedFormatted} Received
                   </div>
                 </div>
               </div>
@@ -139,27 +181,28 @@ export default function AdminDashboard() {
           {/* Secondary Stats Row */}
           <div className="row g-3 mb-4">
             <div className="col-sm-6 col-md-3">
-              <div className="p-3 bg-white rounded-3 border">
+              <div className="p-3 bg-white rounded-3 border shadow-sm">
                 <span className="text-muted small">Catalog Products</span>
                 <h5 className="fw-bold text-dark mt-1 mb-0">{overview.totalProducts ?? 8}</h5>
               </div>
             </div>
             <div className="col-sm-6 col-md-3">
-              <div className="p-3 bg-white rounded-3 border">
+              <div className="p-3 bg-white rounded-3 border shadow-sm">
                 <span className="text-muted small">Approved Resellers</span>
-                <h5 className="fw-bold text-success mt-1 mb-0">{overview.approvedResellers ?? 0}</h5>
+                <h5 className="fw-bold text-success mt-1 mb-0">{approvedResellers}</h5>
+                <span className="small text-muted" style={{ fontSize: "11px" }}>{totalResellers} registered</span>
               </div>
             </div>
             <div className="col-sm-6 col-md-3">
-              <div className="p-3 bg-white rounded-3 border">
+              <div className="p-3 bg-white rounded-3 border shadow-sm">
                 <span className="text-muted small">Pending Fulfillment</span>
-                <h5 className="fw-bold text-warning mt-1 mb-0">{overview.pendingOrders ?? 0}</h5>
+                <h5 className="fw-bold text-warning mt-1 mb-0">{pendingOrders}</h5>
               </div>
             </div>
             <div className="col-sm-6 col-md-3">
-              <div className="p-3 bg-white rounded-3 border">
+              <div className="p-3 bg-white rounded-3 border shadow-sm">
                 <span className="text-muted small">Delivered Orders</span>
-                <h5 className="fw-bold text-primary mt-1 mb-0">{overview.deliveredOrders ?? 0}</h5>
+                <h5 className="fw-bold text-primary mt-1 mb-0">{deliveredOrders}</h5>
               </div>
             </div>
           </div>

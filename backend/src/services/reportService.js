@@ -25,7 +25,15 @@ const getFinancialOverview = async (startDate, endDate) => {
   const totalOrders = orders.length;
   const pendingOrders = orders.filter((o) => o.orderStatus === "PENDING" || o.orderStatus === "CONFIRMED").length;
   const deliveredOrders = orders.filter((o) => o.orderStatus === "DELIVERED").length;
-  const totalSalesPaise = orders.reduce((sum, o) => sum + o.totalPaise, 0);
+  const totalSalesPaise = orders.reduce((sum, o) => sum + (o.customerSellingTotalPaise || o.totalPaise || 0), 0);
+  const totalCompanyAmountPaise = orders.reduce(
+    (sum, o) =>
+      sum +
+      (o.amountPayableToVexoraPaise ||
+        (o.wholesaleCostPaise || 0) + (o.deliveryChargePaise !== undefined ? o.deliveryChargePaise : 5000)),
+    0
+  );
+  const totalResellerProfitPaise = orders.reduce((sum, o) => sum + (o.expectedResellerProfitPaise || 0), 0);
 
   // 2. Payments aggregation
   const payments = await Payment.find({
@@ -74,6 +82,11 @@ const getFinancialOverview = async (startDate, endDate) => {
       pending: pendingOrders,
       delivered: deliveredOrders,
       totalSalesRupees: paiseToRupees(totalSalesPaise),
+      totalSalesPaise,
+      companyAmountRupees: paiseToRupees(totalCompanyAmountPaise),
+      companyAmountPaise: totalCompanyAmountPaise,
+      resellerProfitRupees: paiseToRupees(totalResellerProfitPaise),
+      resellerProfitPaise: totalResellerProfitPaise,
     },
     collections: {
       totalCollectedRupees: paiseToRupees(totalPaymentsCollectedPaise),

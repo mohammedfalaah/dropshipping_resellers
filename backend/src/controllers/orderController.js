@@ -98,9 +98,9 @@ const getAllOrders = async (req, res, next) => {
     const query = {};
 
     if (resellerId) query.reseller = resellerId;
-    if (orderStatus) query.orderStatus = orderStatus;
-    if (paymentStatus) query.paymentStatus = paymentStatus;
-    if (paymentMethod) query.paymentMethod = paymentMethod;
+    if (orderStatus && orderStatus !== "all") query.orderStatus = orderStatus.toUpperCase();
+    if (paymentStatus && paymentStatus !== "all") query.paymentStatus = paymentStatus.toUpperCase();
+    if (paymentMethod && paymentMethod !== "all") query.paymentMethod = paymentMethod.toUpperCase();
 
     if (search) {
       query.$or = [
@@ -129,14 +129,132 @@ const getAllOrders = async (req, res, next) => {
       Order.countDocuments(query),
     ]);
 
+    const formattedOrders = orders.map((o) => {
+      const obj = o.toObject();
+      const wholesaleCostPaise =
+        obj.wholesaleCostPaise ||
+        (obj.items || []).reduce(
+          (s, it) => s + (it.wholesalePricePaise || it.unitPricePaise || 0) * (it.quantity || 1),
+          0
+        );
+      const deliveryChargePaise = obj.deliveryChargePaise !== undefined ? obj.deliveryChargePaise : 5000;
+      const amountPayableToVexoraPaise =
+        obj.amountPayableToVexoraPaise || wholesaleCostPaise + deliveryChargePaise;
+      const customerSellingTotalPaise =
+        obj.customerSellingTotalPaise ||
+        (obj.items || []).reduce(
+          (s, it) =>
+            s +
+            (it.customerSellingPricePaise || it.wholesalePricePaise || it.unitPricePaise || 0) *
+              (it.quantity || 1),
+          0
+        ) ||
+        obj.totalPaise;
+      const expectedResellerProfitPaise =
+        obj.expectedResellerProfitPaise !== undefined
+          ? obj.expectedResellerProfitPaise
+          : Math.max(0, customerSellingTotalPaise - amountPayableToVexoraPaise);
+
+      obj.wholesaleCostPaise = wholesaleCostPaise;
+      obj.deliveryChargePaise = deliveryChargePaise;
+      obj.amountPayableToVexoraPaise = amountPayableToVexoraPaise;
+      obj.customerSellingTotalPaise = customerSellingTotalPaise;
+      obj.expectedResellerProfitPaise = expectedResellerProfitPaise;
+      obj.wholesaleCostRupees = paiseToRupees(wholesaleCostPaise);
+      obj.deliveryChargeRupees = paiseToRupees(deliveryChargePaise);
+      obj.amountPayableToVexoraRupees = paiseToRupees(amountPayableToVexoraPaise);
+      obj.customerSellingTotalRupees = paiseToRupees(customerSellingTotalPaise);
+      obj.expectedResellerProfitRupees = paiseToRupees(expectedResellerProfitPaise);
+      obj.codCollectedAmountRupees = paiseToRupees(obj.codCollectedAmountPaise || 0);
+
+      return obj;
+    });
+
     return successResponse(res, "All orders retrieved.", {
-      orders,
+      orders: formattedOrders,
       pagination: {
         total,
         page: Number(page),
         limit: Number(limit),
         pages: Math.ceil(total / Number(limit)) || 1,
       },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Update Order COD Collection & Status (Admin only)
+ */
+const updateOrderCodCollection = async (req, res, next) => {
+  try {
+    const {
+      collectedAmount,
+      collectionStatus,
+      collectionReference,
+      notes,
+      deliveryChargeStatus,
+      trackingNumber,
+      courierName,
+      orderStatus,
+    } = req.body;
+    const orderId = req.params.id;
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return errorResponse(res, "Order not found", 404);
+    }
+
+    const codService = require("../services/codService");
+    let codRecord = null;
+    try {
+      codRecord = await codService.recordCodCollection(
+        orderId,
+        {
+          collectedAmountPaise:
+            collectedAmount !== undefined && collectedAmount !== ""
+              ? rupeesToPaise(Number(collectedAmount))
+              : undefined,
+          collectionStatus: collectionStatus ? collectionStatus.toUpperCase() : undefined,
+          collectionReference,
+          notes,
+        },
+        req.user
+      );
+    } catch (e) {
+      // Continue to update other order fields if codService threw
+    }
+
+    const updates = {};
+    if (collectionStatus) {
+      const upperStatus = collectionStatus.toUpperCase();
+      updates.codCollectionStatus = upperStatus;
+      updates["cod.collectionStatus"] = upperStatus;
+      if (upperStatus === "COLLECTED" || upperStatus === "RECONCILED") {
+        updates.paymentStatus = "PAID";
+      }
+    }
+    if (collectedAmount !== undefined && collectedAmount !== "") {
+      const paise = rupeesToPaise(Number(collectedAmount));
+      updates.codCollectedAmountPaise = paise;
+      updates["cod.collectedPaise"] = paise;
+    }
+    if (deliveryChargeStatus) {
+      updates.deliveryChargeStatus = deliveryChargeStatus.toUpperCase();
+    }
+    if (trackingNumber !== undefined) updates.trackingNumber = trackingNumber;
+    if (courierName !== undefined) updates.courierName = courierName;
+    if (orderStatus) updates.orderStatus = orderStatus.toUpperCase();
+
+    const updatedOrder = await Order.findByIdAndUpdate(orderId, updates, { new: true }).populate(
+      "reseller",
+      "name email phone businessInfo"
+    );
+
+    return successResponse(res, "Order COD collection status updated successfully.", {
+      order: updatedOrder,
+      codRecord,
     });
   } catch (err) {
     next(err);
@@ -187,5 +305,6 @@ module.exports = {
   getOrderById,
   getAllOrders,
   updateOrderStatus,
+  updateOrderCodCollection,
   verifyRazorpayPayment,
 };

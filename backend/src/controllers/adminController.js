@@ -36,10 +36,36 @@ const getDashboardStats = async (req, res, next) => {
       groupBy: "monthly",
     });
 
+    const salesRupees = overview.orders?.totalSalesRupees || 0;
+    const companyRupees = overview.orders?.companyAmountRupees || 0;
+    const resellerProfitRupees = overview.orders?.resellerProfitRupees || 0;
+    const codPendingRupees = overview.receivables?.totalCodPendingRupees || 0;
+    const outstandingRupees = overview.receivables?.totalOutstandingRupees || 0;
+    const collectedRupees = overview.collections?.totalCollectedRupees || 0;
+
     return successResponse(res, "Admin dashboard statistics retrieved.", {
       overview: {
         ...overview,
         totalProducts,
+        totalResellers: overview.resellers?.total || 0,
+        pendingResellers: overview.resellers?.pendingApproval || 0,
+        approvedResellers: overview.resellers?.approved || 0,
+        blockedResellers: overview.resellers?.blocked || 0,
+        totalOrders: overview.orders?.total || 0,
+        pendingOrders: overview.orders?.pending || 0,
+        deliveredOrders: overview.orders?.delivered || 0,
+        totalSalesRupees: salesRupees,
+        totalSalesFormatted: `₹${Number(salesRupees).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        companyAmountRupees: companyRupees,
+        companyAmountFormatted: `₹${Number(companyRupees).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        resellerProfitRupees: resellerProfitRupees,
+        resellerProfitFormatted: `₹${Number(resellerProfitRupees).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        totalCodPendingRupees: codPendingRupees,
+        totalCodPendingFormatted: `₹${Number(codPendingRupees).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        totalOutstandingRupees: outstandingRupees,
+        totalOutstandingFormatted: `₹${Number(outstandingRupees).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        totalPaymentsCollectedRupees: collectedRupees,
+        totalPaymentsCollectedFormatted: `₹${Number(collectedRupees).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       },
       recentOrders,
       recentActivities,
@@ -83,18 +109,59 @@ const getAllResellers = async (req, res, next) => {
       User.countDocuments(query),
     ]);
 
-    // Format response with Rupees values
-    const formattedResellers = resellers.map((r) => {
-      const obj = r.toObject();
-      obj.financialSummary = {
-        totalOrders: r.financialSummary?.totalOrders || 0,
-        totalOrderValueRupees: paiseToRupees(r.financialSummary?.totalOrderValuePaise || 0),
-        totalPaidRupees: paiseToRupees(r.financialSummary?.totalPaidPaise || 0),
-        outstandingBalanceRupees: paiseToRupees(r.financialSummary?.outstandingBalancePaise || 0),
-        codPendingRupees: paiseToRupees(r.financialSummary?.codPendingPaise || 0),
-      };
-      return obj;
-    });
+    // Format response with Rupees values & detailed financial breakdown (Company Amount, Reseller Margin, Paid, Due)
+    const formattedResellers = await Promise.all(
+      resellers.map(async (r) => {
+        const obj = r.toObject();
+        const resellerOrders = await Order.find({ reseller: r._id, orderStatus: { $ne: "CANCELLED" } });
+        const totalCompanyAmountPaise = resellerOrders.reduce(
+          (sum, o) =>
+            sum +
+            (o.amountPayableToVexoraPaise ||
+              (o.wholesaleCostPaise || 0) + (o.deliveryChargePaise !== undefined ? o.deliveryChargePaise : 5000)),
+          0
+        );
+        const totalResellerProfitPaise = resellerOrders.reduce(
+          (sum, o) => sum + (o.expectedResellerProfitPaise || 0),
+          0
+        );
+        const totalSellingPaise = resellerOrders.reduce(
+          (sum, o) => sum + (o.customerSellingTotalPaise || o.totalPaise || 0),
+          0
+        );
+
+        const totalPaidPaise = r.financialSummary?.totalPaidPaise || 0;
+        const outstandingBalancePaise =
+          r.financialSummary?.outstandingBalancePaise !== undefined
+            ? r.financialSummary.outstandingBalancePaise
+            : Math.max(0, totalCompanyAmountPaise - totalPaidPaise);
+        const codPendingPaise = r.financialSummary?.codPendingPaise || 0;
+
+        obj.companyAmountPaise = totalCompanyAmountPaise;
+        obj.companyAmountRupees = paiseToRupees(totalCompanyAmountPaise);
+        obj.resellerProfitPaise = totalResellerProfitPaise;
+        obj.resellerProfitRupees = paiseToRupees(totalResellerProfitPaise);
+        obj.customerSellingTotalPaise = totalSellingPaise;
+        obj.customerSellingTotalRupees = paiseToRupees(totalSellingPaise);
+
+        obj.financialSummary = {
+          totalOrders: r.financialSummary?.totalOrders || resellerOrders.length,
+          totalOrderValueRupees: paiseToRupees(r.financialSummary?.totalOrderValuePaise || totalSellingPaise),
+          totalOrderValuePaise: r.financialSummary?.totalOrderValuePaise || totalSellingPaise,
+          totalPaidRupees: paiseToRupees(totalPaidPaise),
+          totalPaidPaise,
+          outstandingBalanceRupees: paiseToRupees(outstandingBalancePaise),
+          outstandingBalancePaise,
+          codPendingRupees: paiseToRupees(codPendingPaise),
+          codPendingPaise,
+          companyAmountRupees: paiseToRupees(totalCompanyAmountPaise),
+          companyAmountPaise: totalCompanyAmountPaise,
+          resellerProfitRupees: paiseToRupees(totalResellerProfitPaise),
+          resellerProfitPaise: totalResellerProfitPaise,
+        };
+        return obj;
+      })
+    );
 
     return successResponse(res, "Resellers list retrieved.", {
       resellers: formattedResellers,

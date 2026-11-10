@@ -56,6 +56,7 @@ router.delete("/categories/:id", categoryController.deleteCategory);
 // Orders Management
 router.get("/orders", orderController.getAllOrders);
 router.patch("/orders/:id/status", validate(updateOrderStatusSchema), orderController.updateOrderStatus);
+router.patch("/orders/:id/cod-collection", orderController.updateOrderCodCollection);
 
 // COD Pending & Remittance Management
 router.get("/cod", codController.getCodList);

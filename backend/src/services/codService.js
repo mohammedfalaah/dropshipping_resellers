@@ -1,8 +1,61 @@
+const mongoose = require("mongoose");
 const CodCollection = require("../models/CodCollection");
 const Order = require("../models/Order");
 const paymentService = require("./paymentService");
 const AuditLog = require("../models/AuditLog");
 const { paiseToRupees } = require("../utils/currency");
+
+/**
+ * Helper to find or lazily initialize a CodCollection record by codId, orderId, or orderNumber
+ */
+const findOrCreateCodRecord = async (identifier) => {
+  if (!identifier) return null;
+  let codRecord = null;
+  if (mongoose.isValidObjectId(identifier)) {
+    codRecord = await CodCollection.findById(identifier);
+    if (!codRecord) {
+      codRecord = await CodCollection.findOne({ order: identifier });
+    }
+  }
+  if (!codRecord) {
+    codRecord = await CodCollection.findOne({ orderNumber: identifier });
+  }
+  if (!codRecord && mongoose.isValidObjectId(identifier)) {
+    const order = await Order.findById(identifier).populate("reseller", "name");
+    if (order) {
+      const totalCod = order.customerSellingTotalPaise || order.totalPaise || 0;
+      const collected = order.codCollectedAmountPaise || 0;
+      codRecord = await CodCollection.create({
+        order: order._id,
+        orderNumber: order.orderNumber,
+        reseller: order.reseller?._id || order.reseller,
+        resellerName: order.reseller?.name || "Reseller",
+        wholesaleCostPaise: order.wholesaleCostPaise || 0,
+        customerSellingTotalPaise: totalCod,
+        expectedResellerProfitPaise: order.expectedResellerProfitPaise || 0,
+        deliveryChargePaise: order.deliveryChargePaise || 5000,
+        deliveryChargeStatus: order.deliveryChargeStatus || "PENDING",
+        amountPayableToVexoraPaise:
+          order.amountPayableToVexoraPaise ||
+          (order.wholesaleCostPaise || 0) + (order.deliveryChargePaise || 5000),
+        codAmountPaise: totalCod,
+        collectedAmountPaise: collected,
+        pendingAmountPaise: Math.max(0, totalCod - collected),
+        deliveryStatus:
+          order.orderStatus === "DELIVERED"
+            ? "DELIVERED"
+            : order.orderStatus === "SHIPPED"
+            ? "DISPATCHED"
+            : "PENDING",
+        collectionStatus:
+          order.codCollectionStatus && order.codCollectionStatus !== "NOT_APPLICABLE"
+            ? order.codCollectionStatus
+            : "PENDING",
+      });
+    }
+  }
+  return codRecord;
+};
 
 /**
  * Get COD collections list with filters & pagination
@@ -20,8 +73,12 @@ const getCodList = async ({
   const query = {};
 
   if (resellerId) query.reseller = resellerId;
-  if (collectionStatus) query.collectionStatus = collectionStatus;
-  if (deliveryStatus) query.deliveryStatus = deliveryStatus;
+  if (collectionStatus && collectionStatus !== "all") {
+    query.collectionStatus = collectionStatus.toUpperCase();
+  }
+  if (deliveryStatus && deliveryStatus !== "all") {
+    query.deliveryStatus = deliveryStatus.toUpperCase();
+  }
 
   if (search) {
     query.$or = [
@@ -79,25 +136,40 @@ const recordCodCollection = async (
   { collectedAmountPaise, collectionStatus, collectionReference = "", notes = "" },
   adminUser
 ) => {
-  const codRecord = await CodCollection.findById(codId);
+  const codRecord = await findOrCreateCodRecord(codId);
   if (!codRecord) {
     throw new Error("COD record not found");
   }
 
-  const amountToCollect = collectedAmountPaise;
-  if (amountToCollect <= 0) {
-    throw new Error("Collected amount must be greater than zero");
+  // Handle collected amount gracefully
+  let amountToCollect = collectedAmountPaise;
+  if (amountToCollect === undefined || amountToCollect === null) {
+    if (collectionStatus === "COLLECTED" || collectionStatus === "RECONCILED") {
+      amountToCollect = codRecord.pendingAmountPaise;
+    } else {
+      amountToCollect = 0;
+    }
   }
 
   if (amountToCollect > codRecord.pendingAmountPaise) {
-    throw new Error(
-      `Collected amount (₹${(amountToCollect / 100).toFixed(2)}) cannot exceed pending amount (₹${(codRecord.pendingAmountPaise / 100).toFixed(2)})`
-    );
+    // If user entered total collected so far instead of incremental
+    if (amountToCollect <= codRecord.codAmountPaise && amountToCollect >= codRecord.collectedAmountPaise) {
+      amountToCollect = amountToCollect - codRecord.collectedAmountPaise;
+    } else {
+      throw new Error(
+        `Collected amount (₹${(amountToCollect / 100).toFixed(2)}) cannot exceed pending amount (₹${(codRecord.pendingAmountPaise / 100).toFixed(2)})`
+      );
+    }
   }
 
   const newCollectedTotal = codRecord.collectedAmountPaise + amountToCollect;
-  const newPendingTotal = codRecord.codAmountPaise - newCollectedTotal;
-  const determinedStatus = newPendingTotal === 0 ? "COLLECTED" : "PARTIALLY_COLLECTED";
+  const newPendingTotal = Math.max(0, codRecord.codAmountPaise - newCollectedTotal);
+  const determinedStatus =
+    newPendingTotal === 0
+      ? "COLLECTED"
+      : newCollectedTotal > 0
+      ? "PARTIALLY_COLLECTED"
+      : "PENDING";
 
   codRecord.collectedAmountPaise = newCollectedTotal;
   codRecord.pendingAmountPaise = newPendingTotal;
@@ -105,7 +177,7 @@ const recordCodCollection = async (
   codRecord.collectionDate = new Date();
   codRecord.collectionReference = collectionReference || codRecord.collectionReference;
   codRecord.notes = notes || codRecord.notes;
-  codRecord.recordedBy = adminUser._id;
+  codRecord.recordedBy = adminUser?._id;
 
   await codRecord.save();
 
@@ -113,6 +185,7 @@ const recordCodCollection = async (
   await Order.findByIdAndUpdate(codRecord.order, {
     codCollectedAmountPaise: newCollectedTotal,
     codCollectionStatus: codRecord.collectionStatus,
+    paymentStatus: codRecord.collectionStatus === "COLLECTED" || codRecord.collectionStatus === "RECONCILED" ? "PAID" : "PENDING",
     "cod.collectedPaise": newCollectedTotal,
     "cod.pendingPaise": newPendingTotal,
     "cod.collectionStatus": codRecord.collectionStatus,
@@ -120,15 +193,17 @@ const recordCodCollection = async (
     "cod.collectionReference": collectionReference || undefined,
   });
 
-  await AuditLog.create({
-    user: adminUser._id,
-    userName: adminUser.name,
-    userRole: adminUser.role,
-    action: "COD_COLLECTED",
-    targetType: "COD",
-    targetId: codRecord._id.toString(),
-    description: `COD courier collection of ₹${(amountToCollect / 100).toFixed(2)} recorded for order ${codRecord.orderNumber}`,
-  });
+  if (adminUser) {
+    await AuditLog.create({
+      user: adminUser._id,
+      userName: adminUser.name || "Admin",
+      userRole: adminUser.role || "admin",
+      action: "COD_COLLECTED",
+      targetType: "COD",
+      targetId: codRecord._id.toString(),
+      description: `COD courier collection of ₹${(amountToCollect / 100).toFixed(2)} recorded for order ${codRecord.orderNumber}`,
+    });
+  }
 
   return codRecord;
 };
@@ -137,7 +212,7 @@ const recordCodCollection = async (
  * Reconcile courier remittance with VEXORA bank account
  */
 const reconcileCodPayment = async (codId, { reconciliationReference = "", notes = "" }, adminUser) => {
-  const codRecord = await CodCollection.findById(codId);
+  const codRecord = await findOrCreateCodRecord(codId);
   if (!codRecord) {
     throw new Error("COD record not found");
   }
@@ -155,7 +230,7 @@ const reconcileCodPayment = async (codId, { reconciliationReference = "", notes 
   codRecord.collectionStatus = "RECONCILED";
   codRecord.reconciliationDate = new Date();
   codRecord.reconciliationReference = reconciliationReference || `REMIT-${Date.now().toString().slice(-6)}`;
-  codRecord.reconciledBy = adminUser._id;
+  codRecord.reconciledBy = adminUser?._id;
   if (notes) codRecord.notes = (codRecord.notes ? codRecord.notes + "\n" : "") + notes;
 
   await codRecord.save();
@@ -168,15 +243,17 @@ const reconcileCodPayment = async (codId, { reconciliationReference = "", notes 
     "cod.collectionReference": codRecord.reconciliationReference,
   });
 
-  await AuditLog.create({
-    user: adminUser._id,
-    userName: adminUser.name,
-    userRole: adminUser.role,
-    action: "COD_RECONCILED",
-    targetType: "COD",
-    targetId: codRecord._id.toString(),
-    description: `COD courier remittance reconciled for order ${codRecord.orderNumber} (Ref: ${codRecord.reconciliationReference})`,
-  });
+  if (adminUser) {
+    await AuditLog.create({
+      user: adminUser._id,
+      userName: adminUser.name || "Admin",
+      userRole: adminUser.role || "admin",
+      action: "COD_RECONCILED",
+      targetType: "COD",
+      targetId: codRecord._id.toString(),
+      description: `COD courier remittance reconciled for order ${codRecord.orderNumber} (Ref: ${codRecord.reconciliationReference})`,
+    });
+  }
 
   return codRecord;
 };
@@ -185,7 +262,7 @@ const reconcileCodPayment = async (codId, { reconciliationReference = "", notes 
  * Settle reseller profit for reconciled COD orders
  */
 const settleResellerProfit = async (codId, { amountPaise, reference = "", notes = "" }, adminUser) => {
-  const codRecord = await CodCollection.findById(codId);
+  const codRecord = await findOrCreateCodRecord(codId);
   if (!codRecord) {
     throw new Error("COD record not found");
   }
@@ -269,7 +346,7 @@ const settleResellerProfit = async (codId, { amountPaise, reference = "", notes 
  * Update delivery status for a COD shipment (e.g. dispatched, delivered)
  */
 const updateCodDeliveryStatus = async (codId, { deliveryStatus, courierName, trackingNumber }, adminUser) => {
-  const codRecord = await CodCollection.findById(codId);
+  const codRecord = await findOrCreateCodRecord(codId);
   if (!codRecord) {
     throw new Error("COD record not found");
   }
