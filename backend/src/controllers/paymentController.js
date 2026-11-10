@@ -322,10 +322,69 @@ const verifyPayment = async (req, res, next) => {
   }
 };
 
+/**
+ * Get Reseller Financial Summary (Reseller own or Admin)
+ */
+const getResellerSummary = async (req, res, next) => {
+  try {
+    const ledgerService = require("../services/ledgerService");
+    const resellerId = req.query.resellerId && req.user.role === "admin" ? req.query.resellerId : req.user._id;
+    const summary = await ledgerService.syncResellerFinancialSummary(resellerId);
+
+    const payload = {
+      ...summary,
+      totalPurchasesPaise: summary.totalOrderValuePaise || 0,
+      totalPaymentsPaise: summary.totalPaidPaise || 0,
+      codPendingPaise: summary.codPendingPaise || 0,
+      outstandingBalancePaise: summary.outstandingBalancePaise || 0,
+    };
+
+    return successResponse(res, "Reseller financial summary retrieved.", payload);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Get Reseller Ledger Statement
+ */
+const getResellerLedger = async (req, res, next) => {
+  try {
+    const ledgerService = require("../services/ledgerService");
+    const resellerId = req.query.resellerId && req.user.role === "admin" ? req.query.resellerId : req.user._id;
+    const statement = await ledgerService.getStatement(resellerId, req.query);
+
+    const ledger = (statement.entries || []).map((e) => ({
+      _id: e._id,
+      entryNumber: e.entryNumber,
+      referenceNumber: e.referenceId || e.entryNumber,
+      entryType: e.type === "DEBIT" ? "order_debit" : "payment_credit",
+      type: e.type,
+      amountPaise: e.amountPaise,
+      balanceBeforePaise: e.balanceBeforePaise,
+      balanceAfterPaise: e.balanceAfterPaise,
+      description: e.description,
+      createdAt: e.createdAt,
+      order: e.order,
+      payment: e.payment,
+    }));
+
+    return successResponse(res, "Reseller ledger retrieved.", {
+      ledger,
+      pagination: statement.pagination,
+      summary: statement.summary,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   recordPayment,
   getAllPayments,
   getMyPayments,
+  getResellerSummary,
+  getResellerLedger,
   reversePayment,
   recordAdjustment,
   createRazorpayOrder,

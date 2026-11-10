@@ -38,15 +38,25 @@ const createOrder = async (req, res, next) => {
  */
 const getMyOrders = async (req, res, next) => {
   try {
-    const { status, page = 1, limit = 20 } = req.query;
-    const query = { reseller: req.user._id };
+    const { status, page = 1, limit = 50 } = req.query;
 
-    if (status) query.orderStatus = status;
+    // Match either by reseller ObjectId or by user email in shipping address
+    const conditions = [{ reseller: req.user._id }];
+    if (req.user.email) {
+      conditions.push({ "shippingAddress.email": req.user.email.toLowerCase() });
+    }
+    const query = { $or: conditions };
+
+    if (status && status !== "all") query.orderStatus = status.toUpperCase();
 
     const skip = (Number(page) - 1) * Number(limit);
 
     const [orders, total] = await Promise.all([
-      Order.find(query).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)),
+      Order.find(query)
+        .populate("reseller", "name email phone businessInfo")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit)),
       Order.countDocuments(query),
     ]);
 
@@ -78,7 +88,11 @@ const getOrderById = async (req, res, next) => {
     }
 
     // Ownership check: only admin or the order's reseller can view
-    if (req.user.role !== "admin" && order.reseller._id.toString() !== req.user._id.toString()) {
+    const isOwner =
+      (order.reseller && order.reseller._id.toString() === req.user._id.toString()) ||
+      (req.user.email && order.shippingAddress?.email?.toLowerCase() === req.user.email.toLowerCase());
+
+    if (req.user.role !== "admin" && !isOwner) {
       return errorResponse(res, "Access denied to this order.", "FORBIDDEN", 403);
     }
 
@@ -97,7 +111,16 @@ const getAllOrders = async (req, res, next) => {
 
     const query = {};
 
-    if (resellerId) query.reseller = resellerId;
+    // If caller is not admin, strictly restrict to caller's own orders
+    if (req.user.role !== "admin") {
+      const conditions = [{ reseller: req.user._id }];
+      if (req.user.email) {
+        conditions.push({ "shippingAddress.email": req.user.email.toLowerCase() });
+      }
+      query.$or = conditions;
+    } else if (resellerId) {
+      query.reseller = resellerId;
+    }
     if (orderStatus && orderStatus !== "all") query.orderStatus = orderStatus.toUpperCase();
     if (paymentStatus && paymentStatus !== "all") query.paymentStatus = paymentStatus.toUpperCase();
     if (paymentMethod && paymentMethod !== "all") query.paymentMethod = paymentMethod.toUpperCase();

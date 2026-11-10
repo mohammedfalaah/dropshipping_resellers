@@ -78,19 +78,29 @@ export default function AccountDashboard() {
     setLoading(true);
     try {
       const [ordersRes, summaryRes, ledgerRes] = await Promise.all([
-        ordersApi.getAll().catch(() => null),
+        ordersApi.getMyOrders().catch(() => ordersApi.getAll().catch(() => null)),
         paymentsApi.getResellerSummary().catch(() => null),
         paymentsApi.getResellerLedger().catch(() => null),
       ]);
 
       const orders = getPayload(ordersRes);
-      if (orders?.orders) setResellerOrders(orders.orders);
+      if (orders?.orders) {
+        setResellerOrders(orders.orders);
+      } else if (Array.isArray(orders)) {
+        setResellerOrders(orders);
+      } else if (ordersRes?.data?.orders) {
+        setResellerOrders(ordersRes.data.orders);
+      }
 
       const summary = getPayload(summaryRes);
       if (summary) setResellerSummary(summary);
 
       const ledger = getPayload(ledgerRes);
-      if (ledger?.ledger) setResellerLedger(ledger.ledger);
+      if (ledger?.ledger) {
+        setResellerLedger(ledger.ledger);
+      } else if (Array.isArray(ledger)) {
+        setResellerLedger(ledger);
+      }
     } catch (err) {
       console.error("Failed to load reseller data", err);
     } finally {
@@ -371,7 +381,10 @@ export default function AccountDashboard() {
                       <button
                         type="button"
                         className={`btn text-start rounded-pill px-3 py-2 ${activeTab === "orders" ? "btn-dark text-white" : "btn-light"}`}
-                        onClick={() => setActiveTab("orders")}
+                        onClick={() => {
+                          setActiveTab("orders");
+                          loadResellerData();
+                        }}
                       >
                         <i className="fa-solid fa-box-open me-2"></i> My Orders
                       </button>

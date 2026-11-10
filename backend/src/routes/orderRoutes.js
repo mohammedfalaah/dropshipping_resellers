@@ -20,7 +20,7 @@ router.post(
 );
 
 // Reseller viewing their order history
-router.get("/my-orders", protect, requireApprovedReseller, orderController.getMyOrders);
+router.get("/my-orders", protect, orderController.getMyOrders);
 
 // Verify Razorpay payment
 router.post(
@@ -36,8 +36,13 @@ router.get("/tracking/:trackingNumber", orderController.getPublicTracking);
 // Single order details (Reseller own or Admin)
 router.get("/:id", protect, orderController.getOrderById);
 
-// Admin-only order management
-router.get("/", protect, restrictTo("admin"), orderController.getAllOrders);
+// Order list: admin gets system orders, reseller gets own orders
+router.get("/", protect, (req, res, next) => {
+  if (req.user.role === "admin") {
+    return orderController.getAllOrders(req, res, next);
+  }
+  return orderController.getMyOrders(req, res, next);
+});
 router.patch(
   "/:id/status",
   protect,

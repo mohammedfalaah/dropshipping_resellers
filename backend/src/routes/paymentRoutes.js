@@ -14,8 +14,10 @@ const {
 router.post("/create-order", paymentController.createRazorpayOrder);
 router.post("/verify-payment", paymentController.verifyPayment);
 
-// Reseller viewing own payment history
-router.get("/my-payments", protect, requireApprovedReseller, paymentController.getMyPayments);
+// Reseller viewing own payment history and ledger
+router.get("/my-payments", protect, paymentController.getMyPayments);
+router.get("/reseller-summary", protect, paymentController.getResellerSummary);
+router.get("/reseller-ledger", protect, paymentController.getResellerLedger);
 
 // Admin financial management
 router.post(

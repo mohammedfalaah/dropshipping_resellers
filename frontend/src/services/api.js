@@ -69,7 +69,7 @@ export const productsApi = {
 export const ordersApi = {
   create: (data) => api.post("/orders", data),
   getAll: (params) => api.get("/orders", { params }),
-  getMyOrders: (params) => api.get("/orders", { params }),
+  getMyOrders: (params) => api.get("/orders/my-orders", { params }),
   getById: (id) => api.get(`/orders/${id}`),
   getTracking: (trackingNumber) => api.get(`/orders/tracking/${encodeURIComponent(trackingNumber)}`),
 };
