@@ -427,10 +427,145 @@ const getResellerLedger = async (req, res, next) => {
   }
 };
 
+/**
+ * Get distinct products ordered by a reseller and their performance/delivery stats
+ */
+const getResellerOrderedProducts = async (req, res, next) => {
+  try {
+    const resellerId = req.params.id;
+    const reseller = await User.findById(resellerId).select("name email phone businessInfo approvalStatus accountStatus");
+    if (!reseller) {
+      return errorResponse(res, "Reseller not found", "RESELLER_NOT_FOUND", 404);
+    }
+
+    const orders = await Order.find({ reseller: resellerId, orderStatus: { $ne: "CANCELLED" } })
+      .sort({ createdAt: -1 });
+
+    const productMap = new Map();
+    let totalUnits = 0;
+    let totalWholesaleCost = 0;
+    let totalCustomerRevenue = 0;
+    let totalProfitEarned = 0;
+
+    orders.forEach((o) => {
+      (o.items || []).forEach((item) => {
+        const prodId = (item.product || item._id || item.sku || item.name).toString();
+        const wholesaleUnitPrice = item.wholesalePricePaise || item.unitPricePaise || item.pricePaise || 0;
+        const customerUnitPrice = item.customerSellingPricePaise || wholesaleUnitPrice;
+        const qty = Number(item.quantity) || 1;
+        const profit = item.resellerProfitPaise !== undefined ? item.resellerProfitPaise : (customerUnitPrice - wholesaleUnitPrice) * qty;
+
+        totalUnits += qty;
+        totalWholesaleCost += wholesaleUnitPrice * qty;
+        totalCustomerRevenue += customerUnitPrice * qty;
+        totalProfitEarned += profit;
+
+        if (!productMap.has(prodId)) {
+          productMap.set(prodId, {
+            productId: item.product,
+            name: item.name,
+            sku: item.sku || item.variantSku || "SKU-N/A",
+            image: item.image || "",
+            color: item.color || "",
+            size: item.size || "",
+            totalQuantity: 0,
+            wholesaleUnitPricePaise: wholesaleUnitPrice,
+            wholesaleUnitPriceRupees: paiseToRupees(wholesaleUnitPrice),
+            customerUnitPricePaise: customerUnitPrice,
+            customerUnitPriceRupees: paiseToRupees(customerUnitPrice),
+            totalWholesaleSpendPaise: 0,
+            totalWholesaleSpendRupees: 0,
+            totalCustomerRevenuePaise: 0,
+            totalCustomerRevenueRupees: 0,
+            totalProfitPaise: 0,
+            totalProfitRupees: 0,
+            ordersCount: 0,
+            firstOrderedAt: o.createdAt,
+            lastOrderedAt: o.createdAt,
+            orders: [],
+          });
+        }
+
+        const entry = productMap.get(prodId);
+        entry.totalQuantity += qty;
+        entry.totalWholesaleSpendPaise += wholesaleUnitPrice * qty;
+        entry.totalWholesaleSpendRupees = paiseToRupees(entry.totalWholesaleSpendPaise);
+        entry.totalCustomerRevenuePaise += customerUnitPrice * qty;
+        entry.totalCustomerRevenueRupees = paiseToRupees(entry.totalCustomerRevenuePaise);
+        entry.totalProfitPaise += profit;
+        entry.totalProfitRupees = paiseToRupees(entry.totalProfitPaise);
+        entry.ordersCount += 1;
+        if (new Date(o.createdAt) < new Date(entry.firstOrderedAt)) entry.firstOrderedAt = o.createdAt;
+        if (new Date(o.createdAt) > new Date(entry.lastOrderedAt)) entry.lastOrderedAt = o.createdAt;
+        entry.orders.push({
+          orderId: o._id,
+          orderNumber: o.orderNumber,
+          date: o.createdAt,
+          quantity: qty,
+          orderStatus: o.orderStatus,
+          deliveryStatus: o.deliveryStatus || o.orderStatus,
+          courierName: o.courierName,
+          trackingNumber: o.trackingNumber,
+        });
+      });
+    });
+
+    const products = Array.from(productMap.values()).sort((a, b) => b.totalQuantity - a.totalQuantity);
+
+    return successResponse(res, "Reseller ordered products retrieved.", {
+      reseller,
+      summary: {
+        totalProductsCount: products.length,
+        totalUnitsOrdered: totalUnits,
+        totalWholesaleSpendRupees: paiseToRupees(totalWholesaleCost),
+        totalCustomerRevenueRupees: paiseToRupees(totalCustomerRevenue),
+        totalProfitEarnedRupees: paiseToRupees(totalProfitEarned),
+        totalOrdersCount: orders.length,
+      },
+      products,
+      orders,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Get all orders by a specific reseller with delivery progress
+ */
+const getResellerOrders = async (req, res, next) => {
+  try {
+    const resellerId = req.params.id;
+    const orders = await Order.find({ reseller: resellerId })
+      .populate("reseller", "name email phone businessInfo")
+      .sort({ createdAt: -1 });
+
+    return successResponse(res, "Reseller orders retrieved.", { orders });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Get Consignment Tracking Details (India Post & Multi-courier)
+ */
+const getTrackingInfo = async (req, res, next) => {
+  try {
+    const trackingService = require("../services/trackingService");
+    const trackingData = await trackingService.getTrackingInfo(req.params.trackingNumber);
+    return successResponse(res, "Consignment tracking details retrieved successfully.", trackingData);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getAllResellers,
   getResellerById,
+  getResellerOrderedProducts,
+  getResellerOrders,
+  getTrackingInfo,
   createReseller,
   updateReseller,
   approveReseller,

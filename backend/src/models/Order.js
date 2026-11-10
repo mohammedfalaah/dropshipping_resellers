@@ -117,6 +117,22 @@ const OrderSchema = new mongoose.Schema(
     },
     trackingNumber: { type: String, default: "" },
     courierName: { type: String, default: "" },
+    deliveryStatus: {
+      type: String,
+      enum: ["PENDING", "BOOKED", "DISPATCHED", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED", "FAILED", "RETURNED"],
+      default: "PENDING",
+      index: true,
+    },
+    estimatedDeliveryDate: { type: Date, default: null },
+    trackingUrl: { type: String, default: "" },
+    trackingHistory: [
+      {
+        timestamp: { type: Date, default: Date.now },
+        location: { type: String, default: "" },
+        status: { type: String, default: "" },
+        details: { type: String, default: "" },
+      },
+    ],
     dispatchedAt: { type: Date, default: null },
     deliveredAt: { type: Date, default: null },
     cancelledAt: { type: Date, default: null },

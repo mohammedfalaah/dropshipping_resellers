@@ -30,6 +30,9 @@ router.post(
   orderController.verifyRazorpayPayment
 );
 
+// Consignment / parcel tracking
+router.get("/tracking/:trackingNumber", orderController.getPublicTracking);
+
 // Single order details (Reseller own or Admin)
 router.get("/:id", protect, orderController.getOrderById);
 

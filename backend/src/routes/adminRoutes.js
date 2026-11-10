@@ -32,6 +32,8 @@ router.get("/dashboard/stats", adminController.getDashboardStats);
 // Resellers Management
 router.get("/resellers", adminController.getAllResellers);
 router.get("/resellers/:id", adminController.getResellerById);
+router.get("/resellers/:id/ordered-products", adminController.getResellerOrderedProducts);
+router.get("/resellers/:id/orders", adminController.getResellerOrders);
 router.post("/resellers", validate(createResellerAdminSchema), adminController.createReseller);
 router.patch("/resellers/:id", validate(updateResellerAdminSchema), adminController.updateReseller);
 router.patch("/resellers/:id/approve", adminController.approveReseller);
@@ -57,6 +59,8 @@ router.delete("/categories/:id", categoryController.deleteCategory);
 router.get("/orders", orderController.getAllOrders);
 router.patch("/orders/:id/status", validate(updateOrderStatusSchema), orderController.updateOrderStatus);
 router.patch("/orders/:id/cod-collection", orderController.updateOrderCodCollection);
+router.patch("/orders/:id/delivery-progress", orderController.updateDeliveryProgress);
+router.get("/tracking/:trackingNumber", adminController.getTrackingInfo);
 
 // COD Pending & Remittance Management
 router.get("/cod", codController.getCodList);

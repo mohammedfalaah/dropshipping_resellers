@@ -299,6 +299,55 @@ const verifyRazorpayPayment = async (req, res, next) => {
   }
 };
 
+/**
+ * Update Delivery Progress & Tracking (Admin only)
+ */
+const updateDeliveryProgress = async (req, res, next) => {
+  try {
+    const trackingService = require("../services/trackingService");
+    const {
+      deliveryStatus,
+      courierName,
+      trackingNumber,
+      checkpointLocation,
+      checkpointNote,
+      estimatedDeliveryDate,
+    } = req.body;
+
+    const updatedOrder = await trackingService.updateOrderDeliveryProgress(
+      req.params.id,
+      {
+        deliveryStatus,
+        courierName,
+        trackingNumber,
+        checkpointLocation,
+        checkpointNote,
+        estimatedDeliveryDate,
+      },
+      req.user
+    );
+
+    return successResponse(res, "Delivery progress and tracking updated successfully.", {
+      order: updatedOrder,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Public Consignment / Order Tracking
+ */
+const getPublicTracking = async (req, res, next) => {
+  try {
+    const trackingService = require("../services/trackingService");
+    const trackingData = await trackingService.getTrackingInfo(req.params.trackingNumber);
+    return successResponse(res, "Tracking details retrieved.", trackingData);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   createOrder,
   getMyOrders,
@@ -306,5 +355,7 @@ module.exports = {
   getAllOrders,
   updateOrderStatus,
   updateOrderCodCollection,
+  updateDeliveryProgress,
+  getPublicTracking,
   verifyRazorpayPayment,
 };

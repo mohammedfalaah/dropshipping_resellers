@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { adminApi } from "../../services/api";
+import { adminApi, ordersApi } from "../../services/api";
 import { useToast } from "../../context/ToastContext";
 
 export default function Orders() {
@@ -9,6 +9,8 @@ export default function Orders() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [methodFilter, setMethodFilter] = useState("all");
+  const [resellerFilter, setResellerFilter] = useState("all");
+  const [resellersList, setResellersList] = useState([]);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, pages: 1 });
 
@@ -20,8 +22,13 @@ export default function Orders() {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
   const [newStatus, setNewStatus] = useState("confirmed");
+  const [deliveryStatus, setDeliveryStatus] = useState("IN_TRANSIT");
   const [trackingNumber, setTrackingNumber] = useState("");
-  const [courierName, setCourierName] = useState("");
+  const [courierName, setCourierName] = useState("India Post (Speed Post)");
+  const [checkpointLocation, setCheckpointLocation] = useState("");
+  const [checkpointNote, setCheckpointNote] = useState("");
+  const [estimatedDeliveryDate, setEstimatedDeliveryDate] = useState("");
+  const [submittingDispatch, setSubmittingDispatch] = useState(false);
 
   // COD Collection update modal
   const [showCodModal, setShowCodModal] = useState(false);
@@ -35,7 +42,26 @@ export default function Orders() {
   const [codTrackingNumber, setCodTrackingNumber] = useState("");
   const [submittingCod, setSubmittingCod] = useState(false);
 
+  // Live Tracking Modal state
+  const [showTrackingModal, setShowTrackingModal] = useState(false);
+  const [trackingData, setTrackingData] = useState(null);
+  const [loadingTracking, setLoadingTracking] = useState(false);
+
   const { addToast } = useToast();
+
+  // Load resellers for filtering
+  useEffect(() => {
+    const loadResellers = async () => {
+      try {
+        const res = await adminApi.getResellers({ limit: 100 });
+        const list = res.data?.resellers || res.data || [];
+        setResellersList(list);
+      } catch (e) {
+        console.warn("Could not load resellers for filter:", e.message);
+      }
+    };
+    loadResellers();
+  }, []);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -44,6 +70,7 @@ export default function Orders() {
       if (statusFilter !== "all") params.orderStatus = statusFilter;
       if (paymentFilter !== "all") params.paymentStatus = paymentFilter;
       if (methodFilter !== "all") params.paymentMethod = methodFilter;
+      if (resellerFilter !== "all") params.resellerId = resellerFilter;
 
       const res = await adminApi.getOrders(params);
       const data = res.data?.orders ? res.data : res.data?.data || res.data;
@@ -59,7 +86,7 @@ export default function Orders() {
 
   useEffect(() => {
     fetchOrders();
-  }, [page, statusFilter, paymentFilter, methodFilter]);
+  }, [page, statusFilter, paymentFilter, methodFilter, resellerFilter]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -70,27 +97,48 @@ export default function Orders() {
   const handleOpenStatusModal = (o) => {
     setUpdatingOrderId(o._id);
     setNewStatus((o.orderStatus || "CONFIRMED").toLowerCase());
+    setDeliveryStatus(o.deliveryStatus || o.orderStatus || "IN_TRANSIT");
     setTrackingNumber(o.trackingNumber || "");
-    setCourierName(o.courierName || "");
+    setCourierName(o.courierName || "India Post (Speed Post)");
+    setCheckpointLocation(o.shippingAddress ? `${o.shippingAddress.city}, India` : "");
+    setCheckpointNote("");
+    setEstimatedDeliveryDate(
+      o.estimatedDeliveryDate ? new Date(o.estimatedDeliveryDate).toISOString().split("T")[0] : ""
+    );
     setShowStatusModal(true);
   };
 
   const handleUpdateStatusSubmit = async (e) => {
     e.preventDefault();
+    setSubmittingDispatch(true);
     try {
-      await adminApi.updateOrderStatus(updatingOrderId, newStatus.toUpperCase());
-      addToast(`Order updated to "${newStatus.toUpperCase()}".`, "success");
+      if (adminApi.updateDeliveryProgress) {
+        await adminApi.updateDeliveryProgress(updatingOrderId, {
+          deliveryStatus,
+          courierName,
+          trackingNumber,
+          checkpointLocation,
+          checkpointNote,
+          estimatedDeliveryDate: estimatedDeliveryDate || undefined,
+        });
+      } else {
+        await adminApi.updateOrderStatus(updatingOrderId, newStatus.toUpperCase());
+      }
+
+      addToast(`Dispatch and delivery progress updated!`, "success");
       setShowStatusModal(false);
       fetchOrders();
     } catch (err) {
       addToast(err.message || "Failed to update order status.", "error");
+    } finally {
+      setSubmittingDispatch(false);
     }
   };
 
   const handleOpenCodModal = (o) => {
     setCodTargetOrder(o);
     const existingCollected = (o.codCollectedAmountPaise || 0) / 100;
-    const totalCod = ((o.customerSellingTotalPaise || o.totalPaise || 0) / 100);
+    const totalCod = (o.customerSellingTotalPaise || o.totalPaise || 0) / 100;
     const pendingAmount = Math.max(0, totalCod - existingCollected);
 
     setCodStatus(o.codCollectionStatus && o.codCollectionStatus !== "NOT_APPLICABLE" ? o.codCollectionStatus : "PENDING");
@@ -98,7 +146,7 @@ export default function Orders() {
     setCodDeliveryChargeStatus(o.deliveryChargeStatus || "PAID");
     setCodReference(o.cod?.collectionReference || "");
     setCodNotes("");
-    setCodCourierName(o.courierName || "");
+    setCodCourierName(o.courierName || "India Post (Speed Post)");
     setCodTrackingNumber(o.trackingNumber || "");
     setShowCodModal(true);
   };
@@ -119,7 +167,11 @@ export default function Orders() {
         trackingNumber: codTrackingNumber,
       };
 
-      await adminApi.updateOrderCodCollection(codTargetOrder._id, payload);
+      if (adminApi.updateOrderCodCollection) {
+        await adminApi.updateOrderCodCollection(codTargetOrder._id, payload);
+      } else {
+        await ordersApi.updateCodCollection(codTargetOrder._id, payload);
+      }
 
       addToast(`COD collection status updated for order ${codTargetOrder.orderNumber}!`, "success");
       setShowCodModal(false);
@@ -129,6 +181,27 @@ export default function Orders() {
       addToast(err.message || "Failed to update COD collection details.", "error");
     } finally {
       setSubmittingCod(false);
+    }
+  };
+
+  // Open Live Consignment Tracking modal (India Post / Multi-courier)
+  const handleTrackConsignment = async (trackingIdentifier) => {
+    if (!trackingIdentifier) {
+      addToast("No tracking number assigned yet. Update dispatch first.", "info");
+      return;
+    }
+    setLoadingTracking(true);
+    setShowTrackingModal(true);
+    setTrackingData(null);
+
+    try {
+      const res = await adminApi.getTrackingInfo(trackingIdentifier);
+      setTrackingData(res.data || res);
+    } catch (err) {
+      console.error("Tracking lookup error:", err);
+      addToast(err.message || "Failed to fetch consignment tracking.", "error");
+    } finally {
+      setLoadingTracking(false);
     }
   };
 
@@ -153,9 +226,9 @@ export default function Orders() {
       {/* Header */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
         <div>
-          <h4 className="fw-bold text-dark mb-1">Order Management & Financial Settlement</h4>
+          <h4 className="fw-bold text-dark mb-1">Order Logistics & Delivery Monitoring</h4>
           <p className="text-muted small mb-0">
-            Track all orders, manage COD collection receipts, and inspect Company vs Reseller amounts.
+            Monitor products ordered by resellers, track India Post / courier dispatches, and inspect financial margins.
           </p>
         </div>
         <div className="d-flex gap-2">
@@ -173,7 +246,7 @@ export default function Orders() {
               <i className="fa-solid fa-building-columns"></i>
             </div>
             <div>
-              <div className="text-muted small fw-semibold">Company Amount</div>
+              <div className="text-muted small fw-semibold">Our Company Amount</div>
               <h5 className="fw-bold text-dark mb-0">₹{(totalCompanySum / 100).toFixed(2)}</h5>
               <div className="small text-muted" style={{ fontSize: "11px" }}>
                 Wholesale + Delivery fees
@@ -228,15 +301,15 @@ export default function Orders() {
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
+      {/* Filter and Search Bar with Reseller Selection */}
       <div className="admin-card mb-4 p-3 shadow-sm border">
         <div className="row g-3 align-items-center">
-          <div className="col-md-4">
+          <div className="col-md-3">
             <form onSubmit={handleSearchSubmit} className="d-flex gap-2">
               <input
                 type="text"
                 className="form-control form-control-sm rounded-pill"
-                placeholder="Search order #, customer, phone, tracking..."
+                placeholder="Search order #, tracking, customer..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -245,11 +318,29 @@ export default function Orders() {
               </button>
             </form>
           </div>
-          <div className="col-md-8 d-flex justify-content-md-end gap-2 flex-wrap">
+          <div className="col-md-9 d-flex justify-content-md-end gap-2 flex-wrap">
+            {/* Filter by Specific Reseller */}
+            <select
+              className="form-select form-select-sm rounded-pill"
+              style={{ width: "170px" }}
+              value={resellerFilter}
+              onChange={(e) => {
+                setResellerFilter(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="all">All Resellers</option>
+              {resellersList.map((r) => (
+                <option key={r._id} value={r._id}>
+                  {r.name} {r.businessInfo?.businessName ? `(${r.businessInfo.businessName})` : ""}
+                </option>
+              ))}
+            </select>
+
             {/* Payment Method filter */}
             <select
               className="form-select form-select-sm rounded-pill"
-              style={{ width: "140px" }}
+              style={{ width: "130px" }}
               value={methodFilter}
               onChange={(e) => {
                 setMethodFilter(e.target.value);
@@ -262,7 +353,7 @@ export default function Orders() {
               <option value="BANK_TRANSFER">Bank Transfer</option>
             </select>
 
-            {/* Order status filter */}
+            {/* Delivery / Dispatch status filter */}
             <select
               className="form-select form-select-sm rounded-pill"
               style={{ width: "150px" }}
@@ -274,9 +365,9 @@ export default function Orders() {
             >
               <option value="all">All Dispatches</option>
               <option value="PENDING">Pending</option>
-              <option value="CONFIRMED">Confirmed</option>
+              <option value="CONFIRMED">Confirmed / Booked</option>
               <option value="PROCESSING">Processing</option>
-              <option value="SHIPPED">Shipped</option>
+              <option value="SHIPPED">Dispatched / In Transit</option>
               <option value="DELIVERED">Delivered</option>
               <option value="CANCELLED">Cancelled</option>
             </select>
@@ -284,7 +375,7 @@ export default function Orders() {
             {/* Payment status filter */}
             <select
               className="form-select form-select-sm rounded-pill"
-              style={{ width: "150px" }}
+              style={{ width: "140px" }}
               value={paymentFilter}
               onChange={(e) => {
                 setPaymentFilter(e.target.value);
@@ -322,12 +413,12 @@ export default function Orders() {
                   <th style={{ minWidth: "130px" }}>Order #</th>
                   <th style={{ minWidth: "160px" }}>Reseller & Customer</th>
                   <th style={{ minWidth: "130px" }}>Payment & Del. Chg</th>
-                  <th style={{ minWidth: "150px" }}>Company Amount</th>
-                  <th style={{ minWidth: "130px" }}>Reseller Amount</th>
+                  <th style={{ minWidth: "140px" }}>Company Amount</th>
+                  <th style={{ minWidth: "130px" }}>Reseller Profit</th>
                   <th style={{ minWidth: "120px" }}>Customer Total</th>
-                  <th style={{ minWidth: "160px" }}>COD Collection State</th>
-                  <th style={{ minWidth: "120px" }}>Fulfillment</th>
-                  <th style={{ minWidth: "120px" }} className="text-end">Actions</th>
+                  <th style={{ minWidth: "150px" }}>COD Collection State</th>
+                  <th style={{ minWidth: "170px" }}>Delivery Progress & Courier</th>
+                  <th style={{ minWidth: "140px" }} className="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -359,6 +450,14 @@ export default function Orders() {
                   const codCollected = (o.codCollectedAmountPaise || 0) / 100;
                   const codTarget = customerTotalPaise / 100;
                   const isCod = o.paymentMethod === "COD";
+
+                  const deliveryStage = (o.deliveryStatus || o.orderStatus || "CONFIRMED").toUpperCase();
+                  let progressPercent = 25;
+                  if (deliveryStage === "DISPATCHED" || deliveryStage === "SHIPPED") progressPercent = 50;
+                  else if (deliveryStage === "IN_TRANSIT") progressPercent = 75;
+                  else if (deliveryStage === "OUT_FOR_DELIVERY") progressPercent = 90;
+                  else if (deliveryStage === "DELIVERED") progressPercent = 100;
+                  else if (deliveryStage === "CANCELLED" || deliveryStage === "FAILED") progressPercent = 100;
 
                   return (
                     <tr key={o._id}>
@@ -415,7 +514,7 @@ export default function Orders() {
                           ₹{(companyAmountPaise / 100).toFixed(2)}
                         </div>
                         <div className="text-muted small" style={{ fontSize: "10px" }}>
-                          Wholesale: ₹{(wholesalePaise / 100).toFixed(2)} + Del: ₹{(deliveryChargePaise / 100).toFixed(2)}
+                          Wholesale + Delivery
                         </div>
                       </td>
 
@@ -465,33 +564,46 @@ export default function Orders() {
                         )}
                       </td>
 
-                      {/* Fulfillment Status */}
+                      {/* Delivery Progress & Courier Tracking */}
                       <td>
-                        <span
-                          className={`admin-badge ${
-                            o.orderStatus === "DELIVERED" || o.orderStatus === "delivered"
-                              ? "admin-badge-success"
-                              : o.orderStatus === "SHIPPED" || o.orderStatus === "shipped"
-                              ? "admin-badge-info"
-                              : o.orderStatus === "CANCELLED" || o.orderStatus === "cancelled"
-                              ? "admin-badge-danger"
-                              : "admin-badge-warning"
-                          } text-uppercase`}
-                          style={{ fontSize: "10px" }}
-                        >
-                          {o.orderStatus || "CONFIRMED"}
-                        </span>
-                        {o.trackingNumber && (
-                          <div className="small text-truncate text-muted mt-1" style={{ maxWidth: "120px", fontSize: "10px" }}>
-                            {o.courierName ? `${o.courierName}: ` : ""}
-                            <code>{o.trackingNumber}</code>
-                          </div>
-                        )}
+                        <div className="d-flex align-items-center gap-1 mb-1">
+                          <span
+                            className={`admin-badge ${
+                              deliveryStage === "DELIVERED"
+                                ? "admin-badge-success"
+                                : deliveryStage === "SHIPPED" || deliveryStage === "IN_TRANSIT"
+                                ? "admin-badge-info"
+                                : deliveryStage === "CANCELLED"
+                                ? "admin-badge-danger"
+                                : "admin-badge-warning"
+                            }`}
+                            style={{ fontSize: "10px" }}
+                          >
+                            {deliveryStage} ({progressPercent}%)
+                          </span>
+                        </div>
+                        <div className="small text-truncate" style={{ maxWidth: "160px", fontSize: "11px" }}>
+                          {o.courierName || "India Post"}:{" "}
+                          {o.trackingNumber ? (
+                            <code className="text-primary fw-bold">{o.trackingNumber}</code>
+                          ) : (
+                            <span className="text-muted">Not assigned</span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Actions */}
                       <td className="text-end">
                         <div className="btn-group btn-group-sm">
+                          {/* Live Track Delivery button */}
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger"
+                            title="Track Consignment Live (India Post / Courier)"
+                            onClick={() => handleTrackConsignment(o.trackingNumber || o.orderNumber)}
+                          >
+                            <i className="fa-solid fa-location-dot"></i> Track
+                          </button>
                           {isCod && (
                             <button
                               type="button"
@@ -499,13 +611,13 @@ export default function Orders() {
                               title="Update COD Collection"
                               onClick={() => handleOpenCodModal(o)}
                             >
-                              <i className="fa-solid fa-money-bill-transfer"></i> COD
+                              <i className="fa-solid fa-money-bill-transfer"></i>
                             </button>
                           )}
                           <button
                             type="button"
                             className="btn btn-sm btn-light border"
-                            title="Update Dispatch / Tracking"
+                            title="Update Dispatch / Courier"
                             onClick={() => handleOpenStatusModal(o)}
                           >
                             <i className="fa-solid fa-truck"></i>
@@ -556,6 +668,150 @@ export default function Orders() {
           </div>
         )}
       </div>
+
+      {/* Live Consignment Tracking Modal (India Post style) */}
+      {showTrackingModal && (
+        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div className="modal-content rounded-4 border-0 shadow">
+              <div className="modal-header border-bottom bg-light rounded-top-4">
+                <div className="d-flex align-items-center gap-2">
+                  <div
+                    className="p-2 rounded-3 bg-danger text-white d-flex align-items-center justify-content-center"
+                    style={{ width: "38px", height: "38px" }}
+                  >
+                    <i className="fa-solid fa-envelope-open-text"></i>
+                  </div>
+                  <div>
+                    <h5 className="modal-title fw-bold text-dark mb-0">Consignment Tracking</h5>
+                    <span className="text-muted small">
+                      {trackingData?.courierName || "India Post (Speed Post)"} • {trackingData?.trackingNumber}
+                    </span>
+                  </div>
+                </div>
+                <button type="button" className="btn-close" onClick={() => setShowTrackingModal(false)}></button>
+              </div>
+
+              <div className="modal-body p-4">
+                {loadingTracking ? (
+                  <div className="text-center py-5">
+                    <div className="spinner-border text-danger" role="status"></div>
+                    <p className="text-muted small mt-2">Connecting to parcel tracking server...</p>
+                  </div>
+                ) : !trackingData ? (
+                  <div className="text-center py-5">
+                    <i className="fa-solid fa-triangle-exclamation fa-3x text-warning mb-3"></i>
+                    <h6 className="fw-bold">Tracking Data Unavailable</h6>
+                    <p className="text-muted small">No live checkpoints found for this consignment ID.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Status Header Banner */}
+                    <div className="p-3 rounded-3 border mb-4 bg-light">
+                      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                        <div>
+                          <span className="badge bg-danger-subtle text-danger border border-danger mb-1" style={{ fontSize: "11px" }}>
+                            {trackingData.courierName}
+                          </span>
+                          <h4 className="fw-bold text-dark mb-1">{trackingData.currentStatus}</h4>
+                          <div className="small text-muted">
+                            Consignment ID: <code className="fw-bold text-dark">{trackingData.trackingNumber}</code>
+                          </div>
+                        </div>
+
+                        {trackingData.officialTrackingUrl && (
+                          <a
+                            href={trackingData.officialTrackingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-sm"
+                          >
+                            <i className="fa-solid fa-arrow-up-right-from-square me-1"></i> Track on India Post Portal
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Visual Progress Bar */}
+                      <div className="mt-3 pt-3 border-top">
+                        <div className="progress" style={{ height: "8px" }}>
+                          <div
+                            className="progress-bar progress-bar-striped progress-bar-animated bg-danger"
+                            role="progressbar"
+                            style={{ width: `${trackingData.progressPercent || 50}%` }}
+                          ></div>
+                        </div>
+                        <div className="d-flex justify-content-between small text-muted mt-2">
+                          <span>Origin: <strong>{trackingData.origin}</strong></span>
+                          <span>Destination: <strong>{trackingData.destination}</strong></span>
+                        </div>
+                        {trackingData.estimatedDelivery && (
+                          <div className="small text-success fw-semibold mt-1">
+                            <i className="fa-regular fa-calendar-check me-1"></i>
+                            Estimated Delivery: {new Date(trackingData.estimatedDelivery).toLocaleDateString("en-IN", {
+                              weekday: "short",
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Checkpoint Timeline History */}
+                    <h6 className="fw-bold text-dark mb-3">
+                      <i className="fa-solid fa-timeline me-2 text-danger"></i>
+                      Consignment Checkpoint History
+                    </h6>
+
+                    {(!trackingData.history || trackingData.history.length === 0) ? (
+                      <p className="text-muted small">No tracking events posted yet.</p>
+                    ) : (
+                      <div className="position-relative ps-4 border-start border-2 border-danger ms-2">
+                        {trackingData.history.map((h, i) => (
+                          <div key={i} className="mb-3 position-relative">
+                            <div
+                              className="position-absolute bg-danger rounded-circle border border-2 border-white"
+                              style={{ width: "12px", height: "12px", left: "-23px", top: "5px" }}
+                            ></div>
+                            <div className="p-3 bg-white rounded-3 border shadow-sm">
+                              <div className="d-flex justify-content-between align-items-center mb-1">
+                                <strong className="text-dark fs-6">{h.status}</strong>
+                                <span className="small text-muted" style={{ fontSize: "11px" }}>
+                                  {new Date(h.timestamp).toLocaleString("en-IN", {
+                                    day: "numeric",
+                                    month: "short",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </span>
+                              </div>
+                              <div className="small text-muted mb-1">
+                                <i className="fa-solid fa-location-dot me-1 text-danger"></i> {h.location}
+                              </div>
+                              {h.details && (
+                                <div className="small text-secondary" style={{ fontSize: "11px" }}>
+                                  {h.details}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="modal-footer border-top">
+                <button type="button" className="btn btn-secondary rounded-pill px-4" onClick={() => setShowTrackingModal(false)}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* COD Collection Update Modal */}
       {showCodModal && codTargetOrder && (
@@ -687,21 +943,26 @@ export default function Orders() {
 
                     <div className="col-md-6">
                       <label className="form-label small fw-semibold">Courier Logistics Partner</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="e.g. Delhivery, BlueDart, DTDC, XpressBees"
+                      <select
+                        className="form-select"
                         value={codCourierName}
                         onChange={(e) => setCodCourierName(e.target.value)}
-                      />
+                      >
+                        <option value="India Post (Speed Post)">India Post (Speed Post / Parcel)</option>
+                        <option value="Delhivery Logistics">Delhivery Logistics</option>
+                        <option value="Blue Dart Express">Blue Dart Express</option>
+                        <option value="DTDC Courier">DTDC Courier</option>
+                        <option value="XpressBees Logistics">XpressBees Logistics</option>
+                        <option value="Shadowfax Logistics">Shadowfax Logistics</option>
+                      </select>
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label small fw-semibold">Airway Bill / Tracking Number</label>
+                      <label className="form-label small fw-semibold">Airway Bill / Consignment Number</label>
                       <input
                         type="text"
                         className="form-control"
-                        placeholder="e.g. AWB-982187321"
+                        placeholder="e.g. RM019388105IN"
                         value={codTrackingNumber}
                         onChange={(e) => setCodTrackingNumber(e.target.value)}
                       />
@@ -734,52 +995,93 @@ export default function Orders() {
         </div>
       )}
 
-      {/* Fulfillment Status Modal */}
+      {/* Fulfillment & Delivery Progress Modal */}
       {showStatusModal && (
         <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
           <div className="modal-dialog modal-md modal-dialog-centered">
             <div className="modal-content rounded-4 border-0 shadow">
               <form onSubmit={handleUpdateStatusSubmit}>
-                <div className="modal-header border-bottom">
-                  <h5 className="modal-title fw-bold">Update Dispatch Status</h5>
+                <div className="modal-header border-bottom bg-light rounded-top-4">
+                  <h5 className="modal-title fw-bold">Update Dispatch & Delivery Progress</h5>
                   <button type="button" className="btn-close" onClick={() => setShowStatusModal(false)}></button>
                 </div>
                 <div className="modal-body p-4">
                   <div className="mb-3">
-                    <label className="form-label small fw-semibold">Order Fulfillment Status</label>
+                    <label className="form-label small fw-semibold">Delivery Progress Stage *</label>
                     <select
                       className="form-select"
-                      value={newStatus}
-                      onChange={(e) => setNewStatus(e.target.value)}
+                      value={deliveryStatus}
+                      onChange={(e) => setDeliveryStatus(e.target.value)}
                     >
-                      <option value="pending">PENDING (Awaiting Review)</option>
-                      <option value="confirmed">CONFIRMED (Ready to Pack)</option>
-                      <option value="processing">PROCESSING (In Warehouse)</option>
-                      <option value="shipped">SHIPPED (Handed to Courier)</option>
-                      <option value="delivered">DELIVERED (Completed)</option>
-                      <option value="cancelled">CANCELLED (Void)</option>
+                      <option value="BOOKED">BOOKED (Manifest Created)</option>
+                      <option value="DISPATCHED">DISPATCHED (Handed to Courier)</option>
+                      <option value="IN_TRANSIT">IN TRANSIT (Line-haul Between Hubs)</option>
+                      <option value="OUT_FOR_DELIVERY">OUT FOR DELIVERY (With Postman / Courier)</option>
+                      <option value="DELIVERED">DELIVERED (Completed)</option>
+                      <option value="CANCELLED">CANCELLED / RETURNED</option>
                     </select>
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label small fw-semibold">Courier Name</label>
+                    <label className="form-label small fw-semibold">Courier Logistics Partner</label>
+                    <select
+                      className="form-select"
+                      value={courierName}
+                      onChange={(e) => setCourierName(e.target.value)}
+                    >
+                      <option value="India Post (Speed Post)">India Post (Speed Post / Parcel)</option>
+                      <option value="Delhivery Logistics">Delhivery Logistics</option>
+                      <option value="Blue Dart Express">Blue Dart Express</option>
+                      <option value="DTDC Courier">DTDC Courier</option>
+                      <option value="XpressBees Logistics">XpressBees Logistics</option>
+                      <option value="Shadowfax Logistics">Shadowfax Logistics</option>
+                      <option value="Standard Courier">Standard Courier</option>
+                    </select>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold">Consignment / Tracking Number *</label>
                     <input
                       type="text"
                       className="form-control"
-                      placeholder="e.g. Delhivery, Bluedart, DTDC"
-                      value={courierName}
-                      onChange={(e) => setCourierName(e.target.value)}
+                      placeholder="e.g. RM019388105IN"
+                      value={trackingNumber}
+                      onChange={(e) => setTrackingNumber(e.target.value)}
+                    />
+                    <div className="small text-muted mt-1">
+                      India Post consignment format: e.g. RM019388105IN
+                    </div>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold">Checkpoint Location</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. New Delhi GPO, Mumbai Sorting Hub"
+                      value={checkpointLocation}
+                      onChange={(e) => setCheckpointLocation(e.target.value)}
                     />
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label small fw-semibold">Tracking Number / AWB</label>
+                    <label className="form-label small fw-semibold">Checkpoint Event Remark</label>
                     <input
                       type="text"
                       className="form-control"
-                      placeholder="e.g. DLHV-102948201"
-                      value={trackingNumber}
-                      onChange={(e) => setTrackingNumber(e.target.value)}
+                      placeholder="e.g. Bagged for destination delivery office"
+                      value={checkpointNote}
+                      onChange={(e) => setCheckpointNote(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold">Estimated Delivery Date</label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={estimatedDeliveryDate}
+                      onChange={(e) => setEstimatedDeliveryDate(e.target.value)}
                     />
                   </div>
                 </div>
@@ -787,8 +1089,8 @@ export default function Orders() {
                   <button type="button" className="btn btn-light rounded-pill px-4" onClick={() => setShowStatusModal(false)}>
                     Cancel
                   </button>
-                  <button type="submit" className="btn btn-dark rounded-pill px-4">
-                    Update Dispatch
+                  <button type="submit" className="btn btn-dark rounded-pill px-4" disabled={submittingDispatch}>
+                    {submittingDispatch ? "Saving..." : "Save Delivery Progress"}
                   </button>
                 </div>
               </form>
