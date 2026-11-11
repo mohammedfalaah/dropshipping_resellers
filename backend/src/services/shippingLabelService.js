@@ -119,28 +119,67 @@ const getOrCreateShippingLabel = async (orderId) => {
 
   if (indiaPostToken) {
     try {
-      const resp = await axios.post(
-        `${indiaPostApiUrl}/v1/label/create`,
-        {
-          office_customer: "CUSTOMER",
-          article_type: "INTL_APP_EPACKET",
+      // First attempt official India Post domestic address label endpoint
+      const domesticPayload = {
+        identifier: "Domestic",
+        delivery_office_name: order.shippingAddress?.city || "",
+        booking_datetime: new Date().toLocaleString("en-GB"),
+        channel_type: "E",
+        user_type: "R",
+        barcode_no: trackingNumber,
+        service_type: "PARCEL",
+        booking_type: "COM",
+        recipient_name: [order.shippingAddress?.firstName, order.shippingAddress?.lastName].filter(Boolean).join(" ") || order.shippingAddress?.fullName || "Recipient",
+        recipient_mobile: order.shippingAddress?.phone || "",
+        recipient_addressl1: order.shippingAddress?.address || "",
+        recipient_city: order.shippingAddress?.city || "",
+        recipient_pin: order.shippingAddress?.postalCode || "",
+        recipient_state: order.shippingAddress?.state || "",
+        sender_name: "Spare pro",
+        sender_mobile: "8139808004",
+        sender_addressl1: "Thazepalam",
+        sender_addressl2: "Tirur",
+        sender_city: "Tirur",
+        sender_pin: "676107",
+        sender_state: "Kerala",
+        booking_office_pin: "676107",
+      };
+
+      const resp = await axios.post(`${indiaPostApiUrl}/v1/label/create/domestic`, domesticPayload, {
+        headers: {
+          Authorization: `Bearer ${indiaPostToken}`,
+          "Content-Type": "application/json",
+          accept: "application/json",
         },
-        {
-          headers: {
-            Authorization: `Bearer ${indiaPostToken}`,
-            "Content-Type": "application/json",
-            accept: "application/json",
-          },
-          timeout: 4000,
-        }
-      );
+        timeout: 4000,
+      });
 
       if (resp.data?.success && resp.data?.data) {
-        externalBarcode = resp.data.data.barcode;
-        externalBase64 = resp.data.data.base64Image;
+        externalBarcode = resp.data.data.barcode || resp.data.data.barcode_no;
+        externalBase64 = resp.data.data.base64Image || resp.data.data.base64_image;
       }
     } catch (e) {
-      console.warn("[IndiaPost Label API]: Live endpoint failed. Falling back to local barcode generator:", e.message);
+      // Fallback to /v1/label/create
+      try {
+        const resp2 = await axios.post(
+          `${indiaPostApiUrl}/v1/label/create`,
+          { office_customer: "CUSTOMER", article_type: "INTL_APP_EPACKET" },
+          {
+            headers: {
+              Authorization: `Bearer ${indiaPostToken}`,
+              "Content-Type": "application/json",
+              accept: "application/json",
+            },
+            timeout: 4000,
+          }
+        );
+        if (resp2.data?.success && resp2.data?.data) {
+          externalBarcode = resp2.data.data.barcode;
+          externalBase64 = resp2.data.data.base64Image;
+        }
+      } catch (err2) {
+        console.warn("[IndiaPost Label API]: Falling back to local barcode generator:", err2.message);
+      }
     }
   }
 
@@ -161,9 +200,9 @@ const getOrCreateShippingLabel = async (orderId) => {
     order.trackingHistory = [
       {
         timestamp: new Date(),
-        location: "SPARE PRO Central Logistics Hub, New Delhi",
+        location: "Spare pro Logistics Hub, Tirur, Kerala - 676107",
         status: "Consignment Manifest Generated",
-        details: `Article ${barcodeText} booked under Speed Post / Parcel Logistics. Ready for dispatch.`,
+        details: `Article ${barcodeText} booked under Speed Post / Parcel Logistics at Tirur Booking Office (PIN 676107). Ready for dispatch.`,
       },
     ];
   }
@@ -523,12 +562,17 @@ const generateLabelHtml = (order, barcodeMeta) => {
       </div>
 
       <div class="from-box">
-        <div class="box-title" style="background:#475569;">RETURN TO:</div>
-        <div style="font-weight:800;margin-top:3px;font-size:11px;">${senderName}</div>
-        <div style="margin-top:2px;line-height:1.3;">
-          SPARE PRO Central Hub<br />
-          Phase III, Okhla Ind Area<br />
-          New Delhi - 110020<br />
+        <div class="box-title" style="background:#475569;">RETURN / SENDER:</div>
+        <div style="font-weight:800;margin-top:3px;font-size:12px;color:#0f172a;">Spare pro</div>
+        ${
+          order.reseller?.businessInfo?.businessName
+            ? `<div style="font-size:10px;color:#475569;font-weight:600;">(Reseller: ${order.reseller.businessInfo.businessName})</div>`
+            : ""
+        }
+        <div style="margin-top:3px;line-height:1.35;font-size:10.5px;">
+          Thazepalam, Tirur<br />
+          Kerala - 676107<br />
+          📞 Tel: <strong>8139808004</strong><br />
           Support: info@thesparepro.com
         </div>
       </div>

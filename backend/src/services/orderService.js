@@ -188,9 +188,9 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
     trackingHistory: [
       {
         timestamp: new Date(),
-        location: "SPARE PRO Central Logistics Hub, New Delhi",
+        location: "Spare pro Logistics Hub, Tirur, Kerala - 676107",
         status: "Consignment Manifest Generated",
-        details: `Article ${consignmentBarcode} booked under Speed Post / Parcel Logistics. Ready for dispatch.`,
+        details: `Article ${consignmentBarcode} booked under Speed Post / Parcel Logistics at Tirur Booking Office (PIN 676107). Ready for dispatch.`,
       },
     ],
     cod:

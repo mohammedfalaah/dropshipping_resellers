@@ -49,8 +49,8 @@ export default function Contact() {
                   <i className="fa-solid fa-phone fs-5"></i>
                 </div>
                 <h5 className="fw-bold mb-1" style={{ fontSize: "15px" }}>Call Us</h5>
-                <p className="text-muted small mb-0">+91 1234 56789</p>
-                <p className="text-muted small mb-0">+1 (800) 555-0199</p>
+                <p className="text-muted small mb-0">+91 8139808004</p>
+                <p className="text-muted small mb-0">8139808004</p>
               </div>
             </div>
 
@@ -63,8 +63,8 @@ export default function Contact() {
                   <i className="fa-solid fa-envelope fs-5"></i>
                 </div>
                 <h5 className="fw-bold mb-1" style={{ fontSize: "15px" }}>Email Us</h5>
-                <p className="text-muted small mb-0">support@sparepro.com</p>
-                <p className="text-muted small mb-0">wholesale@sparepro.com</p>
+                <p className="text-muted small mb-0">support@thesparepro.com</p>
+                <p className="text-muted small mb-0">info@thesparepro.com</p>
               </div>
             </div>
 
@@ -77,8 +77,8 @@ export default function Contact() {
                   <i className="fa-solid fa-location-dot fs-5"></i>
                 </div>
                 <h5 className="fw-bold mb-1" style={{ fontSize: "15px" }}>Warehouse</h5>
-                <p className="text-muted small mb-0">Commercial Hub, Sector 18</p>
-                <p className="text-muted small mb-0">Mumbai, Maharashtra 400001</p>
+                <p className="text-muted small mb-0">Thazepalam, Tirur</p>
+                <p className="text-muted small mb-0">Kerala - 676107</p>
               </div>
             </div>
 
@@ -179,7 +179,7 @@ export default function Contact() {
               <div className="rounded-4 overflow-hidden shadow-sm border" style={{ height: "460px" }}>
                 <iframe
                   title="Google Maps"
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3512.278209478427!2d-0.12231632580492868!3d51.503019584494716!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x487604b900d26973%3A0x4291f3172409ea92!2sLondon%20Eye!5e0!3m2!1sen!2sin!4v1776256795824!5m2!1sen!2sin"
+                  src="https://maps.google.com/maps?q=Thazepalam,%20Tirur,%20Kerala%20676107&t=&z=15&ie=UTF8&iwloc=&output=embed"
                   width="100%"
                   height="100%"
                   style={{ border: 0 }}

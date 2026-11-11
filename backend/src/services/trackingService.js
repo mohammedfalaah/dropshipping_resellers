@@ -121,7 +121,7 @@ const getTrackingInfo = async (trackingIdentifier) => {
   const destination = order?.shippingAddress
     ? `${order.shippingAddress.city}, ${order.shippingAddress.state} - ${order.shippingAddress.postalCode}`
     : "Destination Hub, India";
-  const origin = "New Delhi Sorting Hub (NSH), Delhi";
+  const origin = "Tirur Sorting Hub, Malappuram, Kerala - 676107";
 
   // 2. If this is India Post and external API token is configured in process.env, try calling India Post
   const indiaPostApiUrl = process.env.INDIAPOST_API_URL || "https://test.cept.gov.in/beextcustomer";
@@ -184,17 +184,17 @@ const getTrackingInfo = async (trackingIdentifier) => {
     // Generate realistic, progressive checkpoints based on current stage
     history.push({
       timestamp: new Date(createdDate.getTime() + 1000 * 60 * 30).toISOString(),
-      location: "SPARE PRO Warehouse / Origin Hub",
+      location: "Spare pro Origin Hub, Tirur, Kerala - 676107",
       status: "Consignment Manifest Generated",
-      details: `Article ${trackingNumber} booked under Speed Post / Courier Logistics`,
+      details: `Article ${trackingNumber} booked under Speed Post / Courier Logistics at Tirur Booking Office (PIN 676107)`,
     });
 
     if (progress.percent >= 45) {
       history.push({
         timestamp: new Date(createdDate.getTime() + 1000 * 60 * 180).toISOString(),
         location: origin,
-        status: "Item Received at National Sorting Hub (NSH)",
-        details: "Bagged for destination line-haul dispatch",
+        status: "Item Received at Sorting Hub",
+        details: "Bagged for destination line-haul dispatch from Tirur",
       });
     }
 
