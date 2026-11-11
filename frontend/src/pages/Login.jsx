@@ -25,6 +25,19 @@ export default function Login() {
     ? (location.state.from.pathname + (location.state.from.search || ""))
     : "/shop";
 
+  const handleTabSwitch = (toRegister) => {
+    setIsRegister(toRegister);
+    setFormData({
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      phone: "",
+      businessName: "",
+      city: "",
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -77,7 +90,7 @@ export default function Login() {
                 className={`btn flex-grow-1 rounded-pill fw-semibold py-2 ${
                   !isRegister ? "btn-dark text-white" : "btn-light text-muted border-0"
                 }`}
-                onClick={() => setIsRegister(false)}
+                onClick={() => handleTabSwitch(false)}
               >
                 Sign In
               </button>
@@ -86,7 +99,7 @@ export default function Login() {
                 className={`btn flex-grow-1 rounded-pill fw-semibold py-2 ${
                   isRegister ? "btn-dark text-white" : "btn-light text-muted border-0"
                 }`}
-                onClick={() => setIsRegister(true)}
+                onClick={() => handleTabSwitch(true)}
               >
                 Register Reseller
               </button>
@@ -108,99 +121,169 @@ export default function Login() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit}>
-              {isRegister && (
-                <>
-                  <div className="mb-3">
-                    <label className="form-label small fw-semibold">Full Name *</label>
+            {isRegister ? (
+              /* Register Reseller Form */
+              <form key="register-form" onSubmit={handleSubmit} autoComplete="off">
+                <div className="mb-3">
+                  <label className="form-label small fw-semibold">Full Name *</label>
+                  <input
+                    type="text"
+                    name="register_name"
+                    className="form-control"
+                    placeholder="Enter your full name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div className="row g-2 mb-3">
+                  <div className="col-sm-6">
+                    <label className="form-label small fw-semibold">Phone Number *</label>
                     <input
-                      type="text"
+                      type="tel"
+                      name="register_phone"
                       className="form-control"
-                      placeholder="Rahul Sharma"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="Enter 10-digit mobile number"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       required
+                      autoComplete="off"
                     />
                   </div>
-
-                  <div className="row g-2 mb-3">
-                    <div className="col-sm-6">
-                      <label className="form-label small fw-semibold">Phone Number *</label>
-                      <input
-                        type="tel"
-                        className="form-control"
-                        placeholder="+91 9876543210"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="col-sm-6">
-                      <label className="form-label small fw-semibold">Business Name *</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="Apex Retailers"
-                        value={formData.businessName}
-                        onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label small fw-semibold">City / Region *</label>
+                  <div className="col-sm-6">
+                    <label className="form-label small fw-semibold">Business Name *</label>
                     <input
                       type="text"
+                      name="register_business"
                       className="form-control"
-                      placeholder="Mumbai, Maharashtra"
-                      value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      placeholder="Enter business / shop name"
+                      value={formData.businessName}
+                      onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
                       required
+                      autoComplete="off"
                     />
                   </div>
-                </>
-              )}
+                </div>
 
-              <div className="mb-3">
-                <label className="form-label small fw-semibold">Email Address *</label>
-                <input
-                  type="email"
-                  className="form-control"
-                  placeholder="name@example.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                />
-              </div>
+                <div className="mb-3">
+                  <label className="form-label small fw-semibold">City / Region *</label>
+                  <input
+                    type="text"
+                    name="register_city"
+                    className="form-control"
+                    placeholder="City, State"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    required
+                    autoComplete="off"
+                  />
+                </div>
 
-              <div className="mb-3">
-                <label className="form-label small fw-semibold">Password *</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
-                />
-              </div>
+                <div className="mb-3">
+                  <label className="form-label small fw-semibold">Email Address *</label>
+                  <input
+                    type="email"
+                    name="register_email"
+                    id="register_email"
+                    className="form-control"
+                    placeholder="Enter your email address"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    required
+                    autoComplete="off"
+                  />
+                </div>
 
-              {isRegister && (
+                <div className="mb-3">
+                  <label className="form-label small fw-semibold">Password *</label>
+                  <input
+                    type="password"
+                    name="register_password"
+                    id="register_password"
+                    className="form-control"
+                    placeholder="Create a password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    required
+                    autoComplete="new-password"
+                  />
+                </div>
+
                 <div className="mb-4">
                   <label className="form-label small fw-semibold">Confirm Password *</label>
                   <input
                     type="password"
+                    name="register_confirm_password"
+                    id="register_confirm_password"
                     className="form-control"
-                    placeholder="••••••••"
+                    placeholder="Confirm your password"
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                     required
+                    autoComplete="new-password"
                   />
                 </div>
-              )}
 
-              {!isRegister && (
+                <button
+                  type="submit"
+                  className="btn btn-dark w-100 rounded-pill py-3 fw-semibold mb-3 shadow-sm"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <span>
+                      <i className="fa-solid fa-spinner fa-spin me-2"></i> Processing...
+                    </span>
+                  ) : (
+                    "Submit Reseller Application"
+                  )}
+                </button>
+
+                <div className="text-center small text-muted">
+                  Already have an account?{" "}
+                  <button
+                    type="button"
+                    className="btn btn-link p-0 fw-semibold text-dark text-decoration-none"
+                    onClick={() => handleTabSwitch(false)}
+                  >
+                    Sign In
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* Sign In Form */
+              <form key="login-form" onSubmit={handleSubmit}>
+                <div className="mb-3">
+                  <label className="form-label small fw-semibold">Email Address *</label>
+                  <input
+                    type="email"
+                    name="login_email"
+                    id="login_email"
+                    className="form-control"
+                    placeholder="Enter your registered email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    required
+                    autoComplete="username"
+                  />
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label small fw-semibold">Password *</label>
+                  <input
+                    type="password"
+                    name="login_password"
+                    id="login_password"
+                    className="form-control"
+                    placeholder="Enter your password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    required
+                    autoComplete="current-password"
+                  />
+                </div>
+
                 <div className="d-flex justify-content-between align-items-center mb-4 small">
                   <div className="form-check">
                     <input className="form-check-input" type="checkbox" id="rememberMe" defaultChecked />
@@ -209,50 +292,33 @@ export default function Login() {
                     </label>
                   </div>
                 </div>
-              )}
 
-              <button
-                type="submit"
-                className="btn btn-dark w-100 rounded-pill py-3 fw-semibold mb-3 shadow-sm"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <span>
-                    <i className="fa-solid fa-spinner fa-spin me-2"></i> Processing...
-                  </span>
-                ) : isRegister ? (
-                  "Submit Reseller Application"
-                ) : (
-                  "Sign In"
-                )}
-              </button>
+                <button
+                  type="submit"
+                  className="btn btn-dark w-100 rounded-pill py-3 fw-semibold mb-3 shadow-sm"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <span>
+                      <i className="fa-solid fa-spinner fa-spin me-2"></i> Processing...
+                    </span>
+                  ) : (
+                    "Sign In"
+                  )}
+                </button>
 
-              <div className="text-center small text-muted">
-                {isRegister ? (
-                  <span>
-                    Already have an account?{" "}
-                    <button
-                      type="button"
-                      className="btn btn-link p-0 fw-semibold text-dark text-decoration-none"
-                      onClick={() => setIsRegister(false)}
-                    >
-                      Sign In
-                    </button>
-                  </span>
-                ) : (
-                  <span>
-                    Want to sell with us?{" "}
-                    <button
-                      type="button"
-                      className="btn btn-link p-0 fw-semibold text-dark text-decoration-none"
-                      onClick={() => setIsRegister(true)}
-                    >
-                      Apply for Reseller Account
-                    </button>
-                  </span>
-                )}
-              </div>
-            </form>
+                <div className="text-center small text-muted">
+                  Want to sell with us?{" "}
+                  <button
+                    type="button"
+                    className="btn btn-link p-0 fw-semibold text-dark text-decoration-none"
+                    onClick={() => handleTabSwitch(true)}
+                  >
+                    Apply for Reseller Account
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       </div>
