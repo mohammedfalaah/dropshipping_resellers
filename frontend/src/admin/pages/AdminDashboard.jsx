@@ -13,7 +13,8 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       const res = await adminApi.getDashboardStats({ filter: dateFilter });
-      const data = res.data?.overview ? res.data : res.data?.data || res.data;
+      const raw = res?.data?.data !== undefined ? res.data.data : (res?.data !== undefined ? res.data : res);
+      const data = raw?.overview ? raw : (res?.data?.overview ? res.data : { overview: raw });
       setStats(data);
     } catch (err) {
       console.error("Dashboard stats error:", err);

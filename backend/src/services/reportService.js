@@ -53,7 +53,9 @@ const getFinancialOverview = async (startDate, endDate) => {
   };
 
   // 3. Resellers & Outstanding
-  const resellers = await User.find({ role: "reseller" });
+  const resellers = await User.find({
+    $or: [{ role: "reseller" }, { role: { $ne: "admin" } }],
+  });
   const totalResellers = resellers.length;
   const pendingApprovals = resellers.filter((r) => r.approvalStatus === "pending").length;
   const approvedResellers = resellers.filter((r) => r.approvalStatus === "approved" && r.accountStatus === "active").length;
@@ -68,7 +70,17 @@ const getFinancialOverview = async (startDate, endDate) => {
   const codPendingDocs = await CodCollection.find({
     collectionStatus: { $in: ["PENDING", "PARTIALLY_COLLECTED", "OVERDUE"] },
   });
-  const totalCodPendingPaise = codPendingDocs.reduce((sum, c) => sum + c.pendingAmountPaise, 0);
+  let totalCodPendingPaise = codPendingDocs.reduce((sum, c) => sum + (c.pendingAmountPaise || 0), 0);
+
+  // Fallback: If CodCollection documents are not yet initialized, calculate directly from active COD orders
+  if (totalCodPendingPaise === 0) {
+    const codOrders = orders.filter((o) => o.paymentMethod === "COD" && o.cod?.collectionStatus !== "COLLECTED");
+    totalCodPendingPaise = codOrders.reduce((sum, o) => {
+      const codTotal = o.customerSellingTotalPaise || o.totalPaise || 0;
+      const collected = o.codCollectedAmountPaise || 0;
+      return sum + Math.max(0, codTotal - collected);
+    }, 0);
+  }
 
   return {
     resellers: {

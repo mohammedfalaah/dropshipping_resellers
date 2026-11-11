@@ -44,7 +44,12 @@ export default function AccountDashboard() {
     }
   }, [isAuthenticated, role]);
 
-  const getPayload = (res) => (res && res.data !== undefined ? res.data : res);
+  const getPayload = (res) => {
+    if (!res) return null;
+    if (res.data?.data !== undefined) return res.data.data;
+    if (res.data !== undefined) return res.data;
+    return res;
+  };
 
   const loadAdminDashboardData = async () => {
     setLoading(true);
@@ -83,23 +88,30 @@ export default function AccountDashboard() {
         paymentsApi.getResellerLedger().catch(() => null),
       ]);
 
-      const orders = getPayload(ordersRes);
-      if (orders?.orders) {
-        setResellerOrders(orders.orders);
-      } else if (Array.isArray(orders)) {
-        setResellerOrders(orders);
-      } else if (ordersRes?.data?.orders) {
-        setResellerOrders(ordersRes.data.orders);
+      const ordersPayload = getPayload(ordersRes);
+      const ordersList =
+        ordersPayload?.orders ||
+        ordersPayload?.data?.orders ||
+        ordersRes?.data?.data?.orders ||
+        ordersRes?.data?.orders ||
+        (Array.isArray(ordersPayload) ? ordersPayload : []);
+      if (Array.isArray(ordersList)) {
+        setResellerOrders(ordersList);
       }
 
-      const summary = getPayload(summaryRes);
-      if (summary) setResellerSummary(summary);
+      const summaryPayload = getPayload(summaryRes);
+      const summaryData = summaryPayload?.data || summaryPayload;
+      if (summaryData) setResellerSummary(summaryData);
 
-      const ledger = getPayload(ledgerRes);
-      if (ledger?.ledger) {
-        setResellerLedger(ledger.ledger);
-      } else if (Array.isArray(ledger)) {
-        setResellerLedger(ledger);
+      const ledgerPayload = getPayload(ledgerRes);
+      const ledgerList =
+        ledgerPayload?.ledger ||
+        ledgerPayload?.data?.ledger ||
+        ledgerRes?.data?.data?.ledger ||
+        ledgerRes?.data?.ledger ||
+        (Array.isArray(ledgerPayload) ? ledgerPayload : []);
+      if (Array.isArray(ledgerList)) {
+        setResellerLedger(ledgerList);
       }
     } catch (err) {
       console.error("Failed to load reseller data", err);
@@ -280,10 +292,139 @@ export default function AccountDashboard() {
             </div>
           )}
 
+          {/* MOBILE PROFILE & HORIZONTAL TABS (< 992px) */}
+          <div className="d-block d-lg-none mb-3">
+            <div className="bg-white p-3 rounded-4 shadow-sm border mb-2">
+              <div className="d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center gap-3">
+                  <div
+                    className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm"
+                    style={{
+                      width: "44px",
+                      height: "44px",
+                      minWidth: "44px",
+                      backgroundColor: role === "admin" ? "#2B3A67" : "var(--accent-color, #FA7EAA)",
+                      fontSize: "16px",
+                    }}
+                  >
+                    {user?.name ? user.name.slice(0, 2).toUpperCase() : "SP"}
+                  </div>
+                  <div>
+                    <h6 className="fw-bold mb-0 text-dark">{user?.name}</h6>
+                    <div className="d-flex align-items-center gap-1 mt-1">
+                      <span className={`badge ${role === "admin" ? "bg-dark" : "bg-primary"}`} style={{ fontSize: "10px" }}>
+                        {role === "admin" ? "Super Admin" : "Reseller"}
+                      </span>
+                      {role === "reseller" && (
+                        <span className={`badge ${approvalStatus === "approved" ? "bg-success" : approvalStatus === "pending" ? "bg-warning text-dark" : "bg-danger"}`} style={{ fontSize: "10px" }}>
+                          {approvalStatus}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="btn btn-sm btn-outline-danger rounded-pill px-3 py-1"
+                  title="Sign Out"
+                >
+                  <i className="fa-solid fa-arrow-right-from-bracket"></i>
+                </button>
+              </div>
+            </div>
+
+            {/* Horizontal Scrollable Tabs Bar on Mobile */}
+            <div className="d-flex gap-2 overflow-x-auto pb-2 text-nowrap no-scrollbar">
+              <button
+                type="button"
+                className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "dashboard" ? "btn-dark text-white" : "btn-light border"}`}
+                onClick={() => setActiveTab("dashboard")}
+              >
+                <i className="fa-solid fa-gauge me-1"></i> Overview
+              </button>
+
+              {role === "admin" ? (
+                <>
+                  <button
+                    type="button"
+                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "approvals" ? "btn-dark text-white" : "btn-light border"}`}
+                    onClick={() => setActiveTab("approvals")}
+                  >
+                    <i className="fa-solid fa-user-check me-1"></i> Approvals {pendingResellers.length > 0 && `(${pendingResellers.length})`}
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "resellers" ? "btn-dark text-white" : "btn-light border"}`}
+                    onClick={async () => {
+                      setActiveTab("resellers");
+                      const res = await adminApi.getResellers();
+                      const resellersList = res?.data?.resellers || res?.resellers || (Array.isArray(res?.data) ? res.data : null);
+                      if (resellersList) setAllResellers(resellersList);
+                    }}
+                  >
+                    <i className="fa-solid fa-users me-1"></i> Resellers
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "orders" ? "btn-dark text-white" : "btn-light border"}`}
+                    onClick={() => setActiveTab("orders")}
+                  >
+                    <i className="fa-solid fa-boxes-stacked me-1"></i> Orders
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "cod" ? "btn-dark text-white" : "btn-light border"}`}
+                    onClick={() => setActiveTab("cod")}
+                  >
+                    <i className="fa-solid fa-hand-holding-dollar me-1"></i> COD {codPendingList.length > 0 && `(${codPendingList.length})`}
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "reports" ? "btn-dark text-white" : "btn-light border"}`}
+                    onClick={() => {
+                      setActiveTab("reports");
+                      handleLoadReports();
+                    }}
+                  >
+                    <i className="fa-solid fa-file-invoice-dollar me-1"></i> Reports
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "orders" ? "btn-dark text-white" : "btn-light border"}`}
+                    onClick={() => {
+                      setActiveTab("orders");
+                      loadResellerData();
+                    }}
+                  >
+                    <i className="fa-solid fa-box-open me-1"></i> Orders {resellerOrders.length > 0 && `(${resellerOrders.length})`}
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "ledger" ? "btn-dark text-white" : "btn-light border"}`}
+                    onClick={() => setActiveTab("ledger")}
+                  >
+                    <i className="fa-solid fa-file-lines me-1"></i> Statement
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "business" ? "btn-dark text-white" : "btn-light border"}`}
+                    onClick={() => setActiveTab("business")}
+                  >
+                    <i className="fa-solid fa-store me-1"></i> Profile
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
           <div className="row g-4">
-            {/* Sidebar Navigation */}
-            <div className="col-lg-3">
-              <div className="bg-white p-4 rounded-4 shadow-sm border">
+            {/* Desktop Sidebar Navigation (>= 992px) */}
+            <div className="col-lg-3 d-none d-lg-block">
+              <div className="bg-white p-4 rounded-4 shadow-sm border" style={{ position: "sticky", top: "100px" }}>
                 <div className="text-center pb-3 mb-3 border-bottom">
                   <div
                     className="rounded-circle d-inline-flex align-items-center justify-content-center text-white fw-bold mb-2 shadow-sm"
@@ -310,8 +451,8 @@ export default function AccountDashboard() {
                   </div>
                 </div>
 
-                {/* Role Specific Nav Items - Scrollable horizontal bar on mobile, vertical stack on desktop */}
-                <div className="nav flex-row flex-lg-column gap-2 overflow-x-auto text-nowrap pb-2 mb-3 mb-lg-0 no-scrollbar">
+                {/* Role Specific Nav Items - Vertical stack on desktop */}
+                <div className="nav flex-column gap-2 text-nowrap">
                   <button
                     type="button"
                     className={`btn text-start rounded-pill px-3 py-2 ${activeTab === "dashboard" ? "btn-dark text-white" : "btn-light"}`}
@@ -386,7 +527,7 @@ export default function AccountDashboard() {
                           loadResellerData();
                         }}
                       >
-                        <i className="fa-solid fa-box-open me-2"></i> My Orders
+                        <i className="fa-solid fa-box-open me-2"></i> My Orders {resellerOrders.length > 0 && `(${resellerOrders.length})`}
                       </button>
 
                       <button
@@ -881,93 +1022,203 @@ export default function AccountDashboard() {
                 {/* RESELLER VIEW: Dashboard Overview */}
                 {role === "reseller" && activeTab === "dashboard" && (
                   <div>
-                    <h4 className="fw-bold mb-1">Welcome back, {user?.name}!</h4>
-                    <p className="text-muted mb-4 small">
-                      Wholesale account for <strong>{user?.businessInfo?.businessName || "Reseller Partner"}</strong>. Track wholesale orders, account ledger, and COD receivables.
-                    </p>
+                    <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+                      <div>
+                        <h4 className="fw-bold mb-1">Welcome back, {user?.name}!</h4>
+                        <p className="text-muted mb-0 small">
+                          Wholesale account for <strong>{user?.businessInfo?.businessName || "Reseller Partner"}</strong>. Track wholesale orders, account ledger, and COD receivables.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-sm align-self-start align-self-sm-center"
+                        onClick={loadResellerData}
+                        disabled={loading}
+                      >
+                        <i className={`fa-solid fa-rotate me-1 ${loading ? "fa-spin" : ""}`}></i> Refresh
+                      </button>
+                    </div>
 
+                    {/* 4 Financial Metric Cards: 2x2 on Mobile, 4x1 on Desktop */}
                     <div className="row g-3 mb-4">
-                      <div className="col-md-3">
-                        <div className="p-3 bg-light rounded-4 border text-center">
-                          <h4 className="fw-bold mb-1 text-primary">₹{((resellerSummary?.totalPurchasesPaise || 0) / 100).toFixed(2)}</h4>
-                          <span className="text-muted small">Total Purchases</span>
+                      <div className="col-6 col-lg-3">
+                        <div className="p-3 bg-white rounded-4 border shadow-sm text-center h-100">
+                          <div className="rounded-circle bg-primary-subtle text-primary d-inline-flex align-items-center justify-content-center mb-2" style={{ width: "36px", height: "36px" }}>
+                            <i className="fa-solid fa-bag-shopping"></i>
+                          </div>
+                          <h4 className="fw-bold mb-0 text-primary">
+                            ₹{(((resellerSummary?.totalPurchasesPaise ?? resellerSummary?.data?.totalPurchasesPaise ?? 0) / 100)).toFixed(2)}
+                          </h4>
+                          <span className="text-muted small" style={{ fontSize: "12px" }}>Total Purchases</span>
                         </div>
                       </div>
-                      <div className="col-md-3">
-                        <div className="p-3 bg-light rounded-4 border text-center">
-                          <h4 className="fw-bold mb-1 text-success">₹{((resellerSummary?.totalPaymentsPaise || 0) / 100).toFixed(2)}</h4>
-                          <span className="text-muted small">Total Paid</span>
+                      <div className="col-6 col-lg-3">
+                        <div className="p-3 bg-white rounded-4 border shadow-sm text-center h-100">
+                          <div className="rounded-circle bg-success-subtle text-success d-inline-flex align-items-center justify-content-center mb-2" style={{ width: "36px", height: "36px" }}>
+                            <i className="fa-solid fa-circle-check"></i>
+                          </div>
+                          <h4 className="fw-bold mb-0 text-success">
+                            ₹{(((resellerSummary?.totalPaymentsPaise ?? resellerSummary?.data?.totalPaymentsPaise ?? 0) / 100)).toFixed(2)}
+                          </h4>
+                          <span className="text-muted small" style={{ fontSize: "12px" }}>Total Paid</span>
                         </div>
                       </div>
-                      <div className="col-md-3">
-                        <div className="p-3 bg-light rounded-4 border text-center">
-                          <h4 className="fw-bold mb-1 text-warning">₹{((resellerSummary?.codPendingPaise || 0) / 100).toFixed(2)}</h4>
-                          <span className="text-muted small">COD In Transit</span>
+                      <div className="col-6 col-lg-3">
+                        <div className="p-3 bg-white rounded-4 border shadow-sm text-center h-100">
+                          <div className="rounded-circle bg-warning-subtle text-warning d-inline-flex align-items-center justify-content-center mb-2" style={{ width: "36px", height: "36px" }}>
+                            <i className="fa-solid fa-truck-ramp-box"></i>
+                          </div>
+                          <h4 className="fw-bold mb-0 text-warning">
+                            ₹{(((resellerSummary?.codPendingPaise ?? resellerSummary?.data?.codPendingPaise ?? 0) / 100)).toFixed(2)}
+                          </h4>
+                          <span className="text-muted small" style={{ fontSize: "12px" }}>COD In Transit</span>
                         </div>
                       </div>
-                      <div className="col-md-3">
-                        <div className="p-3 bg-light rounded-4 border text-center">
-                          <h4 className="fw-bold mb-1 text-danger">₹{((resellerSummary?.outstandingBalancePaise || 0) / 100).toFixed(2)}</h4>
-                          <span className="text-muted small">Net Balance Due</span>
+                      <div className="col-6 col-lg-3">
+                        <div className="p-3 bg-white rounded-4 border shadow-sm text-center h-100">
+                          <div className="rounded-circle bg-danger-subtle text-danger d-inline-flex align-items-center justify-content-center mb-2" style={{ width: "36px", height: "36px" }}>
+                            <i className="fa-solid fa-scale-balanced"></i>
+                          </div>
+                          <h4 className="fw-bold mb-0 text-danger">
+                            ₹{(((resellerSummary?.outstandingBalancePaise ?? resellerSummary?.data?.outstandingBalancePaise ?? 0) / 100)).toFixed(2)}
+                          </h4>
+                          <span className="text-muted small" style={{ fontSize: "12px" }}>Net Balance Due</span>
                         </div>
                       </div>
                     </div>
 
-                    <h5 className="fw-bold mb-3">Recent Orders</h5>
-                    <div className="table-responsive">
-                      <table className="table align-middle">
-                        <thead className="table-light">
-                          <tr>
-                            <th>Order #</th>
-                            <th>Date</th>
-                            <th>Delivery & Status</th>
-                            <th>Payment</th>
-                            <th>Total</th>
-                            <th className="text-end">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <h5 className="fw-bold mb-0">Recent Orders</h5>
+                      {resellerOrders.length > 0 && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-link text-decoration-none text-danger fw-semibold p-0"
+                          onClick={() => setActiveTab("orders")}
+                        >
+                          View All ({resellerOrders.length}) →
+                        </button>
+                      )}
+                    </div>
+
+                    {resellerOrders.length === 0 ? (
+                      <div className="text-center py-5 bg-light rounded-4">
+                        <i className="fa-solid fa-box-open text-muted fa-3x mb-3"></i>
+                        <h6 className="fw-bold">No orders placed yet</h6>
+                        <p className="text-muted small mb-3">Browse our wholesale catalog to start placing orders.</p>
+                        <Link to="/shop" className="btn btn-dark rounded-pill px-4">
+                          Browse Wholesale Catalog
+                        </Link>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Mobile Recent Orders Cards (< 768px) */}
+                        <div className="d-block d-md-none mb-3">
                           {resellerOrders.slice(0, 5).map((o) => {
                             const pInfo = getDeliveryProgressInfo(o);
+                            const totalAmount = (((o.customerSellingTotalPaise || o.totalPaise || 0) / 100)).toFixed(2);
                             return (
-                              <tr key={o._id}>
-                                <td className="fw-semibold">
-                                  <div>{o.orderNumber}</div>
-                                  {o.trackingNumber && (
-                                    <small className="text-muted font-monospace" style={{ fontSize: "11px" }}>{o.trackingNumber}</small>
-                                  )}
-                                </td>
-                                <td>{new Date(o.createdAt).toLocaleDateString()}</td>
-                                <td>
-                                  <div className="d-flex align-items-center gap-2 mb-1">
-                                    <span className={`badge ${pInfo.badgeClass}`} style={{ fontSize: "10px" }}>{pInfo.label}</span>
-                                    <span className="small text-muted" style={{ fontSize: "10px" }}>{pInfo.percent}%</span>
+                              <div key={o._id} className="card border rounded-3 shadow-sm mb-2 p-3 bg-white">
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                  <div>
+                                    <div className="fw-bold text-dark">{o.orderNumber}</div>
+                                    <small className="text-muted" style={{ fontSize: "11px" }}>
+                                      {new Date(o.createdAt).toLocaleDateString()}
+                                    </small>
                                   </div>
-                                  <div className="progress" style={{ height: "4px", width: "100px" }}>
+                                  <span className="badge bg-light text-dark border" style={{ fontSize: "10px" }}>
+                                    {o.paymentMethod.toUpperCase()}
+                                  </span>
+                                </div>
+                                <div className="p-2 bg-light rounded-3 mb-2">
+                                  <div className="d-flex justify-content-between align-items-center mb-1">
+                                    <span className={`badge ${pInfo.badgeClass}`} style={{ fontSize: "10px" }}>
+                                      {pInfo.label}
+                                    </span>
+                                    <span className="small text-muted fw-bold">{pInfo.percent}%</span>
+                                  </div>
+                                  <div className="progress" style={{ height: "4px" }}>
                                     <div
                                       className={`progress-bar ${pInfo.percent === 100 ? "bg-success" : "bg-danger"}`}
                                       style={{ width: `${pInfo.percent}%` }}
                                     ></div>
                                   </div>
-                                </td>
-                                <td><span className="badge bg-light text-dark border">{o.paymentMethod.toUpperCase()} ({o.paymentStatus})</span></td>
-                                <td className="fw-bold">₹{(o.totalAmountPaise / 100).toFixed(2)}</td>
-                                <td className="text-end">
+                                </div>
+                                <div className="d-flex justify-content-between align-items-center">
+                                  <div>
+                                    <span className="text-muted small" style={{ fontSize: "11px" }}>Total: </span>
+                                    <span className="fw-bold text-dark">₹{totalAmount}</span>
+                                  </div>
                                   <button
                                     type="button"
-                                    className="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                    className="btn btn-sm btn-outline-danger rounded-pill px-3 py-1"
                                     onClick={() => handleTrackOrder(o.trackingNumber || o.orderNumber)}
-                                    title="Track Consignment Delivery"
                                   >
                                     <i className="fa-solid fa-location-crosshairs me-1"></i> Track
                                   </button>
-                                </td>
-                              </tr>
+                                </div>
+                              </div>
                             );
                           })}
-                        </tbody>
-                      </table>
-                    </div>
+                        </div>
+
+                        {/* Desktop Recent Orders Table (>= 768px) */}
+                        <div className="d-none d-md-block table-responsive">
+                          <table className="table align-middle">
+                            <thead className="table-light">
+                              <tr>
+                                <th>Order #</th>
+                                <th>Date</th>
+                                <th>Delivery & Status</th>
+                                <th>Payment</th>
+                                <th>Total</th>
+                                <th className="text-end">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {resellerOrders.slice(0, 5).map((o) => {
+                                const pInfo = getDeliveryProgressInfo(o);
+                                const totalAmount = (((o.customerSellingTotalPaise || o.totalPaise || 0) / 100)).toFixed(2);
+                                return (
+                                  <tr key={o._id}>
+                                    <td className="fw-semibold">
+                                      <div>{o.orderNumber}</div>
+                                      {o.trackingNumber && (
+                                        <small className="text-muted font-monospace" style={{ fontSize: "11px" }}>{o.trackingNumber}</small>
+                                      )}
+                                    </td>
+                                    <td>{new Date(o.createdAt).toLocaleDateString()}</td>
+                                    <td>
+                                      <div className="d-flex align-items-center gap-2 mb-1">
+                                        <span className={`badge ${pInfo.badgeClass}`} style={{ fontSize: "10px" }}>{pInfo.label}</span>
+                                        <span className="small text-muted" style={{ fontSize: "10px" }}>{pInfo.percent}%</span>
+                                      </div>
+                                      <div className="progress" style={{ height: "4px", width: "100px" }}>
+                                        <div
+                                          className={`progress-bar ${pInfo.percent === 100 ? "bg-success" : "bg-danger"}`}
+                                          style={{ width: `${pInfo.percent}%` }}
+                                        ></div>
+                                      </div>
+                                    </td>
+                                    <td><span className="badge bg-light text-dark border">{o.paymentMethod.toUpperCase()} ({o.paymentStatus})</span></td>
+                                    <td className="fw-bold">₹{totalAmount}</td>
+                                    <td className="text-end">
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                        onClick={() => handleTrackOrder(o.trackingNumber || o.orderNumber)}
+                                        title="Track Consignment Delivery"
+                                      >
+                                        <i className="fa-solid fa-location-crosshairs me-1"></i> Track
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -989,31 +1240,31 @@ export default function AccountDashboard() {
                       className="card border-0 shadow-sm rounded-4 mb-4"
                       style={{ background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)", color: "#fff" }}
                     >
-                      <div className="card-body p-4">
+                      <div className="card-body p-3 p-md-4">
                         <div className="row align-items-center g-3">
-                          <div className="col-lg-5">
+                          <div className="col-12 col-lg-5">
                             <div className="d-flex align-items-center gap-3">
                               <div
-                                className="rounded-3 bg-danger text-white d-flex align-items-center justify-content-center shadow"
-                                style={{ width: "46px", height: "46px", minWidth: "46px" }}
+                                className="rounded-3 bg-danger text-white d-flex align-items-center justify-content-center shadow flex-shrink-0"
+                                style={{ width: "44px", height: "44px" }}
                               >
-                                <i className="fa-solid fa-truck-fast fa-lg"></i>
+                                <i className="fa-solid fa-truck-fast"></i>
                               </div>
                               <div>
-                                <h6 className="fw-bold mb-1 text-white">Track Order & Parcel Delivery</h6>
+                                <h6 className="fw-bold mb-0 text-white">Track Order & Parcel Delivery</h6>
                                 <p className="text-light text-opacity-75 small mb-0" style={{ fontSize: "12px" }}>
                                   Live consignment tracking with checkpoint timeline & delivery progress.
                                 </p>
                               </div>
                             </div>
                           </div>
-                          <div className="col-lg-7">
+                          <div className="col-12 col-lg-7">
                             <form
                               onSubmit={(e) => {
                                 e.preventDefault();
                                 handleTrackOrder();
                               }}
-                              className="d-flex gap-2"
+                              className="d-flex flex-column flex-sm-row gap-2"
                             >
                               <div className="input-group">
                                 <span className="input-group-text bg-white border-0 text-muted">
@@ -1022,14 +1273,14 @@ export default function AccountDashboard() {
                                 <input
                                   type="text"
                                   className="form-control border-0 py-2"
-                                  placeholder="Enter Order # (ORD-...) or India Post Consignment ID (e.g. RM019388105IN)"
+                                  placeholder="Enter Order # or Tracking ID (e.g. RM019388105IN)"
                                   value={trackQuery}
                                   onChange={(e) => setTrackQuery(e.target.value)}
                                 />
                               </div>
                               <button
                                 type="submit"
-                                className="btn btn-danger rounded-pill px-4 text-nowrap fw-semibold shadow"
+                                className="btn btn-danger rounded-pill px-4 py-2 text-nowrap fw-semibold shadow"
                                 disabled={loadingTracking}
                               >
                                 {loadingTracking ? (
@@ -1045,6 +1296,32 @@ export default function AccountDashboard() {
                             </form>
                           </div>
                         </div>
+
+                        {/* Quick Track Chips for Recent Consignments */}
+                        {resellerOrders.filter((o) => o.trackingNumber).length > 0 && (
+                          <div className="mt-3 pt-3 border-top border-secondary border-opacity-50 d-flex flex-wrap align-items-center gap-2">
+                            <span className="small text-light text-opacity-75" style={{ fontSize: "11px" }}>
+                              <i className="fa-solid fa-bolt text-warning me-1"></i> Quick Track:
+                            </span>
+                            {resellerOrders
+                              .filter((o) => o.trackingNumber)
+                              .slice(0, 3)
+                              .map((o) => (
+                                <button
+                                  key={o._id}
+                                  type="button"
+                                  className="btn btn-sm btn-outline-light rounded-pill px-2 py-0 font-monospace"
+                                  style={{ fontSize: "11px" }}
+                                  onClick={() => {
+                                    setTrackQuery(o.trackingNumber);
+                                    handleTrackOrder(o.trackingNumber);
+                                  }}
+                                >
+                                  {o.trackingNumber} ({o.orderNumber})
+                                </button>
+                              ))}
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -1058,50 +1335,54 @@ export default function AccountDashboard() {
                         </Link>
                       </div>
                     ) : (
-                      <div className="table-responsive">
-                        <table className="table align-middle">
-                          <thead className="table-light">
-                            <tr>
-                              <th>Order #</th>
-                              <th>Delivery & Tracking</th>
-                              <th>Wholesale Cost</th>
-                              <th>Customer Price</th>
-                              <th>Expected Profit</th>
-                              <th>Delivery Charge</th>
-                              <th>Customer Collection</th>
-                              <th>COD Status</th>
-                              <th>Settlement</th>
-                              <th className="text-end">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {resellerOrders.map((o) => {
-                              const wholesaleCost = ((o.wholesaleCostPaise || o.subtotalPaise || 0) / 100).toFixed(2);
-                              const customerSelling = ((o.customerSellingTotalPaise || o.totalPaise || 0) / 100).toFixed(2);
-                              const expectedProfit = ((o.expectedResellerProfitPaise || 0) / 100).toFixed(2);
-                              const deliveryChargeAmt = ((o.deliveryChargePaise || o.shippingPaise || 0) / 100).toFixed(2);
-                              const collectedAmt = ((o.codCollectedAmountPaise || 0) / 100).toFixed(2);
-                              const targetCollection = ((o.customerCollectionPaise || o.cod?.codAmountPaise || 0) / 100).toFixed(2);
-                              const codStatus = o.codCollectionStatus || o.cod?.collectionStatus || (o.paymentMethod === "COD" ? "PENDING" : "PREPAID");
-                              const settlementStatus = o.resellerSettlementStatus || "UNSETTLED";
-                              const progInfo = getDeliveryProgressInfo(o);
+                      <>
+                        {/* MOBILE VIEW: Thumb-friendly Responsive Order Cards (< 992px) */}
+                        <div className="d-block d-lg-none mb-3">
+                          {resellerOrders.map((o) => {
+                            const wholesaleCost = ((o.wholesaleCostPaise || o.subtotalPaise || 0) / 100).toFixed(2);
+                            const customerSelling = ((o.customerSellingTotalPaise || o.totalPaise || 0) / 100).toFixed(2);
+                            const expectedProfit = ((o.expectedResellerProfitPaise || 0) / 100).toFixed(2);
+                            const deliveryChargeAmt = ((o.deliveryChargePaise || o.shippingPaise || 0) / 100).toFixed(2);
+                            const collectedAmt = ((o.codCollectedAmountPaise || 0) / 100).toFixed(2);
+                            const targetCollection = ((o.customerCollectionPaise || o.cod?.codAmountPaise || 0) / 100).toFixed(2);
+                            const codStatus = o.codCollectionStatus || o.cod?.collectionStatus || (o.paymentMethod === "COD" ? "PENDING" : "PREPAID");
+                            const progInfo = getDeliveryProgressInfo(o);
+                            const printUrl = `/api/orders/${o._id}/shipping-label?view=print&autoPrint=1&token=${localStorage.getItem("sparepro_token") || ""}`;
 
-                              return (
-                                <tr key={o._id}>
-                                  <td>
-                                    <div className="fw-bold">{o.orderNumber}</div>
-                                    <small className="text-muted">{new Date(o.createdAt).toLocaleDateString()}</small>
-                                  </td>
-                                  <td>
-                                    <div className="d-flex align-items-center gap-2 mb-1">
-                                      <span className={`badge ${progInfo.badgeClass}`} style={{ fontSize: "11px" }}>
+                            return (
+                              <div key={o._id} className="card border rounded-4 shadow-sm mb-3 overflow-hidden bg-white">
+                                {/* Card Header: Order # + Date + Payment Badge */}
+                                <div className="card-header bg-light border-bottom d-flex justify-content-between align-items-center py-2 px-3">
+                                  <div>
+                                    <div className="fw-bold text-dark d-flex align-items-center gap-2">
+                                      <span>{o.orderNumber}</span>
+                                      <span className={`badge ${progInfo.badgeClass}`} style={{ fontSize: "10px" }}>
                                         {progInfo.label}
                                       </span>
-                                      <span className="small text-muted fw-semibold" style={{ fontSize: "11px" }}>
+                                    </div>
+                                    <small className="text-muted" style={{ fontSize: "11px" }}>
+                                      <i className="fa-regular fa-calendar me-1"></i>
+                                      {new Date(o.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                                    </small>
+                                  </div>
+                                  <span className="badge bg-light text-dark border font-monospace" style={{ fontSize: "10px" }}>
+                                    {o.paymentMethod.toUpperCase()} ({o.paymentStatus})
+                                  </span>
+                                </div>
+
+                                <div className="card-body p-3">
+                                  {/* Delivery & Tracking Progress Bar */}
+                                  <div className="p-2 rounded-3 bg-light border mb-3">
+                                    <div className="d-flex justify-content-between align-items-center mb-1">
+                                      <span className="small text-muted" style={{ fontSize: "11px" }}>
+                                        <i className="fa-solid fa-truck text-danger me-1"></i>
+                                        {o.courierName || "India Post (Speed Post)"}
+                                      </span>
+                                      <span className="fw-bold text-dark" style={{ fontSize: "11px" }}>
                                         {progInfo.percent}%
                                       </span>
                                     </div>
-                                    <div className="progress mb-1" style={{ height: "6px", width: "120px" }}>
+                                    <div className="progress mb-2" style={{ height: "6px" }}>
                                       <div
                                         className={`progress-bar progress-bar-striped progress-bar-animated ${
                                           progInfo.percent === 100 ? "bg-success" : "bg-danger"
@@ -1109,112 +1390,266 @@ export default function AccountDashboard() {
                                         style={{ width: `${progInfo.percent}%` }}
                                       ></div>
                                     </div>
-                                    <div className="small text-muted" style={{ fontSize: "11px" }}>
-                                      {o.courierName || "India Post (Speed Post)"}
-                                    </div>
                                     {o.trackingNumber ? (
-                                      <div className="small text-dark font-monospace fw-semibold" style={{ fontSize: "11px" }}>
-                                        {o.trackingNumber}
+                                      <div className="d-flex justify-content-between align-items-center">
+                                        <span className="small font-monospace fw-semibold text-dark" style={{ fontSize: "11px" }}>
+                                          <i className="fa-solid fa-barcode text-muted me-1"></i> {o.trackingNumber}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          className="btn btn-sm btn-link text-decoration-none p-0 text-primary"
+                                          style={{ fontSize: "11px" }}
+                                          onClick={() => {
+                                            if (navigator.clipboard) {
+                                              navigator.clipboard.writeText(o.trackingNumber);
+                                              alert("Consignment AWB copied: " + o.trackingNumber);
+                                            }
+                                          }}
+                                        >
+                                          <i className="fa-regular fa-copy me-1"></i> Copy
+                                        </button>
                                       </div>
                                     ) : (
-                                      <span className="text-muted" style={{ fontSize: "10px" }}>
-                                        AWB Assigned Upon Dispatch
+                                      <span className="text-muted" style={{ fontSize: "11px" }}>AWB Assigned Upon Dispatch</span>
+                                    )}
+                                  </div>
+
+                                  {/* 3-Column Financial Snapshot (Wholesale, Customer Price, Expected Profit) */}
+                                  <div className="row g-2 text-center mb-3">
+                                    <div className="col-4">
+                                      <div className="p-2 rounded-3 bg-light border h-100">
+                                        <div className="text-muted" style={{ fontSize: "10px" }}>Wholesale</div>
+                                        <div className="fw-bold text-secondary" style={{ fontSize: "13px" }}>₹{wholesaleCost}</div>
+                                      </div>
+                                    </div>
+                                    <div className="col-4">
+                                      <div className="p-2 rounded-3 bg-light border h-100">
+                                        <div className="text-muted" style={{ fontSize: "10px" }}>Customer Price</div>
+                                        <div className="fw-bold text-dark" style={{ fontSize: "13px" }}>₹{customerSelling}</div>
+                                      </div>
+                                    </div>
+                                    <div className="col-4">
+                                      <div className="p-2 rounded-3 border h-100" style={{ backgroundColor: "#F0FDF4", borderColor: "#86EFAC" }}>
+                                        <div className="text-success" style={{ fontSize: "10px" }}>Expected Profit</div>
+                                        <div className="fw-bold text-success" style={{ fontSize: "13px" }}>+₹{expectedProfit}</div>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Logistics & COD Row */}
+                                  <div className="d-flex justify-content-between align-items-center small py-1 border-top pt-2 mb-3" style={{ fontSize: "11px" }}>
+                                    <div>
+                                      <span className="text-muted">Delivery Chg: </span>
+                                      <strong>₹{deliveryChargeAmt}</strong>{" "}
+                                      <span className={`badge ${o.deliveryChargeStatus === "PAID" ? "bg-success-subtle text-success" : "bg-warning-subtle text-warning"}`} style={{ fontSize: "9px" }}>
+                                        {o.deliveryChargeStatus || "PENDING"}
                                       </span>
-                                    )}
-                                  </td>
-                                  <td className="fw-semibold text-secondary">
-                                    ₹{wholesaleCost}
-                                  </td>
-                                  <td className="fw-bold text-dark">
-                                    ₹{customerSelling}
-                                  </td>
-                                  <td>
-                                    <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fw-bold">
-                                      +₹{expectedProfit}
-                                    </span>
-                                  </td>
-                                  <td>
-                                    <div>₹{deliveryChargeAmt}</div>
-                                    <span className={`badge ${o.deliveryChargeStatus === "PAID" ? "bg-success-subtle text-success" : "bg-warning-subtle text-warning"} text-capitalize`} style={{ fontSize: "10px" }}>
-                                      {o.deliveryChargeStatus || "PENDING"}
-                                    </span>
-                                  </td>
-                                  <td>
-                                    {o.paymentMethod === "COD" ? (
-                                      <div>
-                                        <div className="small fw-semibold">₹{collectedAmt} / ₹{targetCollection}</div>
-                                        <div className="text-muted" style={{ fontSize: "10px" }}>
-                                          {Number(collectedAmt) >= Number(targetCollection) && Number(targetCollection) > 0 ? "Fully Collected" : "Pending Courier Remit"}
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <span className="badge bg-light text-muted border">Prepaid</span>
-                                    )}
-                                  </td>
-                                  <td>
-                                    <span className={`badge ${
-                                      codStatus === "RECONCILED" || codStatus === "COLLECTED"
-                                        ? "bg-success-subtle text-success"
-                                        : codStatus === "PENDING"
-                                        ? "bg-warning-subtle text-dark"
-                                        : "bg-light text-dark border"
-                                    } text-uppercase`}>
-                                      {codStatus}
-                                    </span>
-                                  </td>
-                                  <td>
-                                    <span className={`badge ${
-                                      settlementStatus === "SETTLED"
-                                        ? "bg-success text-white"
-                                        : settlementStatus === "PARTIALLY_SETTLED"
-                                        ? "bg-warning text-dark"
-                                        : "bg-secondary text-white"
-                                    } text-uppercase`}>
-                                      {settlementStatus}
-                                    </span>
-                                  </td>
-                                  <td className="text-end text-nowrap">
+                                    </div>
+                                    <div>
+                                      {o.paymentMethod === "COD" ? (
+                                        <span>
+                                          <span className="text-muted">COD: </span>
+                                          <strong>₹{collectedAmt}</strong> / ₹{targetCollection}
+                                        </span>
+                                      ) : (
+                                        <span className="badge bg-success-subtle text-success" style={{ fontSize: "9px" }}>
+                                          Prepaid Order
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Action Buttons Toolbar */}
+                                  <div className="d-flex gap-2">
                                     <a
-                                      href={`/api/orders/${o._id}/shipping-label?view=print&autoPrint=1&token=${localStorage.getItem("sparepro_token") || ""}`}
+                                      href={printUrl}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="btn btn-sm btn-outline-dark rounded-pill px-2 me-1"
-                                      title="Download / Print Shipping Label with Barcode"
+                                      className="btn btn-sm btn-outline-dark rounded-pill flex-fill text-center py-2"
+                                      title="Download or Print Shipping Label"
                                     >
-                                      <i className="fa-solid fa-barcode"></i> Label
+                                      <i className="fa-solid fa-barcode me-1"></i> Label
                                     </a>
                                     <button
                                       type="button"
-                                      className="btn btn-sm btn-outline-danger rounded-pill px-3 me-2"
+                                      className="btn btn-sm btn-danger rounded-pill flex-fill py-2"
                                       onClick={() => handleTrackOrder(o.trackingNumber || o.orderNumber)}
-                                      title="Track Delivery Progress"
                                     >
                                       <i className="fa-solid fa-location-crosshairs me-1"></i> Track
                                     </button>
                                     <button
                                       type="button"
-                                      className="btn btn-sm btn-outline-dark rounded-pill px-3"
+                                      className="btn btn-sm btn-outline-secondary rounded-pill flex-fill py-2"
                                       onClick={() => setSelectedResellerOrder(o)}
                                     >
-                                      View
+                                      <i className="fa-regular fa-eye me-1"></i> View
                                     </button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* DESKTOP VIEW: Full Orders Table (>= 992px) */}
+                        <div className="d-none d-lg-block table-responsive">
+                          <table className="table align-middle">
+                            <thead className="table-light">
+                              <tr>
+                                <th>Order #</th>
+                                <th>Delivery & Tracking</th>
+                                <th>Wholesale Cost</th>
+                                <th>Customer Price</th>
+                                <th>Expected Profit</th>
+                                <th>Delivery Charge</th>
+                                <th>Customer Collection</th>
+                                <th>COD Status</th>
+                                <th>Settlement</th>
+                                <th className="text-end">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {resellerOrders.map((o) => {
+                                const wholesaleCost = ((o.wholesaleCostPaise || o.subtotalPaise || 0) / 100).toFixed(2);
+                                const customerSelling = ((o.customerSellingTotalPaise || o.totalPaise || 0) / 100).toFixed(2);
+                                const expectedProfit = ((o.expectedResellerProfitPaise || 0) / 100).toFixed(2);
+                                const deliveryChargeAmt = ((o.deliveryChargePaise || o.shippingPaise || 0) / 100).toFixed(2);
+                                const collectedAmt = ((o.codCollectedAmountPaise || 0) / 100).toFixed(2);
+                                const targetCollection = ((o.customerCollectionPaise || o.cod?.codAmountPaise || 0) / 100).toFixed(2);
+                                const codStatus = o.codCollectionStatus || o.cod?.collectionStatus || (o.paymentMethod === "COD" ? "PENDING" : "PREPAID");
+                                const settlementStatus = o.resellerSettlementStatus || "UNSETTLED";
+                                const progInfo = getDeliveryProgressInfo(o);
+
+                                return (
+                                  <tr key={o._id}>
+                                    <td>
+                                      <div className="fw-bold">{o.orderNumber}</div>
+                                      <small className="text-muted">{new Date(o.createdAt).toLocaleDateString()}</small>
+                                    </td>
+                                    <td>
+                                      <div className="d-flex align-items-center gap-2 mb-1">
+                                        <span className={`badge ${progInfo.badgeClass}`} style={{ fontSize: "11px" }}>
+                                          {progInfo.label}
+                                        </span>
+                                        <span className="small text-muted fw-semibold" style={{ fontSize: "11px" }}>
+                                          {progInfo.percent}%
+                                        </span>
+                                      </div>
+                                      <div className="progress mb-1" style={{ height: "6px", width: "120px" }}>
+                                        <div
+                                          className={`progress-bar progress-bar-striped progress-bar-animated ${
+                                            progInfo.percent === 100 ? "bg-success" : "bg-danger"
+                                          }`}
+                                          style={{ width: `${progInfo.percent}%` }}
+                                        ></div>
+                                      </div>
+                                      <div className="small text-muted" style={{ fontSize: "11px" }}>
+                                        {o.courierName || "India Post (Speed Post)"}
+                                      </div>
+                                      {o.trackingNumber ? (
+                                        <div className="small text-dark font-monospace fw-semibold" style={{ fontSize: "11px" }}>
+                                          {o.trackingNumber}
+                                        </div>
+                                      ) : (
+                                        <span className="text-muted" style={{ fontSize: "10px" }}>
+                                          AWB Assigned Upon Dispatch
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="fw-semibold text-secondary">
+                                      ₹{wholesaleCost}
+                                    </td>
+                                    <td className="fw-bold text-dark">
+                                      ₹{customerSelling}
+                                    </td>
+                                    <td>
+                                      <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fw-bold">
+                                        +₹{expectedProfit}
+                                      </span>
+                                    </td>
+                                    <td>
+                                      <div>₹{deliveryChargeAmt}</div>
+                                      <span className={`badge ${o.deliveryChargeStatus === "PAID" ? "bg-success-subtle text-success" : "bg-warning-subtle text-warning"} text-capitalize`} style={{ fontSize: "10px" }}>
+                                        {o.deliveryChargeStatus || "PENDING"}
+                                      </span>
+                                    </td>
+                                    <td>
+                                      {o.paymentMethod === "COD" ? (
+                                        <div>
+                                          <div className="small fw-semibold">₹{collectedAmt} / ₹{targetCollection}</div>
+                                          <div className="text-muted" style={{ fontSize: "10px" }}>
+                                            {Number(collectedAmt) >= Number(targetCollection) && Number(targetCollection) > 0 ? "Fully Collected" : "Pending Courier Remit"}
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <span className="badge bg-light text-muted border">Prepaid</span>
+                                      )}
+                                    </td>
+                                    <td>
+                                      <span className={`badge ${
+                                        codStatus === "RECONCILED" || codStatus === "COLLECTED"
+                                          ? "bg-success-subtle text-success"
+                                          : codStatus === "PENDING"
+                                          ? "bg-warning-subtle text-dark"
+                                          : "bg-light text-dark border"
+                                      } text-uppercase`}>
+                                        {codStatus}
+                                      </span>
+                                    </td>
+                                    <td>
+                                      <span className={`badge ${
+                                        settlementStatus === "SETTLED"
+                                          ? "bg-success text-white"
+                                          : settlementStatus === "PARTIALLY_SETTLED"
+                                          ? "bg-warning text-dark"
+                                          : "bg-secondary text-white"
+                                      } text-uppercase`}>
+                                        {settlementStatus}
+                                      </span>
+                                    </td>
+                                    <td className="text-end text-nowrap">
+                                      <a
+                                        href={`/api/orders/${o._id}/shipping-label?view=print&autoPrint=1&token=${localStorage.getItem("sparepro_token") || ""}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn btn-sm btn-outline-dark rounded-pill px-2 me-1"
+                                        title="Download / Print Shipping Label with Barcode"
+                                      >
+                                        <i className="fa-solid fa-barcode"></i> Label
+                                      </a>
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-danger rounded-pill px-3 me-2"
+                                        onClick={() => handleTrackOrder(o.trackingNumber || o.orderNumber)}
+                                        title="Track Delivery Progress"
+                                      >
+                                        <i className="fa-solid fa-location-crosshairs me-1"></i> Track
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-dark rounded-pill px-3"
+                                        onClick={() => setSelectedResellerOrder(o)}
+                                      >
+                                        View
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
                     )}
 
                     {/* Reseller Order Breakdown Modal (Read-Only) */}
                     {selectedResellerOrder && (
                       <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-                        <div className="modal-dialog modal-lg modal-dialog-centered">
+                        <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                           <div className="modal-content rounded-4 border-0 shadow">
                             <div className="modal-header border-bottom px-4 pt-4 pb-3">
                               <div>
-                                <h5 className="modal-title fw-bold">Order Financial Breakdown: {selectedResellerOrder.orderNumber}</h5>
+                                <h5 className="modal-title fw-bold">Order Breakdown: {selectedResellerOrder.orderNumber}</h5>
                                 <span className="badge bg-light text-dark border me-2">{selectedResellerOrder.paymentMethod}</span>
                                 <span className="small text-muted">{new Date(selectedResellerOrder.createdAt).toLocaleString()}</span>
                               </div>
@@ -1224,7 +1659,7 @@ export default function AccountDashboard() {
                                 onClick={() => setSelectedResellerOrder(null)}
                               ></button>
                             </div>
-                            <div className="modal-body p-4">
+                            <div className="modal-body p-3 p-md-4">
                               {/* Live Delivery Progress & Tracking Card */}
                               {(() => {
                                 const progInfo = getDeliveryProgressInfo(selectedResellerOrder);
@@ -1286,28 +1721,28 @@ export default function AccountDashboard() {
                               })()}
 
                               {/* Financial Summary Cards */}
-                              <div className="row g-3 mb-4">
-                                <div className="col-sm-3">
+                              <div className="row g-2 g-md-3 mb-4">
+                                <div className="col-6 col-sm-3">
                                   <div className="p-3 bg-light rounded-3 text-center border h-100">
-                                    <div className="text-muted small">Wholesale Cost</div>
+                                    <div className="text-muted small" style={{ fontSize: "11px" }}>Wholesale Cost</div>
                                     <div className="h5 fw-bold mb-0">₹{((selectedResellerOrder.wholesaleCostPaise || selectedResellerOrder.subtotalPaise || 0) / 100).toFixed(2)}</div>
                                   </div>
                                 </div>
-                                <div className="col-sm-3">
+                                <div className="col-6 col-sm-3">
                                   <div className="p-3 bg-light rounded-3 text-center border h-100">
-                                    <div className="text-muted small">Customer Selling Amount</div>
+                                    <div className="text-muted small" style={{ fontSize: "11px" }}>Customer Selling</div>
                                     <div className="h5 fw-bold mb-0 text-dark">₹{((selectedResellerOrder.customerSellingTotalPaise || selectedResellerOrder.totalPaise || 0) / 100).toFixed(2)}</div>
                                   </div>
                                 </div>
-                                <div className="col-sm-3">
+                                <div className="col-6 col-sm-3">
                                   <div className="p-3 bg-success-subtle rounded-3 text-center border border-success-subtle h-100">
-                                    <div className="text-success small fw-semibold">Expected Profit</div>
+                                    <div className="text-success small fw-semibold" style={{ fontSize: "11px" }}>Expected Profit</div>
                                     <div className="h5 fw-bold mb-0 text-success">+₹{((selectedResellerOrder.expectedResellerProfitPaise || 0) / 100).toFixed(2)}</div>
                                   </div>
                                 </div>
-                                <div className="col-sm-3">
+                                <div className="col-6 col-sm-3">
                                   <div className="p-3 bg-primary-subtle rounded-3 text-center border border-primary-subtle h-100">
-                                    <div className="text-primary small fw-semibold">Delivery Charge</div>
+                                    <div className="text-primary small fw-semibold" style={{ fontSize: "11px" }}>Delivery Charge</div>
                                     <div className="h5 fw-bold mb-0 text-primary">₹{((selectedResellerOrder.deliveryChargePaise || 5000) / 100).toFixed(2)}</div>
                                     <span className={`badge ${selectedResellerOrder.deliveryChargeStatus === "PAID" ? "bg-success" : "bg-warning text-dark"} mt-1`} style={{ fontSize: "10px" }}>
                                       {selectedResellerOrder.deliveryChargeStatus || "PENDING"}
@@ -1407,42 +1842,75 @@ export default function AccountDashboard() {
                     {resellerLedger.length === 0 ? (
                       <p className="text-muted small">No financial ledger entries recorded yet.</p>
                     ) : (
-                      <div className="table-responsive">
-                        <table className="table table-sm align-middle">
-                          <thead className="table-light">
-                            <tr>
-                              <th>Date</th>
-                              <th>Reference #</th>
-                              <th>Type</th>
-                              <th>Description</th>
-                              <th>Debit (Due)</th>
-                              <th>Credit (Paid)</th>
-                              <th>Balance After</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {resellerLedger.map((entry) => (
-                              <tr key={entry._id}>
-                                <td className="small">{new Date(entry.createdAt).toLocaleDateString()}</td>
-                                <td className="small fw-semibold">{entry.referenceNumber}</td>
-                                <td>
-                                  <span className={`badge ${entry.entryType === "order_debit" ? "bg-danger-subtle text-danger" : "bg-success-subtle text-success"}`}>
-                                    {entry.entryType}
+                      <>
+                        {/* Mobile Ledger Cards (< 768px) */}
+                        <div className="d-block d-md-none mb-3">
+                          {resellerLedger.map((entry) => (
+                            <div key={entry._id} className="card border rounded-3 shadow-sm mb-2 p-3 bg-white">
+                              <div className="d-flex justify-content-between align-items-center mb-2">
+                                <span className="small text-muted font-monospace">{entry.referenceNumber}</span>
+                                <span className={`badge ${entry.entryType === "order_debit" ? "bg-danger-subtle text-danger" : "bg-success-subtle text-success"}`}>
+                                  {entry.entryType}
+                                </span>
+                              </div>
+                              <p className="small mb-2 text-dark">{entry.description}</p>
+                              <div className="d-flex justify-content-between align-items-center pt-2 border-top small">
+                                <div>
+                                  <span className="text-muted">Amount: </span>
+                                  <span className={entry.entryType === "order_debit" ? "text-danger fw-bold" : "text-success fw-bold"}>
+                                    {entry.entryType === "order_debit" ? "-" : "+"}₹{(entry.amountPaise / 100).toFixed(2)}
                                   </span>
-                                </td>
-                                <td className="small">{entry.description}</td>
-                                <td className="text-danger fw-semibold">
-                                  {entry.entryType === "order_debit" ? `₹${(entry.amountPaise / 100).toFixed(2)}` : "—"}
-                                </td>
-                                <td className="text-success fw-semibold">
-                                  {entry.entryType !== "order_debit" ? `₹${(entry.amountPaise / 100).toFixed(2)}` : "—"}
-                                </td>
-                                <td className="fw-bold">₹{(entry.balanceAfterPaise / 100).toFixed(2)}</td>
+                                </div>
+                                <div>
+                                  <span className="text-muted">Balance: </span>
+                                  <strong className="text-dark">₹{(entry.balanceAfterPaise / 100).toFixed(2)}</strong>
+                                </div>
+                              </div>
+                              <div className="text-muted mt-1 text-end" style={{ fontSize: "10px" }}>
+                                {new Date(entry.createdAt).toLocaleDateString()}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Desktop Ledger Table (>= 768px) */}
+                        <div className="d-none d-md-block table-responsive">
+                          <table className="table table-sm align-middle">
+                            <thead className="table-light">
+                              <tr>
+                                <th>Date</th>
+                                <th>Reference #</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th>Debit (Due)</th>
+                                <th>Credit (Paid)</th>
+                                <th>Balance After</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                            </thead>
+                            <tbody>
+                              {resellerLedger.map((entry) => (
+                                <tr key={entry._id}>
+                                  <td className="small">{new Date(entry.createdAt).toLocaleDateString()}</td>
+                                  <td className="small fw-semibold">{entry.referenceNumber}</td>
+                                  <td>
+                                    <span className={`badge ${entry.entryType === "order_debit" ? "bg-danger-subtle text-danger" : "bg-success-subtle text-success"}`}>
+                                      {entry.entryType}
+                                    </span>
+                                  </td>
+                                  <td className="small">{entry.description}</td>
+                                  <td className="text-danger fw-semibold">
+                                    {entry.entryType === "order_debit" ? `₹${(entry.amountPaise / 100).toFixed(2)}` : "—"}
+                                  </td>
+                                  <td className="text-success fw-semibold">
+                                    {entry.entryType !== "order_debit" ? `₹${(entry.amountPaise / 100).toFixed(2)}` : "—"}
+                                  </td>
+                                  <td className="fw-bold">₹{(entry.balanceAfterPaise / 100).toFixed(2)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
                     )}
                   </div>
                 )}

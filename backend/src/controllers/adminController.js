@@ -14,7 +14,21 @@ const { paiseToRupees } = require("../utils/currency");
  */
 const getDashboardStats = async (req, res, next) => {
   try {
-    const overview = await reportService.getFinancialOverview();
+    const { filter, startDate: qStart, endDate: qEnd } = req.query;
+    let startDate = qStart ? new Date(qStart) : null;
+    let endDate = qEnd ? new Date(qEnd) : null;
+
+    if (filter === "daily") {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      startDate = start;
+    } else if (filter === "weekly") {
+      startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    } else if (filter === "monthly") {
+      startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    }
+
+    const overview = await reportService.getFinancialOverview(startDate, endDate);
     const totalProducts = await Product.countDocuments();
 
     // Recent orders
