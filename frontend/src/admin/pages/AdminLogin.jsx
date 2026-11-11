@@ -37,12 +37,6 @@ export default function AdminLogin() {
     }
   };
 
-  const handleFillDemo = () => {
-    setEmail("admin@sparepro.com");
-    setPassword("Admin@SparePro2026!");
-    setErrorMsg("");
-  };
-
   return (
     <div className="d-flex align-items-center justify-content-center min-vh-100" style={{ backgroundColor: "#F8F9FA" }}>
       <div className="bg-white p-4 p-md-5 rounded-4 shadow-sm border" style={{ maxWidth: "440px", width: "100%", margin: "20px" }}>
@@ -64,26 +58,13 @@ export default function AdminLogin() {
           </div>
         )}
 
-        {/* 1-Click Demo Fill */}
-        <div className="mb-4">
-          <button
-            type="button"
-            id="adminDemoFillBtn"
-            className="btn btn-outline-secondary w-100 rounded-3 py-2 small d-flex align-items-center justify-content-center gap-2"
-            onClick={handleFillDemo}
-          >
-            <i className="fa-solid fa-shield-halved text-primary"></i>
-            <span>Fill Super Admin Demo Credentials</span>
-          </button>
-        </div>
-
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
             <label className="form-label small fw-semibold text-secondary">Admin Email Address</label>
             <input
               type="email"
               className="form-control rounded-3 py-2"
-              placeholder="admin@sparepro.com"
+              placeholder="Enter admin email address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required

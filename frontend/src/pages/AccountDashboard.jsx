@@ -252,12 +252,6 @@ export default function AccountDashboard() {
                 Sign In to Portal
               </Link>
             </div>
-            <div className="mt-4 p-3 bg-light rounded-3 text-start small">
-              <div className="fw-bold mb-1">Demo Access Credentials:</div>
-              <div>Admin: <code>admin@sparepro.com</code> / <code>Admin@SparePro2026!</code></div>
-              <div>Approved Reseller: <code>reseller@sparepro.com</code> / <code>Reseller@2026!</code></div>
-              <div>Pending Reseller: <code>priya.patel@example.com</code> / <code>Priya@2026!</code></div>
-            </div>
           </div>
         </div>
       </>
