@@ -33,7 +33,7 @@ export default function Resellers() {
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [targetOrder, setTargetOrder] = useState(null);
   const [deliveryStatusInput, setDeliveryStatusInput] = useState("IN_TRANSIT");
-  const [courierNameInput, setCourierNameInput] = useState("India Post (Speed Post)");
+  const [courierNameInput, setCourierNameInput] = useState("India Post (Business Parcel)");
   const [trackingNumberInput, setTrackingNumberInput] = useState("");
   const [checkpointLocationInput, setCheckpointLocationInput] = useState("");
   const [checkpointNoteInput, setCheckpointNoteInput] = useState("");
@@ -182,7 +182,7 @@ export default function Resellers() {
   const handleOpenUpdateDelivery = (order) => {
     setTargetOrder(order);
     setDeliveryStatusInput(order.deliveryStatus || order.orderStatus || "IN_TRANSIT");
-    setCourierNameInput(order.courierName || "India Post (Speed Post)");
+    setCourierNameInput(order.courierName || "India Post (Business Parcel)");
     setTrackingNumberInput(order.trackingNumber || "");
     setCheckpointLocationInput(order.shippingAddress ? `${order.shippingAddress.city}, India` : "");
     setCheckpointNoteInput("");
@@ -755,7 +755,7 @@ export default function Resellers() {
 
                                   <div className="col-md-4">
                                     <div className="small mb-1">
-                                      Courier: <strong className="text-dark">{o.courierName || "India Post (Speed Post)"}</strong>
+                                      Courier: <strong className="text-dark">{o.courierName || "India Post (Business Parcel)"}</strong>
                                     </div>
                                     <div className="small">
                                       AWB / Consignment:{" "}
@@ -848,7 +848,7 @@ export default function Resellers() {
                   <div>
                     <h5 className="modal-title fw-bold text-dark mb-0">Consignment Tracking</h5>
                     <span className="text-muted small">
-                      {trackingData?.courierName || "India Post (Speed Post)"} • {trackingData?.trackingNumber}
+                      {trackingData?.courierName || "India Post (Business Parcel)"} • {trackingData?.trackingNumber}
                     </span>
                   </div>
                 </div>
@@ -1014,7 +1014,7 @@ export default function Resellers() {
                       value={courierNameInput}
                       onChange={(e) => setCourierNameInput(e.target.value)}
                     >
-                      <option value="India Post (Speed Post)">India Post (Speed Post / Parcel)</option>
+                      <option value="India Post (Business Parcel)">India Post (Business Parcel)</option>
                       <option value="Delhivery Logistics">Delhivery Logistics</option>
                       <option value="Blue Dart Express">Blue Dart Express</option>
                       <option value="DTDC Courier">DTDC Courier</option>

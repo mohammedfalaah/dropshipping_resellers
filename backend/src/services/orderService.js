@@ -177,20 +177,20 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
     orderStatus,
     shippingAddress,
     trackingNumber: consignmentBarcode,
-    courierName: "India Post (Speed Post / Parcel)",
+    courierName: "India Post (Business Parcel)",
     deliveryStatus: "BOOKED",
     shippingLabel: {
       barcode: consignmentBarcode,
       base64Image: barcodeMeta.dataUri,
       generatedAt: new Date(),
-      serviceType: "SPEED_POST",
+      serviceType: "BUSINESS_PARCEL",
     },
     trackingHistory: [
       {
         timestamp: new Date(),
         location: "Spare pro Logistics Hub, Tirur, Kerala - 676107",
         status: "Consignment Manifest Generated",
-        details: `Article ${consignmentBarcode} booked under Speed Post / Parcel Logistics at Tirur Booking Office (PIN 676107). Ready for dispatch.`,
+        details: `Article ${consignmentBarcode} booked under Business Parcel Logistics at Tirur Booking Office (PIN 676107). Ready for dispatch.`,
       },
     ],
     cod:

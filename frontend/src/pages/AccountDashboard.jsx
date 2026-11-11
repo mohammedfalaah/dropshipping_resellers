@@ -1376,7 +1376,7 @@ export default function AccountDashboard() {
                                     <div className="d-flex justify-content-between align-items-center mb-1">
                                       <span className="small text-muted" style={{ fontSize: "11px" }}>
                                         <i className="fa-solid fa-truck text-danger me-1"></i>
-                                        {o.courierName || "India Post (Speed Post)"}
+                                        {o.courierName || "India Post (Business Parcel)"}
                                       </span>
                                       <span className="fw-bold text-dark" style={{ fontSize: "11px" }}>
                                         {progInfo.percent}%
@@ -1544,7 +1544,7 @@ export default function AccountDashboard() {
                                         ></div>
                                       </div>
                                       <div className="small text-muted" style={{ fontSize: "11px" }}>
-                                        {o.courierName || "India Post (Speed Post)"}
+                                        {o.courierName || "India Post (Business Parcel)"}
                                       </div>
                                       {o.trackingNumber ? (
                                         <div className="small text-dark font-monospace fw-semibold" style={{ fontSize: "11px" }}>
@@ -1669,7 +1669,7 @@ export default function AccountDashboard() {
                                       <div>
                                         <div className="d-flex align-items-center gap-2 mb-1">
                                           <span className="badge bg-danger-subtle text-danger border border-danger" style={{ fontSize: "11px" }}>
-                                            {selectedResellerOrder.courierName || "India Post (Speed Post / Parcel)"}
+                                            {selectedResellerOrder.courierName || "India Post (Business Parcel)"}
                                           </span>
                                           <span className={`badge ${progInfo.badgeClass}`} style={{ fontSize: "11px" }}>
                                             {progInfo.label}
@@ -1974,7 +1974,7 @@ export default function AccountDashboard() {
                   <div>
                     <h5 className="modal-title fw-bold text-dark mb-0">Order & Parcel Tracking</h5>
                     <span className="text-muted small">
-                      {trackingData?.courierName || "India Post (Speed Post / Parcel)"} •{" "}
+                      {trackingData?.courierName || "India Post (Business Parcel)"} •{" "}
                       <span className="font-monospace fw-semibold">{trackingData?.trackingNumber || trackQuery}</span>
                     </span>
                   </div>

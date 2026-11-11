@@ -20,7 +20,7 @@ const detectCourier = (trackingNumber, preferredCourier = "") => {
     courier.includes("postal")
   ) {
     return {
-      name: "India Post (Speed Post / Parcel)",
+      name: "India Post (Business Parcel)",
       code: "INDIAPOST",
       portalUrl: "https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx",
     };
@@ -186,7 +186,7 @@ const getTrackingInfo = async (trackingIdentifier) => {
       timestamp: new Date(createdDate.getTime() + 1000 * 60 * 30).toISOString(),
       location: "Spare pro Origin Hub, Tirur, Kerala - 676107",
       status: "Consignment Manifest Generated",
-      details: `Article ${trackingNumber} booked under Speed Post / Courier Logistics at Tirur Booking Office (PIN 676107)`,
+      details: `Article ${trackingNumber} booked under Business Parcel Logistics at Tirur Booking Office (PIN 676107)`,
     });
 
     if (progress.percent >= 45) {

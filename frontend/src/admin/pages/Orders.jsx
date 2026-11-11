@@ -24,7 +24,7 @@ export default function Orders() {
   const [newStatus, setNewStatus] = useState("confirmed");
   const [deliveryStatus, setDeliveryStatus] = useState("IN_TRANSIT");
   const [trackingNumber, setTrackingNumber] = useState("");
-  const [courierName, setCourierName] = useState("India Post (Speed Post)");
+  const [courierName, setCourierName] = useState("India Post (Business Parcel)");
   const [checkpointLocation, setCheckpointLocation] = useState("");
   const [checkpointNote, setCheckpointNote] = useState("");
   const [estimatedDeliveryDate, setEstimatedDeliveryDate] = useState("");
@@ -99,7 +99,7 @@ export default function Orders() {
     setNewStatus((o.orderStatus || "CONFIRMED").toLowerCase());
     setDeliveryStatus(o.deliveryStatus || o.orderStatus || "IN_TRANSIT");
     setTrackingNumber(o.trackingNumber || "");
-    setCourierName(o.courierName || "India Post (Speed Post)");
+    setCourierName(o.courierName || "India Post (Business Parcel)");
     setCheckpointLocation(o.shippingAddress ? `${o.shippingAddress.city}, India` : "");
     setCheckpointNote("");
     setEstimatedDeliveryDate(
@@ -146,7 +146,7 @@ export default function Orders() {
     setCodDeliveryChargeStatus(o.deliveryChargeStatus || "PAID");
     setCodReference(o.cod?.collectionReference || "");
     setCodNotes("");
-    setCodCourierName(o.courierName || "India Post (Speed Post)");
+    setCodCourierName(o.courierName || "India Post (Business Parcel)");
     setCodTrackingNumber(o.trackingNumber || "");
     setShowCodModal(true);
   };
@@ -702,7 +702,7 @@ export default function Orders() {
                   <div>
                     <h5 className="modal-title fw-bold text-dark mb-0">Consignment Tracking</h5>
                     <span className="text-muted small">
-                      {trackingData?.courierName || "India Post (Speed Post)"} • {trackingData?.trackingNumber}
+                      {trackingData?.courierName || "India Post (Business Parcel)"} • {trackingData?.trackingNumber}
                     </span>
                   </div>
                 </div>
@@ -965,7 +965,7 @@ export default function Orders() {
                         value={codCourierName}
                         onChange={(e) => setCodCourierName(e.target.value)}
                       >
-                        <option value="India Post (Speed Post)">India Post (Speed Post / Parcel)</option>
+                        <option value="India Post (Business Parcel)">India Post (Business Parcel)</option>
                         <option value="Delhivery Logistics">Delhivery Logistics</option>
                         <option value="Blue Dart Express">Blue Dart Express</option>
                         <option value="DTDC Courier">DTDC Courier</option>
@@ -1046,7 +1046,7 @@ export default function Orders() {
                       value={courierName}
                       onChange={(e) => setCourierName(e.target.value)}
                     >
-                      <option value="India Post (Speed Post)">India Post (Speed Post / Parcel)</option>
+                      <option value="India Post (Business Parcel)">India Post (Business Parcel)</option>
                       <option value="Delhivery Logistics">Delhivery Logistics</option>
                       <option value="Blue Dart Express">Blue Dart Express</option>
                       <option value="DTDC Courier">DTDC Courier</option>

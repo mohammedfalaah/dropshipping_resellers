@@ -104,7 +104,7 @@ const getOrCreateShippingLabel = async (orderId) => {
   if (!trackingNumber) {
     trackingNumber = generateConsignmentNumber(order.orderNumber);
     order.trackingNumber = trackingNumber;
-    order.courierName = order.courierName || "India Post (Speed Post / Parcel)";
+    order.courierName = order.courierName || "India Post (Business Parcel)";
     if (!order.deliveryStatus || order.deliveryStatus === "PENDING") {
       order.deliveryStatus = "BOOKED";
     }
@@ -191,7 +191,7 @@ const getOrCreateShippingLabel = async (orderId) => {
       barcode: barcodeText,
       base64Image: externalBase64 ? `data:image/png;base64,${externalBase64}` : barcodeMeta.dataUri,
       generatedAt: new Date(),
-      serviceType: "SPEED_POST",
+      serviceType: "BUSINESS_PARCEL",
     };
   }
 
@@ -202,7 +202,7 @@ const getOrCreateShippingLabel = async (orderId) => {
         timestamp: new Date(),
         location: "Spare pro Logistics Hub, Tirur, Kerala - 676107",
         status: "Consignment Manifest Generated",
-        details: `Article ${barcodeText} booked under Speed Post / Parcel Logistics at Tirur Booking Office (PIN 676107). Ready for dispatch.`,
+        details: `Article ${barcodeText} booked under Business Parcel Logistics at Tirur Booking Office (PIN 676107). Ready for dispatch.`,
       },
     ];
   }
@@ -214,7 +214,7 @@ const getOrCreateShippingLabel = async (orderId) => {
     barcode: barcodeText,
     barcodeSvg: barcodeMeta.svg,
     barcodeDataUri: barcodeMeta.dataUri,
-    serviceType: "SPEED_POST",
+    serviceType: "BUSINESS_PARCEL",
   };
 };
 
@@ -335,7 +335,7 @@ const generateLabelHtml = (order, barcodeMeta) => {
       line-height: 1.1;
     }
     .service-badge {
-      font-size: 13px;
+      font-size: 11.5px;
       font-weight: 900;
       text-align: right;
       border: 1.5px solid #000;
@@ -344,6 +344,7 @@ const generateLabelHtml = (order, barcodeMeta) => {
       color: #fff;
       border-radius: 3px;
       letter-spacing: 0.5px;
+      white-space: nowrap;
     }
     .barcode-section {
       text-align: center;
@@ -514,7 +515,7 @@ const generateLabelHtml = (order, barcodeMeta) => {
         </div>
       </div>
       <div class="service-badge">
-        SPEED POST
+        BUSINESS PARCEL
       </div>
     </div>
 

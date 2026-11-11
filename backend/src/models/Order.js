@@ -116,13 +116,13 @@ const OrderSchema = new mongoose.Schema(
       notes: { type: String, default: "" },
     },
     trackingNumber: { type: String, default: "", index: true },
-    courierName: { type: String, default: "India Post (Speed Post / Parcel)" },
+    courierName: { type: String, default: "India Post (Business Parcel)" },
     shippingLabel: {
       barcode: { type: String, default: "" },
       base64Image: { type: String, default: "" },
       labelUrl: { type: String, default: "" },
       generatedAt: { type: Date, default: null },
-      serviceType: { type: String, default: "SPEED_POST" },
+      serviceType: { type: String, default: "BUSINESS_PARCEL" },
     },
     deliveryStatus: {
       type: String,
