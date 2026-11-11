@@ -10,6 +10,7 @@ export default function Orders() {
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [methodFilter, setMethodFilter] = useState("all");
   const [resellerFilter, setResellerFilter] = useState("all");
+  const [speedFilter, setSpeedFilter] = useState("all");
   const [resellersList, setResellersList] = useState([]);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, pages: 1 });
@@ -71,6 +72,8 @@ export default function Orders() {
       if (paymentFilter !== "all") params.paymentStatus = paymentFilter;
       if (methodFilter !== "all") params.paymentMethod = methodFilter;
       if (resellerFilter !== "all") params.resellerId = resellerFilter;
+      if (speedFilter === "fast") params.isFastDelivery = true;
+      if (speedFilter === "standard") params.isFastDelivery = false;
 
       const res = await adminApi.getOrders(params);
       const data = res.data?.orders ? res.data : res.data?.data || res.data;
@@ -86,7 +89,7 @@ export default function Orders() {
 
   useEffect(() => {
     fetchOrders();
-  }, [page, statusFilter, paymentFilter, methodFilter, resellerFilter]);
+  }, [page, statusFilter, paymentFilter, methodFilter, resellerFilter, speedFilter]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -396,6 +399,21 @@ export default function Orders() {
               <option value="FAILED">Failed</option>
               <option value="REFUNDED">Refunded</option>
             </select>
+
+            {/* Fast Delivery Speed Filter */}
+            <select
+              className="form-select form-select-sm rounded-pill border-danger-subtle fw-semibold"
+              style={{ width: "165px", color: speedFilter === "fast" ? "#dc2626" : undefined }}
+              value={speedFilter}
+              onChange={(e) => {
+                setSpeedFilter(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="all">All Delivery Speeds</option>
+              <option value="fast">⚡ Fast Delivery Only</option>
+              <option value="standard">Standard Delivery</option>
+            </select>
           </div>
         </div>
       </div>
@@ -479,6 +497,16 @@ export default function Orders() {
                             year: "numeric",
                           })}
                         </span>
+                        {o.isFastDelivery && (
+                          <div className="mt-1">
+                            <span
+                              className="badge bg-danger text-white d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1"
+                              style={{ fontSize: "10px", fontWeight: "700", letterSpacing: "0.4px" }}
+                            >
+                              <i className="fa-solid fa-bolt"></i> FAST DELIVERY
+                            </span>
+                          </div>
+                        )}
                       </td>
 
                       {/* Reseller & Customer */}
@@ -574,7 +602,7 @@ export default function Orders() {
 
                       {/* Delivery Progress & Courier Tracking */}
                       <td>
-                        <div className="d-flex align-items-center gap-1 mb-1">
+                        <div className="d-flex align-items-center gap-1 mb-1 flex-wrap">
                           <span
                             className={`admin-badge ${
                               deliveryStage === "DELIVERED"
@@ -589,6 +617,11 @@ export default function Orders() {
                           >
                             {deliveryStage} ({progressPercent}%)
                           </span>
+                          {o.isFastDelivery && (
+                            <span className="badge bg-danger text-white" style={{ fontSize: "9.5px" }} title="Fast Delivery Priority Dispatch">
+                              ⚡ PRIORITY
+                            </span>
+                          )}
                         </div>
                         <div className="small text-truncate" style={{ maxWidth: "160px", fontSize: "11px" }}>
                           {o.courierName || "India Post"}:{" "}
@@ -1129,6 +1162,17 @@ export default function Orders() {
                 <button type="button" className="btn-close" onClick={() => setShowDetailModal(false)}></button>
               </div>
               <div className="modal-body p-4">
+                {/* Fast Delivery Priority Banner */}
+                {selectedOrder.isFastDelivery && (
+                  <div className="alert alert-danger d-flex align-items-center gap-2 mb-4 py-2 px-3 rounded-3 border-danger shadow-sm">
+                    <i className="fa-solid fa-bolt fa-lg text-danger"></i>
+                    <div>
+                      <strong className="d-block text-danger">⚡ Fast Delivery Priority Order</strong>
+                      <span className="small text-muted">The reseller selected expedited fast delivery for this order. Please prioritize packaging and express courier dispatch.</span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Shipping & Reseller Info */}
                 <div className="row g-3 mb-4">
                   <div className="col-sm-6">

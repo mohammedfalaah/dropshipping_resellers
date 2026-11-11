@@ -705,6 +705,11 @@ export default function Resellers() {
                                 <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 pb-2 mb-3 border-bottom">
                                   <div>
                                     <strong className="fs-6 text-dark me-2">{o.orderNumber}</strong>
+                                    {o.isFastDelivery && (
+                                      <span className="badge bg-danger text-white me-2" style={{ fontSize: "10.5px" }}>
+                                        <i className="fa-solid fa-bolt me-1"></i> Fast Delivery
+                                      </span>
+                                    )}
                                     <span className="text-muted small">
                                       Placed on {new Date(o.createdAt).toLocaleString("en-IN", {
                                         day: "numeric",
