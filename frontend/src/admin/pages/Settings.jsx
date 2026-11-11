@@ -226,6 +226,24 @@ export default function Settings() {
 
         <div className="col-lg-4">
           <div className="admin-card mb-4">
+            <h6 className="fw-bold text-dark mb-3">Warehouse & Dispatch Address (From)</h6>
+            <div className="p-3 bg-light rounded-3">
+              <div className="fw-bold text-dark mb-1">Spare pro</div>
+              <div className="small text-muted mb-2">
+                Thazepalam, Tirur<br />
+                Malappuram, Kerala - 676107
+              </div>
+              <div className="small text-dark fw-semibold mb-2">
+                <i className="fa-solid fa-phone me-1 text-primary"></i> 8139808004
+              </div>
+              <div className="small text-muted" style={{ fontSize: "11px" }}>
+                <i className="fa-solid fa-barcode me-1 text-danger"></i>
+                Printed on all India Post shipping labels and consignment manifest barcodes.
+              </div>
+            </div>
+          </div>
+
+          <div className="admin-card mb-4">
             <h6 className="fw-bold text-dark mb-3">API Health & System Status</h6>
             <div className="d-flex align-items-center justify-content-between py-2 border-bottom">
               <span className="small text-muted">Backend Service:</span>
