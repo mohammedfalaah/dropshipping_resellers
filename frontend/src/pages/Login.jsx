@@ -201,46 +201,14 @@ export default function Login() {
               )}
 
               {!isRegister && (
-                <>
-                  <div className="d-flex gap-2 mb-3">
-                    <button
-                      type="button"
-                      id="demoAdminBtn"
-                      className="btn btn-sm btn-outline-dark rounded-pill flex-fill"
-                      onClick={() => {
-                        setFormData({
-                          ...formData,
-                          email: "admin@sparepro.com",
-                          password: "Admin@SparePro2026!",
-                        });
-                      }}
-                    >
-                      <i className="fa-solid fa-user-shield me-1"></i> Fill Admin Demo
-                    </button>
-                    <button
-                      type="button"
-                      id="demoResellerBtn"
-                      className="btn btn-sm btn-outline-dark rounded-pill flex-fill"
-                      onClick={() => {
-                        setFormData({
-                          ...formData,
-                          email: "reseller@sparepro.com",
-                          password: "Reseller@2026!",
-                        });
-                      }}
-                    >
-                      <i className="fa-solid fa-store me-1"></i> Fill Reseller Demo
-                    </button>
+                <div className="d-flex justify-content-between align-items-center mb-4 small">
+                  <div className="form-check">
+                    <input className="form-check-input" type="checkbox" id="rememberMe" defaultChecked />
+                    <label className="form-check-label text-muted" htmlFor="rememberMe">
+                      Remember me
+                    </label>
                   </div>
-                  <div className="d-flex justify-content-between align-items-center mb-4 small">
-                    <div className="form-check">
-                      <input className="form-check-input" type="checkbox" id="rememberMe" defaultChecked />
-                      <label className="form-check-label text-muted" htmlFor="rememberMe">
-                        Remember me
-                      </label>
-                    </div>
-                  </div>
-                </>
+                </div>
               )}
 
               <button
