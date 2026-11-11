@@ -156,6 +156,7 @@ const getTrackingInfo = async (trackingIdentifier) => {
                 resellerName: order.reseller?.name,
                 recipientName: order.shippingAddress?.fullName || order.shippingAddress?.firstName,
                 orderStatus: order.orderStatus,
+                isFastDelivery: Boolean(order.isFastDelivery),
               }
             : null,
         };
@@ -186,7 +187,9 @@ const getTrackingInfo = async (trackingIdentifier) => {
       timestamp: new Date(createdDate.getTime() + 1000 * 60 * 30).toISOString(),
       location: "Spare pro Origin Hub, Tirur, Kerala - 676107",
       status: "Consignment Manifest Generated",
-      details: `Article ${trackingNumber} booked under Business Parcel Logistics at Tirur Booking Office (PIN 676107)`,
+      details: order?.isFastDelivery
+        ? `Article ${trackingNumber} booked under Fast Delivery (Priority Dispatch) Business Parcel Logistics at Tirur Booking Office (PIN 676107)`
+        : `Article ${trackingNumber} booked under Business Parcel Logistics at Tirur Booking Office (PIN 676107)`,
     });
 
     if (progress.percent >= 45) {
@@ -264,6 +267,7 @@ const getTrackingInfo = async (trackingIdentifier) => {
           orderStatus: order.orderStatus,
           deliveryStatus: order.deliveryStatus || order.orderStatus,
           paymentMethod: order.paymentMethod,
+          isFastDelivery: Boolean(order.isFastDelivery),
           totalAmountPaise: order.totalPaise || order.customerSellingTotalPaise,
         }
       : null,

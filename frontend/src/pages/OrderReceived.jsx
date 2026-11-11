@@ -157,6 +157,17 @@ export default function OrderReceived() {
                   </span>
                 </div>
 
+                {currentOrder.isFastDelivery && (
+                  <div className="d-flex justify-content-between py-1 small align-items-center">
+                    <span className="text-muted">
+                      <i className="fa-solid fa-bolt text-danger me-1"></i> Delivery Speed:
+                    </span>
+                    <span className="badge bg-danger text-white">
+                      ⚡ Fast Delivery (Priority Dispatch)
+                    </span>
+                  </div>
+                )}
+
                 {currentOrder.paymentMethod?.toLowerCase().includes("cod") || currentOrder.paymentMethod?.toLowerCase().includes("cash on delivery") ? (
                   <div className="mt-2 pt-2 border-top">
                     <div className="d-flex justify-content-between py-1 small">

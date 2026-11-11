@@ -9,7 +9,7 @@ const { paiseToRupees } = require("../utils/currency");
  */
 const createOrder = async (req, res, next) => {
   try {
-    const { items, shippingAddress, paymentMethod } = req.body;
+    const { items, shippingAddress, paymentMethod, isFastDelivery, fastDelivery } = req.body;
 
     const result = await orderService.createOrder({
       resellerId: req.user._id,
@@ -17,6 +17,7 @@ const createOrder = async (req, res, next) => {
       shippingAddress,
       paymentMethod,
       userObj: req.user,
+      isFastDelivery: Boolean(isFastDelivery || fastDelivery),
     });
 
     return successResponse(
@@ -107,7 +108,7 @@ const getOrderById = async (req, res, next) => {
  */
 const getAllOrders = async (req, res, next) => {
   try {
-    const { resellerId, orderStatus, paymentStatus, paymentMethod, search, startDate, endDate, page = 1, limit = 20 } = req.query;
+    const { resellerId, orderStatus, paymentStatus, paymentMethod, isFastDelivery, search, startDate, endDate, page = 1, limit = 20 } = req.query;
 
     const query = {};
 
@@ -124,6 +125,9 @@ const getAllOrders = async (req, res, next) => {
     if (orderStatus && orderStatus !== "all") query.orderStatus = orderStatus.toUpperCase();
     if (paymentStatus && paymentStatus !== "all") query.paymentStatus = paymentStatus.toUpperCase();
     if (paymentMethod && paymentMethod !== "all") query.paymentMethod = paymentMethod.toUpperCase();
+    if (isFastDelivery !== undefined && isFastDelivery !== "all") {
+      query.isFastDelivery = isFastDelivery === "true" || isFastDelivery === true;
+    }
 
     if (search) {
       query.$or = [

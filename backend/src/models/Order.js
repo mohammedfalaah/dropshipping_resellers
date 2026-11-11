@@ -116,6 +116,7 @@ const OrderSchema = new mongoose.Schema(
       notes: { type: String, default: "" },
     },
     trackingNumber: { type: String, default: "", index: true },
+    isFastDelivery: { type: Boolean, default: false, index: true },
     courierName: { type: String, default: "India Post (Business Parcel)" },
     shippingLabel: {
       barcode: { type: String, default: "" },

@@ -1354,12 +1354,17 @@ export default function AccountDashboard() {
                                 {/* Card Header: Order # + Date + Payment Badge */}
                                 <div className="card-header bg-light border-bottom d-flex justify-content-between align-items-center py-2 px-3">
                                   <div>
-                                    <div className="fw-bold text-dark d-flex align-items-center gap-2">
-                                      <span>{o.orderNumber}</span>
-                                      <span className={`badge ${progInfo.badgeClass}`} style={{ fontSize: "10px" }}>
-                                        {progInfo.label}
-                                      </span>
-                                    </div>
+                                      <div className="fw-bold text-dark d-flex align-items-center gap-2">
+                                        <span>{o.orderNumber}</span>
+                                        {o.isFastDelivery && (
+                                          <span className="badge bg-danger text-white" style={{ fontSize: "10px" }}>
+                                            <i className="fa-solid fa-bolt me-1"></i> Fast
+                                          </span>
+                                        )}
+                                        <span className={`badge ${progInfo.badgeClass}`} style={{ fontSize: "10px" }}>
+                                          {progInfo.label}
+                                        </span>
+                                      </div>
                                     <small className="text-muted" style={{ fontSize: "11px" }}>
                                       <i className="fa-regular fa-calendar me-1"></i>
                                       {new Date(o.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
@@ -1523,7 +1528,14 @@ export default function AccountDashboard() {
                                 return (
                                   <tr key={o._id}>
                                     <td>
-                                      <div className="fw-bold">{o.orderNumber}</div>
+                                      <div className="fw-bold d-flex align-items-center gap-1">
+                                        <span>{o.orderNumber}</span>
+                                        {o.isFastDelivery && (
+                                          <span className="badge bg-danger text-white" style={{ fontSize: "9px" }}>
+                                            <i className="fa-solid fa-bolt"></i> FAST
+                                          </span>
+                                        )}
+                                      </div>
                                       <small className="text-muted">{new Date(o.createdAt).toLocaleDateString()}</small>
                                     </td>
                                     <td>
@@ -1671,6 +1683,11 @@ export default function AccountDashboard() {
                                           <span className="badge bg-danger-subtle text-danger border border-danger" style={{ fontSize: "11px" }}>
                                             {selectedResellerOrder.courierName || "India Post (Business Parcel)"}
                                           </span>
+                                          {selectedResellerOrder.isFastDelivery && (
+                                            <span className="badge bg-danger text-white" style={{ fontSize: "11px" }}>
+                                              <i className="fa-solid fa-bolt me-1"></i> Fast Delivery
+                                            </span>
+                                          )}
                                           <span className={`badge ${progInfo.badgeClass}`} style={{ fontSize: "11px" }}>
                                             {progInfo.label}
                                           </span>

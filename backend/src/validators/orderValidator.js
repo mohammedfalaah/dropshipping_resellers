@@ -78,6 +78,8 @@ const createOrderSchema = z.object({
   })),
   deliveryChargePaid: z.boolean().optional(),
   deliveryPaymentDetails: z.any().optional(),
+  isFastDelivery: z.boolean().optional(),
+  fastDelivery: z.boolean().optional(),
 });
 
 const updateOrderStatusSchema = z.object({

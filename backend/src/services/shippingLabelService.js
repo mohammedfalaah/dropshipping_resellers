@@ -202,7 +202,9 @@ const getOrCreateShippingLabel = async (orderId) => {
         timestamp: new Date(),
         location: "Spare pro Logistics Hub, Tirur, Kerala - 676107",
         status: "Consignment Manifest Generated",
-        details: `Article ${barcodeText} booked under Business Parcel Logistics at Tirur Booking Office (PIN 676107). Ready for dispatch.`,
+        details: order.isFastDelivery
+          ? `Article ${barcodeText} booked under Fast Delivery (Priority Dispatch) Business Parcel Logistics at Tirur Booking Office (PIN 676107). Ready for expedited dispatch.`
+          : `Article ${barcodeText} booked under Business Parcel Logistics at Tirur Booking Office (PIN 676107). Ready for dispatch.`,
       },
     ];
   }
@@ -514,8 +516,14 @@ const generateLabelHtml = (order, barcodeMeta) => {
           <span style="font-size:9px;font-weight:700;color:#64748b;">COMMERCIAL LOGISTICS</span>
         </div>
       </div>
-      <div class="service-badge">
-        BUSINESS PARCEL
+      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:3px;">
+        <div class="service-badge">
+          BUSINESS PARCEL
+        </div>
+        ${order.isFastDelivery ? `
+        <div style="background:#dc2626; color:#ffffff; font-size:9.5px; font-weight:900; padding:2px 6px; border-radius:3px; letter-spacing:0.5px; text-align:right; border:1px solid #991b1b; white-space:nowrap;">
+          ⚡ FAST DELIVERY
+        </div>` : ""}
       </div>
     </div>
 

@@ -40,6 +40,7 @@ export default function Checkout() {
   });
 
   const [paymentMethod, setPaymentMethod] = useState("cash_on_delivery");
+  const [isFastDelivery, setIsFastDelivery] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [dbProducts, setDbProducts] = useState([]);
 
@@ -179,6 +180,7 @@ export default function Checkout() {
             notes: form.notes || "",
           },
           paymentMethod: backendPaymentMethod,
+          isFastDelivery,
           notes: form.notes || "",
         };
 
@@ -215,6 +217,7 @@ export default function Checkout() {
                 ? "Razorpay Online"
                 : "Bank Transfer",
             customer: form,
+            isFastDelivery,
             paymentStatus: paymentMethod === "razorpay" ? "PENDING" : "CONFIRMED",
           })
         );
@@ -276,6 +279,7 @@ export default function Checkout() {
             ? "Razorpay Online"
             : "Bank Transfer",
         customer: form,
+        isFastDelivery,
       };
 
       localStorage.setItem("sparepro_latest_order", JSON.stringify(orderData));
@@ -693,6 +697,52 @@ export default function Checkout() {
                         onChange={handleChange}
                       ></textarea>
                     </div>
+
+                    {/* Fast Delivery Option */}
+                    <div className="col-12 mt-3">
+                      <div
+                        className={`p-3 border rounded-3 cursor-pointer ${
+                          isFastDelivery
+                            ? "border-danger bg-danger-subtle bg-opacity-10 shadow-sm"
+                            : "bg-light border-secondary-subtle"
+                        }`}
+                        style={{ transition: "all 0.2s ease" }}
+                        onClick={() => setIsFastDelivery((prev) => !prev)}
+                      >
+                        <div className="form-check d-flex align-items-start gap-2 mb-0">
+                          <input
+                            className="form-check-input mt-1"
+                            type="checkbox"
+                            id="fastDeliveryCheckbox"
+                            checked={isFastDelivery}
+                            onChange={(e) => setIsFastDelivery(e.target.checked)}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ cursor: "pointer", width: "1.2em", height: "1.2em" }}
+                          />
+                          <label
+                            className="form-check-label w-100"
+                            htmlFor="fastDeliveryCheckbox"
+                            style={{ cursor: "pointer" }}
+                          >
+                            <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                              <span className="text-dark fw-bold d-flex align-items-center gap-2">
+                                <i className="fa-solid fa-bolt text-danger"></i>
+                                <span>Fast Delivery</span>
+                                <span className="badge bg-danger text-white" style={{ fontSize: "11px" }}>
+                                  Priority Dispatch
+                                </span>
+                              </span>
+                              <span className="badge bg-white text-dark border" style={{ fontSize: "11px" }}>
+                                <i className="fa-solid fa-truck-fast text-primary me-1"></i> Expedited Logistics
+                              </span>
+                            </div>
+                            <div className="text-muted small mt-1" style={{ fontSize: "12px" }}>
+                              Check this box if your customer needs this order delivered faster. Your order will receive priority packaging and expedited courier dispatch from our logistics center.
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -912,6 +962,12 @@ export default function Checkout() {
                           )}
                         </span>
                       </div>
+                      {isFastDelivery && (
+                        <div className="d-flex justify-content-between mb-2 small fw-semibold text-danger">
+                          <span><i className="fa-solid fa-bolt me-1"></i> Delivery Speed</span>
+                          <span className="badge bg-danger text-white">⚡ Fast Delivery (Priority)</span>
+                        </div>
+                      )}
                       <div className="d-flex justify-content-between mb-3 text-muted small">
                         <span>Delivery charge</span>
                         <span className="fw-semibold text-dark">₹{Number(deliveryCharge).toLocaleString("en-IN")}</span>
@@ -966,6 +1022,12 @@ export default function Checkout() {
                         <span>Wholesale product cost</span>
                         <span className="fw-semibold text-dark">₹{Number(cartWholesaleSubtotal).toLocaleString("en-IN")}</span>
                       </div>
+                      {isFastDelivery && (
+                        <div className="d-flex justify-content-between mb-2 small fw-semibold text-danger">
+                          <span><i className="fa-solid fa-bolt me-1"></i> Delivery Speed</span>
+                          <span className="badge bg-danger text-white">⚡ Fast Delivery (Priority)</span>
+                        </div>
+                      )}
                       <div className="d-flex justify-content-between mb-2 text-muted small">
                         <span>Delivery charge</span>
                         <span className="fw-semibold text-dark">₹{Number(deliveryCharge).toLocaleString("en-IN")}</span>

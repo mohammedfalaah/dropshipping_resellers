@@ -19,7 +19,7 @@ const generateOrderNumber = () => {
 /**
  * Create a new order with atomic stock validation and deduction
  */
-const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, userObj }) => {
+const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, userObj, isFastDelivery = false }) => {
   // Normalize payment method to supported enum (auto-map legacy CASHFREE to RAZORPAY)
   let normalizedPaymentMethod = String(paymentMethod || "COD").toUpperCase().trim();
   if (normalizedPaymentMethod === "CASHFREE") {
@@ -177,6 +177,7 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
     orderStatus,
     shippingAddress,
     trackingNumber: consignmentBarcode,
+    isFastDelivery: Boolean(isFastDelivery),
     courierName: "India Post (Business Parcel)",
     deliveryStatus: "BOOKED",
     shippingLabel: {
@@ -190,7 +191,9 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
         timestamp: new Date(),
         location: "Spare pro Logistics Hub, Tirur, Kerala - 676107",
         status: "Consignment Manifest Generated",
-        details: `Article ${consignmentBarcode} booked under Business Parcel Logistics at Tirur Booking Office (PIN 676107). Ready for dispatch.`,
+        details: isFastDelivery
+          ? `Article ${consignmentBarcode} booked under Fast Delivery (Priority Dispatch) Business Parcel Logistics at Tirur Booking Office (PIN 676107). Priority dispatch scheduled.`
+          : `Article ${consignmentBarcode} booked under Business Parcel Logistics at Tirur Booking Office (PIN 676107). Ready for dispatch.`,
       },
     ],
     cod:
