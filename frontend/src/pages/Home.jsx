@@ -307,50 +307,7 @@ export default function Home() {
       </div>
 
       {/* Testimonials Reel */}
-      <div className="our-testimonials py-5">
-        <div className="container">
-          <div className="row section-row text-center mb-5">
-            <div className="col-lg-12">
-              <div className="section-title section-title-center">
-                <span className="section-sub-title wow fadeInUp">Client Love</span>
-                <h2 className="text-anime-style-3">What Our Customers Say</h2>
-              </div>
-            </div>
-          </div>
-
-          <div className="row g-4">
-            {testimonials.map((test, idx) => (
-              <div
-                key={test.id}
-                className="col-lg-4 col-md-6 wow fadeInUp"
-                data-wow-delay={`${idx * 0.15}s`}
-              >
-                <div className="card h-100 border-0 shadow-sm p-4 rounded-4 bg-white">
-                  <div className="mb-3 text-warning">
-                    {[...Array(test.rating)].map((_, i) => (
-                      <i key={i} className="fa-solid fa-star me-1"></i>
-                    ))}
-                  </div>
-                  <h5 className="fw-bold mb-2">"{test.title}"</h5>
-                  <p className="text-muted small mb-4 flex-grow-1">{test.content}</p>
-                  <div className="d-flex align-items-center gap-3 border-top pt-3">
-                    <img
-                      src={test.avatar}
-                      alt={test.name}
-                      className="rounded-circle"
-                      style={{ width: "45px", height: "45px", objectFit: "cover" }}
-                    />
-                    <div>
-                      <h6 className="mb-0 fw-bold" style={{ fontSize: "14px" }}>{test.name}</h6>
-                      <span className="text-muted small">{test.role}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+     
 
       {/* Latest Blog Section */}
      
