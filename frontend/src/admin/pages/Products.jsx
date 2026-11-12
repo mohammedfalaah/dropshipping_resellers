@@ -121,21 +121,74 @@ export default function Products() {
     fetchProducts();
   };
 
+  // Helper to sync variant rows with colors and sizes while strictly preserving any uploaded images
+  const syncVariants = (colorsList, sizesList, existingVariants = []) => {
+    const colors = colorsList?.length > 0 ? colorsList : [""];
+    const sizes = sizesList?.length > 0 ? sizesList : [""];
+    if (colors.length === 1 && colors[0] === "" && sizes.length === 1 && sizes[0] === "") {
+      return [];
+    }
+
+    const baseSku = formData.sku?.trim() || "SKU";
+    const baseStock = parseInt(formData.stockQuantity, 10) || 10;
+    const basePricePaise = formData.resellerPrice ? Math.round(parseFloat(formData.resellerPrice) * 100) : 0;
+
+    const existingMap = new Map();
+    (existingVariants || []).forEach((v) => {
+      const key = `${v.color || ""}__${v.size || ""}`.toLowerCase();
+      existingMap.set(key, v);
+      if (v.color && v.image && !existingMap.has(v.color.toLowerCase())) {
+        existingMap.set(v.color.toLowerCase(), v);
+      }
+    });
+
+    const result = [];
+    colors.forEach((c) => {
+      sizes.forEach((s) => {
+        const key = `${c || ""}__${s || ""}`.toLowerCase();
+        const existing = existingMap.get(key) || (c ? existingMap.get(c.toLowerCase()) : null);
+
+        const parts = [baseSku];
+        if (c) parts.push(c.toUpperCase().replace(/[^A-Z0-9]/g, ""));
+        if (s) parts.push(s.toUpperCase().replace(/[^A-Z0-9]/g, ""));
+
+        result.push({
+          sku: existing?.sku || parts.join("-"),
+          color: c,
+          size: s,
+          stockQuantity: existing?.stockQuantity !== undefined ? existing.stockQuantity : baseStock,
+          pricePaise: existing?.pricePaise !== undefined ? existing.pricePaise : basePricePaise,
+          image: existing?.image || formData.mainImage || "",
+        });
+      });
+    });
+    return result;
+  };
+
   const handleAddColor = (colorName) => {
     const clean = colorName?.trim();
     if (!clean) return;
     if (formData.colors?.includes(clean)) return;
+
+    const updatedColors = [...(formData.colors || []), clean];
+    const updatedVariants = syncVariants(updatedColors, formData.sizes, formData.variants);
+
     setFormData((prev) => ({
       ...prev,
-      colors: [...(prev.colors || []), clean],
+      colors: updatedColors,
+      variants: updatedVariants,
     }));
+    setShowVariantMatrix(true);
     setNewColorInput("");
   };
 
   const handleRemoveColor = (colorName) => {
+    const updatedColors = (formData.colors || []).filter((c) => c !== colorName);
+    const updatedVariants = (formData.variants || []).filter((v) => v.color !== colorName);
     setFormData((prev) => ({
       ...prev,
-      colors: (prev.colors || []).filter((c) => c !== colorName),
+      colors: updatedColors,
+      variants: updatedVariants,
     }));
   };
 
@@ -143,17 +196,26 @@ export default function Products() {
     const clean = sizeName?.trim();
     if (!clean) return;
     if (formData.sizes?.includes(clean)) return;
+
+    const updatedSizes = [...(formData.sizes || []), clean];
+    const updatedVariants = syncVariants(formData.colors, updatedSizes, formData.variants);
+
     setFormData((prev) => ({
       ...prev,
-      sizes: [...(prev.sizes || []), clean],
+      sizes: updatedSizes,
+      variants: updatedVariants,
     }));
+    setShowVariantMatrix(true);
     setNewSizeInput("");
   };
 
   const handleRemoveSize = (sizeName) => {
+    const updatedSizes = (formData.sizes || []).filter((s) => s !== sizeName);
+    const updatedVariants = (formData.variants || []).filter((v) => v.size !== sizeName);
     setFormData((prev) => ({
       ...prev,
-      sizes: (prev.sizes || []).filter((s) => s !== sizeName),
+      sizes: updatedSizes,
+      variants: updatedVariants,
     }));
   };
 
@@ -166,33 +228,14 @@ export default function Products() {
       return;
     }
 
-    const baseSku = formData.sku?.trim() || "SKU";
-    const baseStock = parseInt(formData.stockQuantity, 10) || 10;
-    const basePricePaise = formData.resellerPrice ? Math.round(parseFloat(formData.resellerPrice) * 100) : 0;
-
-    const generated = [];
-    colors.forEach((c) => {
-      sizes.forEach((s) => {
-        const parts = [baseSku];
-        if (c) parts.push(c.toUpperCase().replace(/[^A-Z0-9]/g, ""));
-        if (s) parts.push(s.toUpperCase().replace(/[^A-Z0-9]/g, ""));
-        generated.push({
-          sku: parts.join("-"),
-          color: c,
-          size: s,
-          stockQuantity: baseStock,
-          pricePaise: basePricePaise,
-          image: formData.mainImage || "",
-        });
-      });
-    });
+    const generated = syncVariants(formData.colors, formData.sizes, formData.variants);
 
     setFormData((prev) => ({
       ...prev,
       variants: generated,
     }));
     setShowVariantMatrix(true);
-    toast.success(`Generated ${generated.length} variant combinations!`);
+    toast.success(`Generated ${generated.length} variant combinations! Upload photos in the "Variant Photo" column.`);
   };
 
   const handleVariantChange = (index, field, value) => {
@@ -1439,6 +1482,34 @@ export default function Products() {
                                   ))}
                                 </tbody>
                               </table>
+                            </div>
+                          </div>
+                        )}
+
+                        {(!formData.variants || formData.variants.length === 0) && (
+                          <div className="p-3 bg-white rounded-3 border text-center">
+                            <i className="fa-solid fa-camera text-primary fs-3 mb-2 d-block"></i>
+                            <h6 className="fw-bold text-dark mb-1">Variant Photos &amp; Inventory Combinations</h6>
+                            <p className="text-muted small mb-3" style={{ fontSize: "12px" }}>
+                              {(formData.colors?.length > 0 || formData.sizes?.length > 0)
+                                ? `You have configured ${[formData.colors?.length ? `${formData.colors.length} color(s)` : "", formData.sizes?.length ? `${formData.sizes.length} size(s)` : ""].filter(Boolean).join(" and ")}. Click below to generate the variant rows and upload separate photos for each variant!`
+                                : "Add colors or sizes above, or click below to generate variant rows and upload separate photos for each variant."}
+                            </p>
+                            <div className="d-flex justify-content-center gap-2">
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-primary rounded-pill px-3 fw-semibold"
+                                onClick={handleGenerateVariants}
+                              >
+                                <i className="fa-solid fa-wand-magic-sparkles me-1"></i> Generate Variant Photo Rows
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-secondary rounded-pill px-3"
+                                onClick={handleAddCustomVariant}
+                              >
+                                + Add Single Variant Row
+                              </button>
                             </div>
                           </div>
                         )}
