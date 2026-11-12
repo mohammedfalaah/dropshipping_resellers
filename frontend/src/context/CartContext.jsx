@@ -64,7 +64,7 @@ export const CartProvider = ({ children }) => {
     }
   }, [cart, isAuthenticated]);
 
-  const addToCart = (product, quantity = 1, customSellingPrice = null, selectedColor = "", selectedSize = "") => {
+  const addToCart = (product, quantity = 1, customSellingPrice = null, selectedColor = "", selectedSize = "", selectedImage = "") => {
     if (!isAuthenticated) {
       return false;
     }
@@ -85,11 +85,14 @@ export const CartProvider = ({ children }) => {
           (v) =>
             (!colorKey || (v.color && v.color.toLowerCase() === colorKey.toLowerCase())) &&
             (!sizeKey || (v.size && v.size.toLowerCase() === sizeKey.toLowerCase()))
+        ) ||
+        product.variants.find(
+          (v) => colorKey && v.color && v.color.toLowerCase() === colorKey.toLowerCase()
         )
       : null;
 
     const variantSku = matchedVariant?.sku || product.sku || "";
-    const itemImage = matchedVariant?.image || product.image || product.mainImage || "/images/product-earbuds.jpg";
+    const itemImage = selectedImage || matchedVariant?.image || product.image || product.mainImage || "/images/product-earbuds.jpg";
 
     setCart((prev) => {
       const existing = prev.find(

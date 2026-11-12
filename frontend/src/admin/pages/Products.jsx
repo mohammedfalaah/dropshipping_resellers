@@ -1,16 +1,31 @@
 import React, { useState, useEffect } from "react";
 import { productsApi } from "../../services/api";
 import { useToast } from "../../context/ToastContext";
-import { useProducts } from "../../context/ProductContext";
 
 export default function Products() {
-  const { refreshProducts } = useProducts();
+  const { addToast } = useToast();
+  const toast = Object.assign(
+    (msg) => addToast(typeof msg === "string" ? msg : msg?.message || "", "info"),
+    {
+      success: (msg) => addToast(typeof msg === "string" ? msg : msg?.message || "", "success"),
+      error: (msg) => addToast(typeof msg === "string" ? msg : msg?.message || "", "error"),
+      info: (msg) => addToast(typeof msg === "string" ? msg : msg?.message || "", "info"),
+    }
+  );
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, pages: 1 });
+  const [availableCategories, setAvailableCategories] = useState([
+    "Gadgets",
+    "Watches",
+    "Footwear",
+    "Fashion",
+    "Sunglasses",
+  ]);
 
   // Modal states
   const [showModal, setShowModal] = useState(false);
@@ -25,17 +40,17 @@ export default function Products() {
   const [importJsonText, setImportJsonText] = useState("");
   const [importing, setImporting] = useState(false);
 
-  // Form State
+  // Form State & Validation
   const initialForm = {
     name: "",
     sku: "",
     slug: "",
-    category: "Gadgets",
+    category: "",
     description: "",
-    mainImage: "/images/product-earbuds.jpg",
+    mainImage: "",
     regularPrice: "",
     resellerPrice: "",
-    stockQuantity: 100,
+    stockQuantity: "",
     minOrderQuantity: 1,
     isActive: true,
     colors: [],
@@ -43,13 +58,24 @@ export default function Products() {
     variants: [],
   };
   const [formData, setFormData] = useState(initialForm);
+  const [formErrors, setFormErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   // Variant Manager States
   const [newColorInput, setNewColorInput] = useState("");
   const [newSizeInput, setNewSizeInput] = useState("");
   const [showVariantMatrix, setShowVariantMatrix] = useState(false);
+  const [uploadingVariantIndex, setUploadingVariantIndex] = useState(null);
 
-  const { addToast } = useToast();
+  const clearError = (field) => {
+    if (formErrors[field]) {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -63,7 +89,7 @@ export default function Products() {
       if (data.pagination) setPagination(data.pagination);
     } catch (err) {
       console.error(err);
-      addToast("Failed to fetch catalog products.", "error");
+      toast.error("Failed to fetch catalog products.");
     } finally {
       setLoading(false);
     }
@@ -72,6 +98,22 @@ export default function Products() {
   useEffect(() => {
     fetchProducts();
   }, [page, selectedCategory]);
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const res = await productsApi.getCategories();
+        const list = res?.data?.categories || res?.categories;
+        if (Array.isArray(list) && list.length > 0) {
+          const names = list.map((c) => c.name || c);
+          setAvailableCategories(Array.from(new Set([...names, "Sunglasses"])));
+        }
+      } catch (e) {
+        // keep fallback
+      }
+    };
+    loadCategories();
+  }, []);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -120,7 +162,7 @@ export default function Products() {
     const sizes = formData.sizes?.length > 0 ? formData.sizes : [""];
 
     if (colors.length === 1 && colors[0] === "" && sizes.length === 1 && sizes[0] === "") {
-      addToast("Please add at least one color or size before generating variants.", "warning");
+      toast.error("Please add at least one color or size before generating variants.");
       return;
     }
 
@@ -150,7 +192,7 @@ export default function Products() {
       variants: generated,
     }));
     setShowVariantMatrix(true);
-    addToast(`Generated ${generated.length} variant combinations!`, "success");
+    toast.success(`Generated ${generated.length} variant combinations!`);
   };
 
   const handleVariantChange = (index, field, value) => {
@@ -164,6 +206,37 @@ export default function Products() {
       }
       return { ...prev, variants: nextVariants };
     });
+  };
+
+  const handleVariantImageUpload = async (index, file) => {
+    if (!file) return;
+    const data = new FormData();
+    data.append("image", file);
+
+    setUploadingVariantIndex(index);
+    try {
+      const res = await productsApi.uploadImage(data);
+      if (res.success && res.data) {
+        handleVariantChange(index, "image", res.data.url);
+        toast.success(`Variant image uploaded!`);
+      }
+    } catch (err) {
+      console.error("Variant image upload failed:", err);
+      toast.error(err.message || "Failed to upload variant image.");
+    } finally {
+      setUploadingVariantIndex(null);
+    }
+  };
+
+  const handleApplyImageToColor = (color, imageUrl) => {
+    if (!color || !imageUrl) return;
+    setFormData((prev) => ({
+      ...prev,
+      variants: (prev.variants || []).map((v) =>
+        v.color && v.color.toLowerCase() === color.toLowerCase() ? { ...v, image: imageUrl } : v
+      ),
+    }));
+    toast.success(`Applied image to all "${color}" variants!`);
   };
 
   const handleRemoveVariant = (index) => {
@@ -193,6 +266,7 @@ export default function Products() {
   const handleOpenAdd = () => {
     setEditingProduct(null);
     setFormData(initialForm);
+    setFormErrors({});
     setShowVariantMatrix(false);
     setUploadStats(null);
     setShowModal(true);
@@ -200,16 +274,27 @@ export default function Products() {
 
   const handleOpenEdit = (prod) => {
     setEditingProduct(prod);
+    setFormErrors({});
     setFormData({
-      name: prod.name,
-      sku: prod.sku,
-      slug: prod.slug,
-      category: prod.category?.name || prod.category || "Gadgets",
+      name: prod.name || "",
+      sku: prod.sku || "",
+      slug: prod.slug || "",
+      category: prod.category?.name || prod.category || "",
       description: prod.description || "",
-      mainImage: prod.mainImage || "/images/product-earbuds.jpg",
-      regularPrice: (prod.regularPricePaise / 100).toFixed(2),
-      resellerPrice: (prod.resellerPricePaise / 100).toFixed(2),
-      stockQuantity: prod.stockQuantity,
+      mainImage: prod.mainImage || "",
+      regularPrice:
+        prod.regularPricePaise != null
+          ? (prod.regularPricePaise / 100).toFixed(2)
+          : prod.regularPrice != null
+          ? Number(prod.regularPrice).toFixed(2)
+          : "",
+      resellerPrice:
+        prod.resellerPricePaise != null
+          ? (prod.resellerPricePaise / 100).toFixed(2)
+          : prod.resellerPrice != null
+          ? Number(prod.resellerPrice).toFixed(2)
+          : "",
+      stockQuantity: prod.stockQuantity !== undefined ? prod.stockQuantity : "",
       minOrderQuantity: prod.minOrderQuantity || 1,
       isActive: prod.isActive !== false,
       colors: prod.colors || [],
@@ -225,11 +310,10 @@ export default function Products() {
     if (!window.confirm(`Are you sure you want to archive or delete "${name}"?`)) return;
     try {
       await productsApi.delete(id);
-      addToast(`Product "${name}" deleted.`, "info");
+      toast.success(`Product "${name}" deleted.`);
       fetchProducts();
-      if (refreshProducts) refreshProducts();
     } catch (err) {
-      addToast(err.message || "Failed to delete product.", "error");
+      toast.error(err.message || "Failed to delete product.");
     }
   };
 
@@ -237,11 +321,10 @@ export default function Products() {
     if (!window.confirm("⚠️ WARNING: Are you sure you want to permanently delete ALL products in the database? This cannot be undone.")) return;
     try {
       const res = await productsApi.deleteAll();
-      addToast(res.message || "All products deleted successfully.", "info");
+      toast.success(res.message || "All products deleted successfully.");
       fetchProducts();
-      if (refreshProducts) refreshProducts();
     } catch (err) {
-      addToast(err.message || "Failed to delete all products.", "error");
+      toast.error(err.message || "Failed to delete all products.");
     }
   };
 
@@ -259,14 +342,14 @@ export default function Products() {
       if (res.success && res.data) {
         setFormData((prev) => ({ ...prev, mainImage: res.data.url }));
         setUploadStats(res.data);
-        addToast(
-          `Image imported & compressed: ${res.data.originalSizeFormatted} → ${res.data.compressedSizeFormatted} (${res.data.savingsPercent} smaller)`,
-          "success"
+        clearError("mainImage");
+        toast.success(
+          `Image imported & compressed: ${res.data.originalSizeFormatted} → ${res.data.compressedSizeFormatted} (${res.data.savingsPercent} smaller)`
         );
       }
     } catch (err) {
       console.error("Image upload failed:", err);
-      addToast(err.message || "Failed to compress and upload image.", "error");
+      toast.error(err.message || "Failed to compress and upload image.");
     } finally {
       setUploadingImage(false);
       e.target.value = "";
@@ -276,48 +359,247 @@ export default function Products() {
   const handleSubmitForm = async (e) => {
     e.preventDefault();
 
-    if (!formData.mainImage) {
-      addToast("Please upload or provide a main image for this product.", "warning");
+    const errors = {};
+    const errorNotifications = [];
+
+    // 1. Product Name Validation (Required, min 2 chars)
+    const trimmedName = formData.name ? formData.name.trim() : "";
+    if (!trimmedName) {
+      errors.name = "Product name is required.";
+      errorNotifications.push({
+        id: "err-name",
+        message: "Missing Required Field: Product Name is required.",
+      });
+    } else if (trimmedName.length < 2) {
+      errors.name = "Product name must be at least 2 characters.";
+      errorNotifications.push({
+        id: "err-name",
+        message: "Invalid Field: Product Name must be at least 2 characters.",
+      });
+    }
+
+    // 2. SKU Validation (Required, min 3 chars)
+    const trimmedSku = formData.sku ? formData.sku.trim().toUpperCase() : "";
+    if (!trimmedSku) {
+      errors.sku = "Product SKU is required.";
+      errorNotifications.push({
+        id: "err-sku",
+        message: "Missing Required Field: Product SKU is required.",
+      });
+    } else if (trimmedSku.length < 3) {
+      errors.sku = "SKU must be at least 3 characters.";
+      errorNotifications.push({
+        id: "err-sku",
+        message: "Invalid Field: SKU must be at least 3 characters.",
+      });
+    }
+
+    // 3. Category Validation (Required)
+    if (!formData.category || !formData.category.trim()) {
+      errors.category = "Category selection is required.";
+      errorNotifications.push({
+        id: "err-category",
+        message: "Missing Required Field: Category is required. Please select a category.",
+      });
+    }
+
+    // 4. Regular Retail Price Validation (Required, > 0)
+    const regPrice = parseFloat(formData.regularPrice);
+    if (
+      formData.regularPrice === "" ||
+      formData.regularPrice === null ||
+      formData.regularPrice === undefined ||
+      isNaN(regPrice)
+    ) {
+      errors.regularPrice = "Regular retail price is required.";
+      errorNotifications.push({
+        id: "err-regularPrice",
+        message: "Missing Required Field: Regular Retail Price (₹) is required.",
+      });
+    } else if (regPrice <= 0) {
+      errors.regularPrice = "Regular price must be greater than ₹0.";
+      errorNotifications.push({
+        id: "err-regularPrice",
+        message: "Invalid Field: Regular Retail Price must be greater than ₹0.",
+      });
+    }
+
+    // 5. Reseller Wholesale Price Validation (Required, > 0, <= Regular Price)
+    const resPrice = parseFloat(formData.resellerPrice);
+    if (
+      formData.resellerPrice === "" ||
+      formData.resellerPrice === null ||
+      formData.resellerPrice === undefined ||
+      isNaN(resPrice)
+    ) {
+      errors.resellerPrice = "Reseller wholesale price is required.";
+      errorNotifications.push({
+        id: "err-resellerPrice",
+        message: "Missing Required Field: Reseller Wholesale Price (₹) is required.",
+      });
+    } else if (resPrice <= 0) {
+      errors.resellerPrice = "Reseller price must be greater than ₹0.";
+      errorNotifications.push({
+        id: "err-resellerPrice",
+        message: "Invalid Field: Reseller Wholesale Price must be greater than ₹0.",
+      });
+    } else if (!isNaN(regPrice) && resPrice > regPrice) {
+      errors.resellerPrice = "Wholesale price cannot be greater than retail price.";
+      errorNotifications.push({
+        id: "err-priceComparison",
+        message: "Invalid Pricing: Reseller Wholesale Price cannot exceed Regular Retail Price.",
+      });
+    }
+
+    // 6. Stock Quantity Validation (Required, >= 0)
+    const stock = parseInt(formData.stockQuantity, 10);
+    if (
+      formData.stockQuantity === "" ||
+      formData.stockQuantity === null ||
+      formData.stockQuantity === undefined ||
+      isNaN(stock)
+    ) {
+      errors.stockQuantity = "Stock quantity is required.";
+      errorNotifications.push({
+        id: "err-stockQuantity",
+        message: "Missing Required Field: Stock Quantity is required.",
+      });
+    } else if (stock < 0) {
+      errors.stockQuantity = "Stock quantity cannot be negative.";
+      errorNotifications.push({
+        id: "err-stockQuantity",
+        message: "Invalid Field: Stock Quantity cannot be negative.",
+      });
+    }
+
+    // 7. Minimum Order Quantity Validation (Optional, if entered must be >= 1)
+    const moq = parseInt(formData.minOrderQuantity, 10);
+    if (formData.minOrderQuantity !== "" && formData.minOrderQuantity !== null && !isNaN(moq) && moq < 1) {
+      errors.minOrderQuantity = "Minimum order quantity must be at least 1.";
+      errorNotifications.push({
+        id: "err-minOrderQuantity",
+        message: "Invalid Field: Minimum Order Quantity must be at least 1.",
+      });
+    }
+
+    // 8. Product Image Validation (Required)
+    if (!formData.mainImage || !formData.mainImage.trim()) {
+      errors.mainImage = "Product image is required.";
+      errorNotifications.push({
+        id: "err-mainImage",
+        message: "Missing Required Field: Product Image is required. Please upload or import an image.",
+      });
+    }
+
+    // 9. Description Validation (Required, min 10 chars)
+    const trimmedDesc = formData.description ? formData.description.trim() : "";
+    if (!trimmedDesc) {
+      errors.description = "Product description is required (min 10 characters).";
+      errorNotifications.push({
+        id: "err-description",
+        message: "Missing Required Field: Product Description is required.",
+      });
+    } else if (trimmedDesc.length < 10) {
+      errors.description = "Product description must be at least 10 characters.";
+      errorNotifications.push({
+        id: "err-description",
+        message: "Invalid Field: Product Description must be at least 10 characters.",
+      });
+    }
+
+    // Display ALL missing/invalid fields as individual toast notifications
+    if (errorNotifications.length > 0) {
+      setFormErrors(errors);
+      errorNotifications.forEach((item) => {
+        toast.error(item.message, { id: item.id, duration: 6000 });
+      });
       return;
     }
 
+    setFormErrors({});
+    setSubmitting(true);
+
     const payload = {
-      name: formData.name,
-      sku: formData.sku,
-      slug: formData.slug || formData.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      name: trimmedName,
+      sku: trimmedSku,
+      slug: formData.slug ? formData.slug.trim() : trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
       category: formData.category,
-      description: formData.description || formData.name,
+      description: trimmedDesc,
       mainImage: formData.mainImage,
-      regularPrice: parseFloat(formData.regularPrice),
-      resellerPrice: parseFloat(formData.resellerPrice),
-      stockQuantity: parseInt(formData.stockQuantity, 10),
-      minOrderQuantity: parseInt(formData.minOrderQuantity, 10),
+      regularPrice: regPrice,
+      resellerPrice: resPrice,
+      stockQuantity: stock,
+      minOrderQuantity: moq || 1,
       isActive: formData.isActive,
       colors: formData.colors || [],
       sizes: formData.sizes || [],
       variants: (formData.variants || []).map((v) => ({
-        sku: v.sku || `${formData.sku}-${v.color || "DEF"}-${v.size || "STD"}`,
+        sku: v.sku || `${trimmedSku}-${v.color || "DEF"}-${v.size || "STD"}`,
         color: v.color || "",
         size: v.size || "",
-        stockQuantity: Number(v.stockQuantity) >= 0 ? Number(v.stockQuantity) : parseInt(formData.stockQuantity, 10),
-        pricePaise: v.pricePaise !== undefined ? Number(v.pricePaise) : Math.round(parseFloat(formData.resellerPrice) * 100),
+        stockQuantity: Number(v.stockQuantity) >= 0 ? Number(v.stockQuantity) : stock,
+        pricePaise: v.pricePaise !== undefined ? Number(v.pricePaise) : Math.round(resPrice * 100),
         image: v.image || formData.mainImage,
       })),
     };
 
     try {
       if (editingProduct) {
-        await productsApi.update(editingProduct._id, payload);
-        addToast("Product updated successfully!", "success");
+        const prodId = editingProduct._id || editingProduct.id;
+        await productsApi.update(prodId, payload);
+        toast.success(`Product "${payload.name}" updated successfully!`);
       } else {
         await productsApi.create(payload);
-        addToast("New product created successfully!", "success");
+        toast.success(`New product "${payload.name}" created successfully!`);
       }
       setShowModal(false);
       fetchProducts();
-      if (refreshProducts) refreshProducts();
     } catch (err) {
-      addToast(err.message || "Failed to save product.", "error");
+      console.error("Save product API error:", err);
+
+      // Handle server-side validation error array or object
+      if (err.errors) {
+        const fieldLabels = {
+          name: "Product Name",
+          sku: "SKU",
+          category: "Category",
+          regularPrice: "Regular Retail Price",
+          resellerPrice: "Reseller Wholesale Price",
+          stockQuantity: "Stock Quantity",
+          minOrderQuantity: "Minimum Order Quantity",
+          mainImage: "Product Image",
+          description: "Product Description",
+        };
+
+        const serverErrors = {};
+        const errorsList = Array.isArray(err.errors)
+          ? err.errors
+          : Object.entries(err.errors).map(([field, val]) => ({
+              field,
+              message: typeof val === "string" ? val : val?.message || "Invalid value",
+            }));
+
+        errorsList.forEach((e) => {
+          const fieldKey = e.field || e.path || "field";
+          const label = fieldLabels[fieldKey] || fieldKey;
+          const isMissing =
+            e.message?.toLowerCase().includes("required") ||
+            e.message?.toLowerCase().includes("missing") ||
+            !formData[fieldKey];
+          const prefix = isMissing ? "Missing Required Field" : "Validation Error";
+          const errorMsg = `${prefix}: [${label}] - ${e.message}`;
+          serverErrors[fieldKey] = e.message;
+          toast.error(errorMsg, { id: `server-err-${fieldKey}`, duration: 6000 });
+        });
+        setFormErrors(serverErrors);
+      } else if (err.code === "DUPLICATE_SKU" || err.message?.toLowerCase().includes("sku")) {
+        setFormErrors((prev) => ({ ...prev, sku: err.message }));
+        toast.error(`Duplicate SKU Error: ${err.message}`, { id: "err-duplicate-sku", duration: 6000 });
+      } else {
+        toast.error(err.message || "Failed to save product. Please check your inputs.", { duration: 6000 });
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -325,7 +607,7 @@ export default function Products() {
   const handleBulkImportSubmit = async (e) => {
     e.preventDefault();
     if (!importJsonText.trim()) {
-      addToast("Please paste JSON or CSV product data.", "warning");
+      toast("Please paste JSON or CSV product data.", { icon: "⚠️" });
       return;
     }
 
@@ -336,7 +618,7 @@ export default function Products() {
         throw new Error("JSON must be an array of product objects.");
       }
     } catch (parseErr) {
-      addToast("Invalid JSON format. Please verify the JSON array structure: " + parseErr.message, "error");
+      toast.error("Invalid JSON format. Please verify the JSON array structure: " + parseErr.message);
       return;
     }
 
@@ -344,47 +626,19 @@ export default function Products() {
     try {
       const res = await productsApi.bulkImport(parsedList);
       if (res.success) {
-        addToast(res.message || `Imported ${res.data?.importedCount} products!`, "success");
+        toast.success(res.message || `Imported ${res.data?.importedCount} products!`);
         setShowImportModal(false);
         setImportJsonText("");
         fetchProducts();
-        if (refreshProducts) refreshProducts();
       }
     } catch (err) {
-      addToast(err.message || "Bulk import failed.", "error");
+      toast.error(err.message || "Bulk import failed.");
     } finally {
       setImporting(false);
     }
   };
 
-  const sampleImportJson = JSON.stringify(
-    [
-      {
-        name: "Aura Pro Wireless Earbuds",
-        sku: "GAD-AURA-01",
-        category: "Gadgets",
-        description: "Active Noise Cancellation with 32hr battery life.",
-        mainImage: "/images/product-earbuds.jpg",
-        regularPrice: 2499,
-        resellerPrice: 1299,
-        stockQuantity: 150,
-        minOrderQuantity: 2,
-      },
-      {
-        name: "Chronos Elite Sapphire Watch",
-        sku: "WAT-CHRONO-02",
-        category: "Watches",
-        description: "Automatic movement with sapphire crystal glass and genuine leather strap.",
-        mainImage: "/images/product-luxury-watch.jpg",
-        regularPrice: 4999,
-        resellerPrice: 2899,
-        stockQuantity: 80,
-        minOrderQuantity: 1,
-      },
-    ],
-    null,
-    2
-  );
+
 
   return (
     <div>
@@ -443,7 +697,7 @@ export default function Products() {
           </div>
           <div className="col-md-7 d-flex justify-content-md-end gap-2 flex-wrap">
             <div className="btn-group btn-group-sm">
-              {["all", "Gadgets", "Watches", "Footwear", "Fashion"].map((cat) => (
+              {["all", ...availableCategories].map((cat) => (
                 <button
                   key={cat}
                   type="button"
@@ -573,7 +827,7 @@ export default function Products() {
                           <button
                             className="btn btn-light border text-danger"
                             title="Delete / Archive Product"
-                            onClick={() => handleDelete(prod._id, prod.name)}
+                            onClick={() => handleDelete(prod._id || prod.id, prod.name)}
                           >
                             <i className="fa-solid fa-trash"></i>
                           </button>
@@ -618,7 +872,7 @@ export default function Products() {
         <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
           <div className="modal-dialog modal-dialog-centered modal-lg">
             <div className="modal-content border-0 shadow-lg rounded-4">
-              <form onSubmit={handleSubmitForm}>
+              <form onSubmit={handleSubmitForm} noValidate>
                 <div className="modal-header border-bottom px-4 py-3">
                   <h5 className="modal-title fw-bold text-dark">
                     {editingProduct ? "Edit Product" : "Add New Wholesale Product"}
@@ -628,73 +882,136 @@ export default function Products() {
                 <div className="modal-body p-4">
                   <div className="row g-3">
                     <div className="col-sm-8">
-                      <label className="form-label small fw-semibold">Product Name *</label>
+                      <label className="form-label small fw-semibold">
+                        Product Name <span className="text-danger">*</span>
+                      </label>
                       <input
                         type="text"
-                        className="form-control"
-                        required
+                        className={`form-control ${formErrors.name ? "is-invalid border-danger" : ""}`}
                         value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        onChange={(e) => {
+                          setFormData({ ...formData, name: e.target.value });
+                          clearError("name");
+                        }}
                         placeholder="e.g. Wireless Noise-Cancelling Earbuds"
                       />
+                      {formErrors.name && (
+                        <div className="invalid-feedback d-block small">
+                          <i className="fa-solid fa-circle-exclamation me-1"></i>
+                          {formErrors.name}
+                        </div>
+                      )}
                     </div>
                     <div className="col-sm-4">
-                      <label className="form-label small fw-semibold">SKU *</label>
+                      <label className="form-label small fw-semibold">
+                        SKU <span className="text-danger">*</span>
+                      </label>
                       <input
                         type="text"
-                        className="form-control"
-                        required
+                        className={`form-control ${formErrors.sku ? "is-invalid border-danger" : ""}`}
                         value={formData.sku}
-                        onChange={(e) => setFormData({ ...formData, sku: e.target.value.toUpperCase() })}
+                        onChange={(e) => {
+                          setFormData({ ...formData, sku: e.target.value.toUpperCase() });
+                          clearError("sku");
+                        }}
                         placeholder="e.g. GAD-AURA-01"
                       />
+                      {formErrors.sku && (
+                        <div className="invalid-feedback d-block small">
+                          <i className="fa-solid fa-circle-exclamation me-1"></i>
+                          {formErrors.sku}
+                        </div>
+                      )}
                     </div>
                     <div className="col-sm-6">
-                      <label className="form-label small fw-semibold">Category *</label>
+                      <label className="form-label small fw-semibold">
+                        Category <span className="text-danger">*</span>
+                      </label>
                       <select
-                        className="form-select"
+                        className={`form-select ${formErrors.category ? "is-invalid border-danger" : ""}`}
                         value={formData.category}
-                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        onChange={(e) => {
+                          setFormData({ ...formData, category: e.target.value });
+                          clearError("category");
+                        }}
                       >
-                        <option value="Gadgets">Gadgets</option>
-                        <option value="Watches">Watches</option>
-                        <option value="Footwear">Footwear</option>
-                        <option value="Fashion">Fashion</option>
+                        <option value="">-- Select Category --</option>
+                        {availableCategories.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
                       </select>
+                      {formErrors.category && (
+                        <div className="invalid-feedback d-block small">
+                          <i className="fa-solid fa-circle-exclamation me-1"></i>
+                          {formErrors.category}
+                        </div>
+                      )}
                     </div>
                     <div className="col-sm-6">
-                      <label className="form-label small fw-semibold">Regular Retail Price (₹) *</label>
+                      <label className="form-label small fw-semibold">
+                        Regular Retail Price (₹) <span className="text-danger">*</span>
+                      </label>
                       <input
                         type="number"
                         step="0.01"
-                        className="form-control"
-                        required
+                        className={`form-control ${formErrors.regularPrice ? "is-invalid border-danger" : ""}`}
                         value={formData.regularPrice}
-                        onChange={(e) => setFormData({ ...formData, regularPrice: e.target.value })}
+                        onChange={(e) => {
+                          setFormData({ ...formData, regularPrice: e.target.value });
+                          clearError("regularPrice");
+                        }}
                         placeholder="e.g. 2499"
                       />
+                      {formErrors.regularPrice && (
+                        <div className="invalid-feedback d-block small">
+                          <i className="fa-solid fa-circle-exclamation me-1"></i>
+                          {formErrors.regularPrice}
+                        </div>
+                      )}
                     </div>
                     <div className="col-sm-6">
-                      <label className="form-label small fw-semibold">Reseller Wholesale Price (₹) *</label>
+                      <label className="form-label small fw-semibold">
+                        Reseller Wholesale Price (₹) <span className="text-danger">*</span>
+                      </label>
                       <input
                         type="number"
                         step="0.01"
-                        className="form-control"
-                        required
+                        className={`form-control ${formErrors.resellerPrice ? "is-invalid border-danger" : ""}`}
                         value={formData.resellerPrice}
-                        onChange={(e) => setFormData({ ...formData, resellerPrice: e.target.value })}
+                        onChange={(e) => {
+                          setFormData({ ...formData, resellerPrice: e.target.value });
+                          clearError("resellerPrice");
+                        }}
                         placeholder="e.g. 1499"
                       />
+                      {formErrors.resellerPrice && (
+                        <div className="invalid-feedback d-block small">
+                          <i className="fa-solid fa-circle-exclamation me-1"></i>
+                          {formErrors.resellerPrice}
+                        </div>
+                      )}
                     </div>
                     <div className="col-sm-3">
-                      <label className="form-label small fw-semibold">Stock Quantity *</label>
+                      <label className="form-label small fw-semibold">
+                        Stock Quantity <span className="text-danger">*</span>
+                      </label>
                       <input
                         type="number"
-                        className="form-control"
-                        required
+                        className={`form-control ${formErrors.stockQuantity ? "is-invalid border-danger" : ""}`}
                         value={formData.stockQuantity}
-                        onChange={(e) => setFormData({ ...formData, stockQuantity: e.target.value })}
+                        onChange={(e) => {
+                          setFormData({ ...formData, stockQuantity: e.target.value });
+                          clearError("stockQuantity");
+                        }}
                       />
+                      {formErrors.stockQuantity && (
+                        <div className="invalid-feedback d-block small">
+                          <i className="fa-solid fa-circle-exclamation me-1"></i>
+                          {formErrors.stockQuantity}
+                        </div>
+                      )}
                     </div>
                     <div className="col-sm-3">
                       <label className="form-label small fw-semibold">Min Order Qty (MOQ)</label>
@@ -709,7 +1026,9 @@ export default function Products() {
                     {/* Image Import & Backend Compression */}
                     <div className="col-12">
                       <label className="form-label small fw-semibold d-flex justify-content-between align-items-center">
-                        <span>Product Image *</span>
+                        <span>
+                          Product Image <span className="text-danger">*</span>
+                        </span>
                         <span className="text-success small fw-semibold">
                           <i className="fa-solid fa-compress me-1"></i> Auto-Reduced in Backend (Sharp WebP)
                         </span>
@@ -717,8 +1036,13 @@ export default function Products() {
 
                       {/* File Upload Box */}
                       <div
-                        className="border border-2 border-dashed rounded-3 p-3 text-center mb-2"
-                        style={{ backgroundColor: "#F9FAFB", borderColor: "#D1D5DB" }}
+                        className={`border border-2 border-dashed rounded-3 p-3 text-center mb-2 ${
+                          formErrors.mainImage ? "border-danger bg-danger-subtle" : ""
+                        }`}
+                        style={{
+                          backgroundColor: formErrors.mainImage ? "#FEF2F2" : "#F9FAFB",
+                          borderColor: formErrors.mainImage ? "#EF4444" : "#D1D5DB",
+                        }}
                       >
                         <input
                           type="file"
@@ -740,7 +1064,7 @@ export default function Products() {
                             </div>
                           ) : (
                             <div className="d-flex flex-column align-items-center gap-1 py-1">
-                              <i className="fa-solid fa-cloud-arrow-up text-primary fs-3 mb-1"></i>
+                              <i className={`fa-solid fa-cloud-arrow-up ${formErrors.mainImage ? "text-danger" : "text-primary"} fs-3 mb-1`}></i>
                               <span className="small fw-bold text-dark">
                                 Click to Import Image File (Auto-Compressed)
                               </span>
@@ -752,63 +1076,15 @@ export default function Products() {
                         </label>
                       </div>
 
-                      {/* Image Preview & Compression Stats */}
-                      {formData.mainImage && (
-                        <div className="d-flex align-items-center gap-3 p-2 bg-light border rounded-3 mb-2">
-                          <img
-                            src={formData.mainImage}
-                            alt="Preview"
-                            className="rounded border"
-                            style={{ width: "50px", height: "50px", objectFit: "cover" }}
-                          />
-                          <div className="flex-grow-1 overflow-hidden">
-                            <div className="small fw-semibold text-truncate">
-                              {formData.mainImage.startsWith("data:")
-                                ? "Optimized WebP Base64"
-                                : formData.mainImage}
-                            </div>
-                            {uploadStats ? (
-                              <div
-                                className="badge bg-success-subtle text-success border border-success-subtle mt-1"
-                                style={{ fontSize: "11px" }}
-                              >
-                                <i className="fa-solid fa-bolt me-1"></i>
-                                {uploadStats.originalSizeFormatted} → {uploadStats.compressedSizeFormatted} (
-                                {uploadStats.savingsPercent} smaller)
-                              </div>
-                            ) : (
-                              <span className="text-muted" style={{ fontSize: "11px" }}>
-                                Current product image
-                              </span>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-danger border-0"
-                            onClick={() => {
-                              setFormData({ ...formData, mainImage: "" });
-                              setUploadStats(null);
-                            }}
-                            title="Remove image"
-                          >
-                            <i className="fa-solid fa-times"></i>
-                          </button>
+                      {formErrors.mainImage && (
+                        <div className="text-danger small mt-1 mb-2 fw-semibold">
+                          <i className="fa-solid fa-circle-exclamation me-1"></i>
+                          {formErrors.mainImage}
                         </div>
                       )}
 
-                      {/* Manual Image URL Option */}
-                      <div className="input-group input-group-sm">
-                        <span className="input-group-text bg-white text-muted" style={{ fontSize: "11px" }}>
-                          Or URL
-                        </span>
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="Paste external image URL (e.g. /images/product.jpg or https://...)"
-                          value={formData.mainImage}
-                          onChange={(e) => setFormData({ ...formData, mainImage: e.target.value })}
-                        />
-                      </div>
+                      {/* Image Preview & Compression Stats */}
+                    
                     </div>
 
                     {/* Product Variants & Options (Colors & Sizes) */}
@@ -1028,6 +1304,7 @@ export default function Products() {
                               <table className="table table-sm table-bordered align-middle mb-0" style={{ fontSize: "12px" }}>
                                 <thead className="table-light sticky-top" style={{ top: 0 }}>
                                   <tr>
+                                    <th style={{ width: "95px" }}>Variant Photo</th>
                                     <th>SKU</th>
                                     <th>Color</th>
                                     <th>Size</th>
@@ -1039,6 +1316,66 @@ export default function Products() {
                                 <tbody>
                                   {formData.variants.map((v, idx) => (
                                     <tr key={idx}>
+                                      <td>
+                                        <div className="d-flex align-items-center gap-1">
+                                          {v.image ? (
+                                            <div className="position-relative">
+                                              <img
+                                                src={v.image}
+                                                alt={`Variant ${idx}`}
+                                                className="rounded border"
+                                                style={{ width: "38px", height: "38px", objectFit: "cover" }}
+                                              />
+                                              <label
+                                                className="position-absolute bottom-0 end-0 bg-dark text-white rounded-circle p-1 d-flex align-items-center justify-content-center shadow-sm"
+                                                style={{ width: "17px", height: "17px", fontSize: "8px", cursor: "pointer", opacity: 0.9 }}
+                                                title="Change photo"
+                                              >
+                                                <i className="fa-solid fa-camera"></i>
+                                                <input
+                                                  type="file"
+                                                  accept="image/*"
+                                                  className="d-none"
+                                                  onChange={(e) => handleVariantImageUpload(idx, e.target.files?.[0])}
+                                                />
+                                              </label>
+                                            </div>
+                                          ) : (
+                                            <label
+                                              className="btn btn-xs btn-outline-secondary d-flex flex-column align-items-center justify-content-center p-1 rounded border-dashed"
+                                              style={{ width: "38px", height: "38px", fontSize: "9px", cursor: "pointer" }}
+                                              title="Upload photo for this variant"
+                                            >
+                                              {uploadingVariantIndex === idx ? (
+                                                <span className="spinner-border spinner-border-sm" style={{ width: "12px", height: "12px" }}></span>
+                                              ) : (
+                                                <>
+                                                  <i className="fa-solid fa-cloud-arrow-up text-primary"></i>
+                                                  <span style={{ fontSize: "8px" }}>Photo</span>
+                                                </>
+                                              )}
+                                              <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="d-none"
+                                                disabled={uploadingVariantIndex === idx}
+                                                onChange={(e) => handleVariantImageUpload(idx, e.target.files?.[0])}
+                                              />
+                                            </label>
+                                          )}
+                                          {v.image && v.color && (
+                                            <button
+                                              type="button"
+                                              className="btn btn-link text-decoration-none p-0 text-muted"
+                                              style={{ fontSize: "11px" }}
+                                              title={`Apply this photo to all "${v.color}" variants`}
+                                              onClick={() => handleApplyImageToColor(v.color, v.image)}
+                                            >
+                                              <i className="fa-solid fa-copy text-primary"></i>
+                                            </button>
+                                          )}
+                                        </div>
+                                      </td>
                                       <td>
                                         <input
                                           type="text"
@@ -1124,13 +1461,25 @@ export default function Products() {
                       </div>
                     </div>
                     <div className="col-12">
-                      <label className="form-label small fw-semibold">Product Description</label>
+                      <label className="form-label small fw-semibold">
+                        Product Description <span className="text-danger">*</span>
+                      </label>
                       <textarea
-                        className="form-control"
+                        className={`form-control ${formErrors.description ? "is-invalid border-danger" : ""}`}
                         rows="3"
+                        placeholder="Provide details and features for resellers (minimum 10 characters)..."
                         value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        onChange={(e) => {
+                          setFormData({ ...formData, description: e.target.value });
+                          clearError("description");
+                        }}
                       ></textarea>
+                      {formErrors.description && (
+                        <div className="invalid-feedback d-block small">
+                          <i className="fa-solid fa-circle-exclamation me-1"></i>
+                          {formErrors.description}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1138,8 +1487,21 @@ export default function Products() {
                   <button type="button" className="btn btn-light rounded-pill px-4" onClick={() => setShowModal(false)}>
                     Cancel
                   </button>
-                  <button type="submit" className="btn-admin-primary rounded-pill px-4" disabled={uploadingImage}>
-                    {editingProduct ? "Save Changes" : "Create Product"}
+                  <button
+                    type="submit"
+                    className="btn-admin-primary rounded-pill px-4"
+                    disabled={uploadingImage || submitting}
+                  >
+                    {submitting ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                        Saving Product...
+                      </>
+                    ) : editingProduct ? (
+                      "Save Changes"
+                    ) : (
+                      "Create Product"
+                    )}
                   </button>
                 </div>
               </form>

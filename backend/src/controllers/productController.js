@@ -87,10 +87,14 @@ const getProducts = async (req, res, next) => {
         thumbnails: p.gallery && p.gallery.length ? p.gallery : [p.mainImage || "/images/product-earbuds.jpg"],
         colors: p.colors || [],
         sizes: p.sizes || [],
-        variants: (p.variants || []).map((v) => ({
-          ...v,
-          price: v.pricePaise ? paiseToRupees(v.pricePaise) : price,
-        })),
+        variants: (p.variants || []).map((v) => {
+          const vObj = typeof v.toObject === "function" ? v.toObject() : v;
+          return {
+            ...vObj,
+            price: vObj.pricePaise ? paiseToRupees(vObj.pricePaise) : price,
+            image: vObj.image || p.mainImage || "",
+          };
+        }),
       };
     });
 
@@ -142,10 +146,14 @@ const getProductBySlug = async (req, res, next) => {
       thumbnails: product.gallery && product.gallery.length ? product.gallery : [product.mainImage || "/images/product-earbuds.jpg"],
       colors: product.colors || [],
       sizes: product.sizes || [],
-      variants: (product.variants || []).map((v) => ({
-        ...v,
-        price: v.pricePaise ? paiseToRupees(v.pricePaise) : price,
-      })),
+      variants: (product.variants || []).map((v) => {
+        const vObj = typeof v.toObject === "function" ? v.toObject() : v;
+        return {
+          ...vObj,
+          price: vObj.pricePaise ? paiseToRupees(vObj.pricePaise) : price,
+          image: vObj.image || product.mainImage || "",
+        };
+      }),
     };
 
     res.set("Cache-Control", "public, max-age=30, stale-while-revalidate=60");

@@ -78,29 +78,105 @@ export default function ProductDetails() {
   const [selectedColor, setSelectedColor] = useState("");
   const [selectedSize, setSelectedSize] = useState("");
 
+  // Helper to find matching variant by color and/or size
+  const getMatchingVariant = (color, size) => {
+    if (!Array.isArray(product?.variants) || product.variants.length === 0) return null;
+    const c = (color || "").trim().toLowerCase();
+    const s = (size || "").trim().toLowerCase();
+
+    if (c && s) {
+      const exact = product.variants.find(
+        (v) => (v.color || "").trim().toLowerCase() === c && (v.size || "").trim().toLowerCase() === s
+      );
+      if (exact) return exact;
+    }
+    if (c) {
+      const matchCol = product.variants.find(
+        (v) => (v.color || "").trim().toLowerCase() === c
+      );
+      if (matchCol) return matchCol;
+    }
+    if (s) {
+      const matchSz = product.variants.find(
+        (v) => (v.size || "").trim().toLowerCase() === s
+      );
+      if (matchSz) return matchSz;
+    }
+    return product.variants[0] || null;
+  };
+
+  const currentVariant = getMatchingVariant(selectedColor, selectedSize);
+
+  // Collect all unique thumbnails across product images and variant images
+  const allThumbnails = React.useMemo(() => {
+    const list = [];
+    const main = product?.image || product?.mainImage;
+    if (main) list.push(main);
+    if (Array.isArray(product?.thumbnails)) {
+      product.thumbnails.forEach((t) => {
+        if (t && !list.includes(t)) list.push(t);
+      });
+    }
+    if (Array.isArray(product?.variants)) {
+      product.variants.forEach((v) => {
+        if (v.image && !list.includes(v.image)) list.push(v.image);
+      });
+    }
+    return list;
+  }, [product]);
+
   useEffect(() => {
     setCustomerSellingPrice("");
-    if (availableColors.length > 0) {
-      setSelectedColor(availableColors[0]);
-    } else {
-      setSelectedColor("");
-    }
-    if (availableSizes.length > 0) {
-      setSelectedSize(availableSizes[0]);
-    } else {
-      setSelectedSize("");
+    const defaultColor = availableColors.length > 0 ? availableColors[0] : "";
+    const defaultSize = availableSizes.length > 0 ? availableSizes[0] : "";
+    setSelectedColor(defaultColor);
+    setSelectedSize(defaultSize);
+
+    const initVariant = getMatchingVariant(defaultColor, defaultSize);
+    if (initVariant?.image) {
+      setActiveImage(initVariant.image);
+    } else if (product?.image || product?.mainImage) {
+      setActiveImage(product.image || product.mainImage);
     }
   }, [product]);
 
-  // When color changes, check if there's a variant image associated
+  // When color changes, update selected color and match variant photo
   const handleColorSelect = (color) => {
     setSelectedColor(color);
-    if (Array.isArray(product.variants)) {
-      const variantWithImg = product.variants.find(
-        (v) => v.color && v.color.toLowerCase() === color.toLowerCase() && v.image
-      );
-      if (variantWithImg?.image) {
-        setActiveImage(variantWithImg.image);
+    const matched = getMatchingVariant(color, selectedSize);
+    if (matched?.image) {
+      setActiveImage(matched.image);
+    }
+  };
+
+  // When size changes, update selected size and match variant photo
+  const handleSizeSelect = (size) => {
+    setSelectedSize(size);
+    const matched = getMatchingVariant(selectedColor, size);
+    if (matched?.image) {
+      setActiveImage(matched.image);
+    }
+  };
+
+  // Direct selection from variant card
+  const handleSelectVariantCard = (variant) => {
+    if (variant.color) setSelectedColor(variant.color);
+    if (variant.size) setSelectedSize(variant.size);
+    if (variant.image) {
+      setActiveImage(variant.image);
+    } else if (product.image || product.mainImage) {
+      setActiveImage(product.image || product.mainImage);
+    }
+  };
+
+  // Thumbnail click: preview photo and auto-select matching variant if applicable
+  const handleThumbnailClick = (thumb) => {
+    setActiveImage(thumb);
+    if (Array.isArray(product?.variants)) {
+      const matched = product.variants.find((v) => v.image === thumb);
+      if (matched) {
+        if (matched.color) setSelectedColor(matched.color);
+        if (matched.size) setSelectedSize(matched.size);
       }
     }
   };
@@ -138,7 +214,11 @@ export default function ProductDetails() {
     const finalPrice = customerSellingPrice !== "" && !isNaN(Number(customerSellingPrice))
       ? Number(customerSellingPrice)
       : "";
-    addToCart(product, quantity, finalPrice, selectedColor, selectedSize);
+
+    const matchedVariant = getMatchingVariant(selectedColor, selectedSize);
+    const chosenImage = matchedVariant?.image || activeImage || product.image || product.mainImage;
+
+    addToCart(product, quantity, finalPrice, selectedColor, selectedSize, chosenImage);
 
     const variantLabel = [selectedColor, selectedSize].filter(Boolean).join(" / ");
     const variantDesc = variantLabel ? ` (${variantLabel})` : "";
@@ -204,21 +284,22 @@ export default function ProductDetails() {
                 />
               </div>
 
-              {product.thumbnails && (
-                <div className="d-flex gap-3 justify-content-center">
-                  {product.thumbnails.map((thumb, idx) => (
+              {allThumbnails.length > 1 && (
+                <div className="d-flex flex-wrap gap-2 justify-content-center">
+                  {allThumbnails.map((thumb, idx) => (
                     <button
                       key={idx}
                       type="button"
                       className={`p-2 border rounded-3 bg-white ${
-                        activeImage === thumb ? "border-dark shadow-sm" : "border-light"
+                        activeImage === thumb ? "border-primary shadow-sm" : "border-light"
                       }`}
-                      onClick={() => setActiveImage(thumb)}
-                      style={{ cursor: "pointer", width: "75px", height: "75px" }}
+                      onClick={() => handleThumbnailClick(thumb)}
+                      style={{ cursor: "pointer", width: "72px", height: "72px" }}
+                      title="Click to view variant photo"
                     >
                       <img
                         src={thumb}
-                        alt=""
+                        alt={`Thumbnail ${idx + 1}`}
                         style={{ width: "100%", height: "100%", objectFit: "contain" }}
                       />
                     </button>
@@ -255,7 +336,11 @@ export default function ProductDetails() {
                 {/* Price */}
                 <div className="mb-4">
                   <span className="h3 fw-bold me-3" style={{ color: "var(--accent-color, #FA7EAA)" }}>
-                    ₹{Number(product?.price ?? product?.resellerPrice ?? product?.regularPrice ?? 0).toLocaleString("en-IN")}
+                    ₹{Number(
+                      currentVariant?.pricePaise
+                        ? currentVariant.pricePaise / 100
+                        : product?.price ?? product?.resellerPrice ?? product?.regularPrice ?? 0
+                    ).toLocaleString("en-IN")}
                   </span>
                   {product.originalPrice && (
                     <span className="text-muted text-decoration-line-through fs-5">
@@ -268,17 +353,23 @@ export default function ProductDetails() {
                   {product.shortDescription}
                 </p>
 
-                {/* Availability */}
+                {/* Availability & SKU */}
                 <div className="mb-4 small">
                   <p className="mb-1">
                     <strong>Availability: </strong>
                     <span className="text-success fw-semibold">
-                      <i className="fa-solid fa-circle-check me-1"></i> In Stock ({product.stockCount || 20} available)
+                      <i className="fa-solid fa-circle-check me-1"></i> In Stock (
+                      {currentVariant?.stockQuantity !== undefined
+                        ? currentVariant.stockQuantity
+                        : product.stockCount || 20}{" "}
+                      available)
                     </span>
                   </p>
                   <p className="mb-0">
                     <strong>SKU: </strong>
-                    <span className="text-muted">{product.sku}</span>
+                    <span className="text-muted fw-semibold">
+                      {currentVariant?.sku || product.sku}
+                    </span>
                   </p>
                 </div>
 
@@ -300,6 +391,9 @@ export default function ProductDetails() {
                         <div className="d-flex flex-wrap gap-2">
                           {availableColors.map((color, idx) => {
                             const isSelected = selectedColor === color;
+                            const colorVariant = Array.isArray(product?.variants)
+                              ? product.variants.find((v) => v.color && v.color.toLowerCase() === color.toLowerCase() && v.image)
+                              : null;
                             return (
                               <button
                                 key={idx}
@@ -312,7 +406,16 @@ export default function ProductDetails() {
                                 onClick={() => handleColorSelect(color)}
                                 style={{ fontSize: "13px" }}
                               >
-                                {isSelected && <i className="fa-solid fa-check small text-success"></i>}
+                                {colorVariant?.image ? (
+                                  <img
+                                    src={colorVariant.image}
+                                    alt={color}
+                                    className="rounded-circle border"
+                                    style={{ width: "22px", height: "22px", objectFit: "cover" }}
+                                  />
+                                ) : (
+                                  isSelected && <i className="fa-solid fa-check small text-success"></i>
+                                )}
                                 <span>{color}</span>
                               </button>
                             );
@@ -345,7 +448,7 @@ export default function ProductDetails() {
                                     ? "btn-dark text-white shadow-sm"
                                     : "btn-outline-secondary bg-white text-dark"
                                 }`}
-                                onClick={() => setSelectedSize(size)}
+                                onClick={() => handleSizeSelect(size)}
                                 style={{ minWidth: "48px", fontSize: "13px" }}
                               >
                                 {size}
@@ -355,6 +458,116 @@ export default function ProductDetails() {
                         </div>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Display All Product Variants & Respective Photos */}
+                {Array.isArray(product?.variants) && product.variants.length > 0 && (
+                  <div className="p-3 bg-white rounded-4 mb-4 border shadow-sm">
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <div>
+                        <h6 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                          <i className="fa-solid fa-layer-group text-primary"></i>
+                          <span>All Product Variants &amp; Photos ({product.variants.length})</span>
+                        </h6>
+                        <span className="text-muted small" style={{ fontSize: "12px" }}>
+                          Click any variant below to select and preview its specific photo
+                        </span>
+                      </div>
+                      <span className="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1 small" style={{ fontSize: "11px" }}>
+                        Live Variant Matrix
+                      </span>
+                    </div>
+
+                    <div className="row g-2" style={{ maxHeight: "280px", overflowY: "auto" }}>
+                      {product.variants.map((v, idx) => {
+                        const isMatched =
+                          (!v.color || v.color.toLowerCase() === (selectedColor || "").toLowerCase()) &&
+                          (!v.size || v.size.toLowerCase() === (selectedSize || "").toLowerCase());
+                        const variantImg = v.image || product.image || product.mainImage || "/images/product-earbuds.jpg";
+                        const variantWholesale = v.pricePaise ? v.pricePaise / 100 : wholesalePrice;
+
+                        return (
+                          <div key={idx} className="col-12 col-sm-6">
+                            <div
+                              className={`p-2 rounded-3 border d-flex align-items-center gap-3 transition-all ${
+                                isMatched
+                                  ? "border-primary bg-primary-subtle shadow-sm"
+                                  : "border-light-subtle bg-light"
+                              }`}
+                              onClick={() => handleSelectVariantCard(v)}
+                              style={{
+                                cursor: "pointer",
+                                borderWidth: isMatched ? "2px" : "1px",
+                              }}
+                              title={`Select ${v.color || ""} ${v.size || ""}`}
+                            >
+                              {/* Variant Photo Thumbnail */}
+                              <div className="position-relative flex-shrink-0">
+                                <img
+                                  src={variantImg}
+                                  alt={v.sku || `Variant ${idx + 1}`}
+                                  className="rounded-2 border bg-white"
+                                  style={{ width: "52px", height: "52px", objectFit: "cover" }}
+                                />
+                                {isMatched && (
+                                  <span
+                                    className="position-absolute top-0 start-0 translate-middle badge rounded-pill bg-primary p-1"
+                                    style={{ fontSize: "8px" }}
+                                  >
+                                    <i className="fa-solid fa-check"></i>
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Variant Info */}
+                              <div className="flex-grow-1 min-w-0" style={{ fontSize: "12px" }}>
+                                <div className="d-flex align-items-center gap-1 mb-1 flex-wrap">
+                                  {v.color && (
+                                    <span className="badge bg-dark text-white rounded-pill px-2 py-0" style={{ fontSize: "10px" }}>
+                                      {v.color}
+                                    </span>
+                                  )}
+                                  {v.size && (
+                                    <span className="badge bg-secondary text-white rounded-pill px-2 py-0" style={{ fontSize: "10px" }}>
+                                      {v.size}
+                                    </span>
+                                  )}
+                                  {!v.color && !v.size && (
+                                    <span className="badge bg-light text-muted border rounded-pill px-2 py-0" style={{ fontSize: "10px" }}>
+                                      Standard
+                                    </span>
+                                  )}
+                                  {isMatched && (
+                                    <span className="text-primary fw-bold ms-auto small" style={{ fontSize: "10px" }}>
+                                      ✓ Selected
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="text-truncate text-muted" style={{ fontSize: "11px" }}>
+                                  <strong>SKU:</strong> {v.sku || `${product.sku}-${idx + 1}`}
+                                </div>
+
+                                <div className="d-flex justify-content-between align-items-center mt-1">
+                                  <span className="fw-bold text-dark" style={{ fontSize: "11px" }}>
+                                    ₹{Number(variantWholesale).toLocaleString("en-IN")}
+                                  </span>
+                                  <span
+                                    className={`badge ${
+                                      (v.stockQuantity ?? 10) > 0 ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger"
+                                    }`}
+                                    style={{ fontSize: "10px" }}
+                                  >
+                                    {(v.stockQuantity ?? 10) > 0 ? `${v.stockQuantity ?? 10} in stock` : "Out of stock"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 

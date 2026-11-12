@@ -8,7 +8,7 @@ import { useAuth } from "../context/AuthContext";
 export default function QuickViewModal({ product, onClose }) {
   if (!product) return null;
 
-  const [activeImg, setActiveImg] = useState(product.image);
+  const [activeImg, setActiveImg] = useState(product.image || product.mainImage || "/images/product-earbuds.jpg");
   const [quantity, setQuantity] = useState(1);
   const wholesale = Number(product.price ?? product.resellerPrice ?? 0);
   const [customerSellingPrice, setCustomerSellingPrice] = useState("");
@@ -28,14 +28,86 @@ export default function QuickViewModal({ product, onClose }) {
   const [selectedColor, setSelectedColor] = useState(availableColors[0] || "");
   const [selectedSize, setSelectedSize] = useState(availableSizes[0] || "");
 
+  // Helper to match variant by color & size
+  const getMatchingVariant = (color, size) => {
+    if (!Array.isArray(product?.variants) || product.variants.length === 0) return null;
+    const c = (color || "").trim().toLowerCase();
+    const s = (size || "").trim().toLowerCase();
+
+    if (c && s) {
+      const exact = product.variants.find(
+        (v) => (v.color || "").trim().toLowerCase() === c && (v.size || "").trim().toLowerCase() === s
+      );
+      if (exact) return exact;
+    }
+    if (c) {
+      const matchCol = product.variants.find(
+        (v) => (v.color || "").trim().toLowerCase() === c
+      );
+      if (matchCol) return matchCol;
+    }
+    if (s) {
+      const matchSz = product.variants.find(
+        (v) => (v.size || "").trim().toLowerCase() === s
+      );
+      if (matchSz) return matchSz;
+    }
+    return product.variants[0] || null;
+  };
+
+  const currentVariant = getMatchingVariant(selectedColor, selectedSize);
+
+  // Collect all unique thumbnails across product images and variant images
+  const allThumbnails = React.useMemo(() => {
+    const list = [];
+    const main = product?.image || product?.mainImage;
+    if (main) list.push(main);
+    if (Array.isArray(product?.thumbnails)) {
+      product.thumbnails.forEach((t) => {
+        if (t && !list.includes(t)) list.push(t);
+      });
+    }
+    if (Array.isArray(product?.variants)) {
+      product.variants.forEach((v) => {
+        if (v.image && !list.includes(v.image)) list.push(v.image);
+      });
+    }
+    return list;
+  }, [product]);
+
   const handleColorSelect = (color) => {
     setSelectedColor(color);
-    if (Array.isArray(product.variants)) {
-      const variantWithImg = product.variants.find(
-        (v) => v.color && v.color.toLowerCase() === color.toLowerCase() && v.image
-      );
-      if (variantWithImg?.image) {
-        setActiveImg(variantWithImg.image);
+    const matched = getMatchingVariant(color, selectedSize);
+    if (matched?.image) {
+      setActiveImg(matched.image);
+    }
+  };
+
+  const handleSizeSelect = (size) => {
+    setSelectedSize(size);
+    const matched = getMatchingVariant(selectedColor, size);
+    if (matched?.image) {
+      setActiveImg(matched.image);
+    }
+  };
+
+  const handleSelectVariantCard = (variant) => {
+    if (variant.color) setSelectedColor(variant.color);
+    if (variant.size) setSelectedSize(variant.size);
+    if (variant.image) {
+      setActiveImg(variant.image);
+    } else if (product.image || product.mainImage) {
+      setActiveImg(product.image || product.mainImage);
+    }
+  };
+
+  const handleThumbnailClick = (thumb) => {
+    setActiveImg(thumb);
+    if (Array.isArray(product?.variants)) {
+      const matched = product.variants.find((v) => v.image === thumb);
+      if (matched) {
+        if (matched.color) setSelectedColor(matched.color);
+        if (matched.size) setSelectedSize(matched.size);
       }
     }
   };
@@ -68,7 +140,11 @@ export default function QuickViewModal({ product, onClose }) {
     const finalPrice = customerSellingPrice !== "" && !isNaN(Number(customerSellingPrice))
       ? Number(customerSellingPrice)
       : "";
-    addToCart(product, quantity, finalPrice, selectedColor, selectedSize);
+
+    const matchedVariant = getMatchingVariant(selectedColor, selectedSize);
+    const chosenImage = matchedVariant?.image || activeImg || product.image || product.mainImage;
+
+    addToCart(product, quantity, finalPrice, selectedColor, selectedSize, chosenImage);
 
     const variantLabel = [selectedColor, selectedSize].filter(Boolean).join(" / ");
     const variantDesc = variantLabel ? ` (${variantLabel})` : "";
@@ -124,17 +200,18 @@ export default function QuickViewModal({ product, onClose }) {
                     style={{ maxHeight: "300px", objectFit: "contain" }}
                   />
                 </div>
-                {product.thumbnails && product.thumbnails.length > 1 && (
-                  <div className="d-flex gap-2 justify-content-center">
-                    {product.thumbnails.map((thumb, idx) => (
+                {allThumbnails.length > 1 && (
+                  <div className="d-flex flex-wrap gap-2 justify-content-center">
+                    {allThumbnails.map((thumb, idx) => (
                       <button
                         key={idx}
                         type="button"
                         className={`p-1 border rounded-3 bg-white ${
-                          activeImg === thumb ? "border-dark shadow-sm" : "border-light"
+                          activeImg === thumb ? "border-primary shadow-sm" : "border-light"
                         }`}
-                        onClick={() => setActiveImg(thumb)}
+                        onClick={() => handleThumbnailClick(thumb)}
                         style={{ cursor: "pointer", width: "55px", height: "55px" }}
+                        title="Click to view variant photo"
                       >
                         <img
                           src={thumb}
@@ -171,7 +248,11 @@ export default function QuickViewModal({ product, onClose }) {
 
                   <div className="mb-3">
                     <span className="h4 fw-bold me-2" style={{ color: "var(--accent-color, #FA7EAA)" }}>
-                      ₹{Number(product.price ?? product.resellerPrice ?? product.regularPrice ?? 0).toLocaleString("en-IN")}
+                      ₹{Number(
+                        currentVariant?.pricePaise
+                          ? currentVariant.pricePaise / 100
+                          : product.price ?? product.resellerPrice ?? product.regularPrice ?? 0
+                      ).toLocaleString("en-IN")}
                     </span>
                     {product.originalPrice && (
                       <span className="text-muted text-decoration-line-through">
@@ -180,7 +261,7 @@ export default function QuickViewModal({ product, onClose }) {
                     )}
                   </div>
 
-                  <p className="text-muted small mb-4">{product.shortDescription || product.description}</p>
+                  <p className="text-muted small mb-3">{product.shortDescription || product.description}</p>
 
                   {/* Variant Selection (Color & Size) */}
                   {(availableColors.length > 0 || availableSizes.length > 0) && (
@@ -194,22 +275,36 @@ export default function QuickViewModal({ product, onClose }) {
                             </span>
                           </div>
                           <div className="d-flex flex-wrap gap-2">
-                            {availableColors.map((color, idx) => (
-                              <button
-                                key={idx}
-                                type="button"
-                                className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold ${
-                                  selectedColor === color
-                                    ? "btn-dark text-white"
-                                    : "btn-outline-secondary bg-white text-dark"
-                                }`}
-                                onClick={() => handleColorSelect(color)}
-                                style={{ fontSize: "12px" }}
-                              >
-                                {selectedColor === color && <i className="fa-solid fa-check me-1 small text-success"></i>}
-                                {color}
-                              </button>
-                            ))}
+                            {availableColors.map((color, idx) => {
+                              const colorVariant = Array.isArray(product?.variants)
+                                ? product.variants.find((v) => v.color && v.color.toLowerCase() === color.toLowerCase() && v.image)
+                                : null;
+                              return (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold d-flex align-items-center gap-2 ${
+                                    selectedColor === color
+                                      ? "btn-dark text-white"
+                                      : "btn-outline-secondary bg-white text-dark"
+                                  }`}
+                                  onClick={() => handleColorSelect(color)}
+                                  style={{ fontSize: "12px" }}
+                                >
+                                  {colorVariant?.image ? (
+                                    <img
+                                      src={colorVariant.image}
+                                      alt={color}
+                                      className="rounded-circle border"
+                                      style={{ width: "18px", height: "18px", objectFit: "cover" }}
+                                    />
+                                  ) : (
+                                    selectedColor === color && <i className="fa-solid fa-check me-1 small text-success"></i>
+                                  )}
+                                  <span>{color}</span>
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -232,7 +327,7 @@ export default function QuickViewModal({ product, onClose }) {
                                     ? "btn-dark text-white"
                                     : "btn-outline-secondary bg-white text-dark"
                                 }`}
-                                onClick={() => setSelectedSize(size)}
+                                onClick={() => handleSizeSelect(size)}
                                 style={{ fontSize: "12px", minWidth: "40px" }}
                               >
                                 {size}
@@ -241,6 +336,49 @@ export default function QuickViewModal({ product, onClose }) {
                           </div>
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {/* Available Variants Quick List */}
+                  {Array.isArray(product?.variants) && product.variants.length > 0 && (
+                    <div className="p-2 bg-white rounded-3 mb-3 border">
+                      <div className="d-flex justify-content-between align-items-center mb-2 px-1">
+                        <span className="small fw-bold text-dark d-flex align-items-center gap-1">
+                          <i className="fa-solid fa-layer-group text-primary"></i>
+                          <span>Variant Matrix ({product.variants.length})</span>
+                        </span>
+                        <span className="text-muted" style={{ fontSize: "11px" }}>Select variant</span>
+                      </div>
+                      <div className="d-flex gap-2 overflow-auto pb-1" style={{ maxWidth: "100%" }}>
+                        {product.variants.map((v, idx) => {
+                          const isMatched =
+                            (!v.color || v.color.toLowerCase() === (selectedColor || "").toLowerCase()) &&
+                            (!v.size || v.size.toLowerCase() === (selectedSize || "").toLowerCase());
+                          const variantImg = v.image || product.image || product.mainImage || "/images/product-earbuds.jpg";
+
+                          return (
+                            <div
+                              key={idx}
+                              onClick={() => handleSelectVariantCard(v)}
+                              className={`p-1 rounded-2 border d-flex flex-column align-items-center cursor-pointer flex-shrink-0 transition-all ${
+                                isMatched ? "border-primary bg-primary-subtle shadow-sm" : "border-light bg-light"
+                              }`}
+                              style={{ width: "72px", cursor: "pointer", borderWidth: isMatched ? "2px" : "1px" }}
+                              title={`${v.color || ""} ${v.size || ""} (${v.sku || ""})`}
+                            >
+                              <img
+                                src={variantImg}
+                                alt=""
+                                className="rounded border bg-white"
+                                style={{ width: "36px", height: "36px", objectFit: "cover" }}
+                              />
+                              <span className="fw-semibold text-truncate w-100 text-center mt-1" style={{ fontSize: "10px" }}>
+                                {[v.color, v.size].filter(Boolean).join("/") || "Std"}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 
@@ -323,7 +461,7 @@ export default function QuickViewModal({ product, onClose }) {
                   </div>
 
                   <div className="border-top pt-3 small text-muted">
-                    <p className="mb-1"><strong>SKU:</strong> {product.sku || "LUM-PROD"}</p>
+                    <p className="mb-1"><strong>SKU:</strong> <span className="fw-semibold text-dark">{currentVariant?.sku || product.sku || "LUM-PROD"}</span></p>
                     <p className="mb-0">
                       <strong>View Details: </strong>
                       <Link
