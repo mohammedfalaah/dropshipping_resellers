@@ -4,6 +4,7 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
 import BackToTop from "./components/BackToTop";
+import WhatsAppFloating from "./components/WhatsAppFloating";
 import { useScrollAnimation } from "./hooks/useScrollAnimation";
 
 // Lightweight, smooth loading spinner fallback
@@ -125,6 +126,7 @@ export default function App() {
       </main>
       <Footer />
       <BackToTop />
+      <WhatsAppFloating />
     </div>
   );
 }
