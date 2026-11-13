@@ -3,7 +3,6 @@ import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
-import BackToTop from "./components/BackToTop";
 import WhatsAppFloating from "./components/WhatsAppFloating";
 import { useScrollAnimation } from "./hooks/useScrollAnimation";
 
@@ -125,7 +124,6 @@ export default function App() {
         </Suspense>
       </main>
       <Footer />
-      <BackToTop />
       <WhatsAppFloating />
     </div>
   );
