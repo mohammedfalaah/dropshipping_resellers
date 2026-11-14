@@ -125,27 +125,27 @@ export default function AccountDashboard() {
     const status = (order?.deliveryStatus || order?.orderStatus || "CONFIRMED").toUpperCase();
     switch (status) {
       case "PENDING":
-        return { stage: "PENDING", percent: 20, label: "Order Placed", badgeClass: "bg-secondary text-white" };
+        return { stage: "PENDING", percent: 20, label: "Order Placed", badgeClass: "dash-status-pill booked", pillClass: "booked" };
       case "BOOKED":
       case "CONFIRMED":
-        return { stage: "BOOKED", percent: 35, label: "Consignment Booked", badgeClass: "bg-info text-dark" };
+        return { stage: "BOOKED", percent: 35, label: "Consignment Booked", badgeClass: "dash-status-pill booked", pillClass: "booked" };
       case "PROCESSING":
-        return { stage: "PROCESSING", percent: 45, label: "Warehouse Processing", badgeClass: "bg-info text-dark" };
+        return { stage: "PROCESSING", percent: 45, label: "Warehouse Processing", badgeClass: "dash-status-pill transit", pillClass: "transit" };
       case "DISPATCHED":
       case "SHIPPED":
-        return { stage: "DISPATCHED", percent: 60, label: "Dispatched from Hub", badgeClass: "bg-primary text-white" };
+        return { stage: "DISPATCHED", percent: 60, label: "Dispatched from Hub", badgeClass: "dash-status-pill transit", pillClass: "transit" };
       case "IN_TRANSIT":
-        return { stage: "IN_TRANSIT", percent: 75, label: "In Transit", badgeClass: "bg-primary text-white" };
+        return { stage: "IN_TRANSIT", percent: 75, label: "In Transit", badgeClass: "dash-status-pill transit", pillClass: "transit" };
       case "OUT_FOR_DELIVERY":
-        return { stage: "OUT_FOR_DELIVERY", percent: 90, label: "Out for Delivery", badgeClass: "bg-warning text-dark" };
+        return { stage: "OUT_FOR_DELIVERY", percent: 90, label: "Out for Delivery", badgeClass: "dash-status-pill out_for_delivery", pillClass: "out_for_delivery" };
       case "DELIVERED":
-        return { stage: "DELIVERED", percent: 100, label: "Delivered", badgeClass: "bg-success text-white" };
+        return { stage: "DELIVERED", percent: 100, label: "Delivered", badgeClass: "dash-status-pill delivered", pillClass: "delivered" };
       case "CANCELLED":
       case "FAILED":
       case "RETURNED":
-        return { stage: status, percent: 100, label: status === "RETURNED" ? "Returned" : "Cancelled", badgeClass: "bg-danger text-white" };
+        return { stage: status, percent: 100, label: status === "RETURNED" ? "Returned to Sender" : "Cancelled", badgeClass: "dash-status-pill failed", pillClass: "failed" };
       default:
-        return { stage: status, percent: 50, label: status.replace(/_/g, " "), badgeClass: "bg-primary text-white" };
+        return { stage: status, percent: 50, label: status.replace(/_/g, " "), badgeClass: "dash-status-pill transit", pillClass: "transit" };
     }
   };
 
@@ -288,29 +288,22 @@ export default function AccountDashboard() {
 
           {/* MOBILE PROFILE & HORIZONTAL TABS (< 992px) */}
           <div className="d-block d-lg-none mb-3">
-            <div className="bg-white p-3 rounded-4 shadow-sm border mb-2">
+            <div className="dash-card p-3 mb-2">
               <div className="d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center gap-3">
-                  <div
-                    className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm"
-                    style={{
-                      width: "44px",
-                      height: "44px",
-                      minWidth: "44px",
-                      backgroundColor: role === "admin" ? "#2B3A67" : "var(--accent-color, #FA7EAA)",
-                      fontSize: "16px",
-                    }}
-                  >
+                  <div className="dash-avatar" style={{ width: "46px", height: "46px", fontSize: "16px" }}>
                     {user?.name ? user.name.slice(0, 2).toUpperCase() : "SP"}
+                    <span className="dash-avatar-status"></span>
                   </div>
                   <div>
                     <h6 className="fw-bold mb-0 text-dark">{user?.name}</h6>
-                    <div className="d-flex align-items-center gap-1 mt-1">
-                      <span className={`badge ${role === "admin" ? "bg-dark" : "bg-primary"}`} style={{ fontSize: "10px" }}>
+                    <div className="dash-user-email" style={{ fontSize: "11px", marginBottom: "3px" }}>{user?.email}</div>
+                    <div className="d-flex align-items-center gap-1">
+                      <span className="badge-role">
                         {role === "admin" ? "Super Admin" : "Reseller"}
                       </span>
                       {role === "reseller" && (
-                        <span className={`badge ${approvalStatus === "approved" ? "bg-success" : approvalStatus === "pending" ? "bg-warning text-dark" : "bg-danger"}`} style={{ fontSize: "10px" }}>
+                        <span className={approvalStatus === "approved" ? "badge-approved" : "badge-pending"}>
                           {approvalStatus}
                         </span>
                       )}
@@ -332,7 +325,7 @@ export default function AccountDashboard() {
             <div className="d-flex gap-2 overflow-x-auto pb-2 text-nowrap no-scrollbar">
               <button
                 type="button"
-                className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "dashboard" ? "btn-dark text-white" : "btn-light border"}`}
+                className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "dashboard" ? "btn-dark text-white shadow-sm" : "btn-light border"}`}
                 onClick={() => setActiveTab("dashboard")}
               >
                 <i className="fa-solid fa-gauge me-1"></i> Overview
@@ -342,14 +335,14 @@ export default function AccountDashboard() {
                 <>
                   <button
                     type="button"
-                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "approvals" ? "btn-dark text-white" : "btn-light border"}`}
+                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "approvals" ? "btn-dark text-white shadow-sm" : "btn-light border"}`}
                     onClick={() => setActiveTab("approvals")}
                   >
                     <i className="fa-solid fa-user-check me-1"></i> Approvals {pendingResellers.length > 0 && `(${pendingResellers.length})`}
                   </button>
                   <button
                     type="button"
-                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "resellers" ? "btn-dark text-white" : "btn-light border"}`}
+                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "resellers" ? "btn-dark text-white shadow-sm" : "btn-light border"}`}
                     onClick={async () => {
                       setActiveTab("resellers");
                       const res = await adminApi.getResellers();
@@ -361,21 +354,21 @@ export default function AccountDashboard() {
                   </button>
                   <button
                     type="button"
-                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "orders" ? "btn-dark text-white" : "btn-light border"}`}
+                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "orders" ? "btn-dark text-white shadow-sm" : "btn-light border"}`}
                     onClick={() => setActiveTab("orders")}
                   >
                     <i className="fa-solid fa-boxes-stacked me-1"></i> Orders
                   </button>
                   <button
                     type="button"
-                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "cod" ? "btn-dark text-white" : "btn-light border"}`}
+                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "cod" ? "btn-dark text-white shadow-sm" : "btn-light border"}`}
                     onClick={() => setActiveTab("cod")}
                   >
                     <i className="fa-solid fa-hand-holding-dollar me-1"></i> COD {codPendingList.length > 0 && `(${codPendingList.length})`}
                   </button>
                   <button
                     type="button"
-                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "reports" ? "btn-dark text-white" : "btn-light border"}`}
+                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "reports" ? "btn-dark text-white shadow-sm" : "btn-light border"}`}
                     onClick={() => {
                       setActiveTab("reports");
                       handleLoadReports();
@@ -388,7 +381,7 @@ export default function AccountDashboard() {
                 <>
                   <button
                     type="button"
-                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "orders" ? "btn-dark text-white" : "btn-light border"}`}
+                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "orders" ? "btn-dark text-white shadow-sm" : "btn-light border"}`}
                     onClick={() => {
                       setActiveTab("orders");
                       loadResellerData();
@@ -398,14 +391,14 @@ export default function AccountDashboard() {
                   </button>
                   <button
                     type="button"
-                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "ledger" ? "btn-dark text-white" : "btn-light border"}`}
+                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "ledger" ? "btn-dark text-white shadow-sm" : "btn-light border"}`}
                     onClick={() => setActiveTab("ledger")}
                   >
                     <i className="fa-solid fa-file-lines me-1"></i> Statement
                   </button>
                   <button
                     type="button"
-                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "business" ? "btn-dark text-white" : "btn-light border"}`}
+                    className={`btn btn-sm rounded-pill px-3 py-2 ${activeTab === "business" ? "btn-dark text-white shadow-sm" : "btn-light border"}`}
                     onClick={() => setActiveTab("business")}
                   >
                     <i className="fa-solid fa-store me-1"></i> Profile
@@ -418,27 +411,20 @@ export default function AccountDashboard() {
           <div className="row g-4">
             {/* Desktop Sidebar Navigation (>= 992px) */}
             <div className="col-lg-3 d-none d-lg-block">
-              <div className="bg-white p-4 rounded-4 shadow-sm border" style={{ position: "sticky", top: "100px" }}>
+              <div className="dash-card p-4" style={{ position: "sticky", top: "110px" }}>
                 <div className="text-center pb-3 mb-3 border-bottom">
-                  <div
-                    className="rounded-circle d-inline-flex align-items-center justify-content-center text-white fw-bold mb-2 shadow-sm"
-                    style={{
-                      width: "65px",
-                      height: "65px",
-                      backgroundColor: role === "admin" ? "#2B3A67" : "var(--accent-color, #FA7EAA)",
-                      fontSize: "22px",
-                    }}
-                  >
+                  <div className="dash-avatar mb-2">
                     {user?.name ? user.name.slice(0, 2).toUpperCase() : "SP"}
+                    <span className="dash-avatar-status"></span>
                   </div>
-                  <h6 className="fw-bold mb-0">{user?.name}</h6>
-                  <span className="text-muted small d-block mb-1">{user?.email}</span>
-                  <div className="d-flex justify-content-center gap-1">
-                    <span className={`badge ${role === "admin" ? "bg-dark" : "bg-primary"}`}>
+                  <div className="dash-user-name">{user?.name}</div>
+                  <div className="dash-user-email">{user?.email}</div>
+                  <div className="d-flex justify-content-center gap-1 mt-2">
+                    <span className="badge-role">
                       {role === "admin" ? "Super Admin" : "Reseller"}
                     </span>
                     {role === "reseller" && (
-                      <span className={`badge ${approvalStatus === "approved" ? "bg-success" : approvalStatus === "pending" ? "bg-warning text-dark" : "bg-danger"}`}>
+                      <span className={approvalStatus === "approved" ? "badge-approved" : "badge-pending"}>
                         {approvalStatus}
                       </span>
                     )}
@@ -446,31 +432,31 @@ export default function AccountDashboard() {
                 </div>
 
                 {/* Role Specific Nav Items - Vertical stack on desktop */}
-                <div className="nav flex-column gap-2 text-nowrap">
+                <div className="d-flex flex-column gap-1">
                   <button
                     type="button"
-                    className={`btn text-start rounded-pill px-3 py-2 ${activeTab === "dashboard" ? "btn-dark text-white" : "btn-light"}`}
+                    className={`dash-nav-btn ${activeTab === "dashboard" ? "active" : ""}`}
                     onClick={() => setActiveTab("dashboard")}
                   >
-                    <i className="fa-solid fa-gauge me-2"></i> Dashboard Overview
+                    <span><i className="fa-solid fa-gauge"></i> Dashboard Overview</span>
                   </button>
 
                   {role === "admin" ? (
                     <>
                       <button
                         type="button"
-                        className={`btn text-start rounded-pill px-3 py-2 d-flex justify-content-between align-items-center ${activeTab === "approvals" ? "btn-dark text-white" : "btn-light"}`}
+                        className={`dash-nav-btn ${activeTab === "approvals" ? "active" : ""}`}
                         onClick={() => setActiveTab("approvals")}
                       >
-                        <span><i className="fa-solid fa-user-check me-2"></i> Reseller Approvals</span>
+                        <span><i className="fa-solid fa-user-check"></i> Reseller Approvals</span>
                         {pendingResellers.length > 0 && (
-                          <span className="badge bg-danger rounded-pill">{pendingResellers.length}</span>
+                          <span className="dash-nav-pill-count bg-danger text-white">{pendingResellers.length}</span>
                         )}
                       </button>
 
                       <button
                         type="button"
-                        className={`btn text-start rounded-pill px-3 py-2 ${activeTab === "resellers" ? "btn-dark text-white" : "btn-light"}`}
+                        className={`dash-nav-btn ${activeTab === "resellers" ? "active" : ""}`}
                         onClick={async () => {
                           setActiveTab("resellers");
                           const res = await adminApi.getResellers();
@@ -478,66 +464,69 @@ export default function AccountDashboard() {
                           if (resellersList) setAllResellers(resellersList);
                         }}
                       >
-                        <i className="fa-solid fa-users me-2"></i> All Resellers
+                        <span><i className="fa-solid fa-users"></i> All Resellers</span>
                       </button>
 
                       <button
                         type="button"
-                        className={`btn text-start rounded-pill px-3 py-2 ${activeTab === "orders" ? "btn-dark text-white" : "btn-light"}`}
+                        className={`dash-nav-btn ${activeTab === "orders" ? "active" : ""}`}
                         onClick={() => setActiveTab("orders")}
                       >
-                        <i className="fa-solid fa-boxes-stacked me-2"></i> Order Management
+                        <span><i className="fa-solid fa-boxes-stacked"></i> Order Management</span>
                       </button>
 
                       <button
                         type="button"
-                        className={`btn text-start rounded-pill px-3 py-2 d-flex justify-content-between align-items-center ${activeTab === "cod" ? "btn-dark text-white" : "btn-light"}`}
+                        className={`dash-nav-btn ${activeTab === "cod" ? "active" : ""}`}
                         onClick={() => setActiveTab("cod")}
                       >
-                        <span><i className="fa-solid fa-hand-holding-dollar me-2"></i> COD Pending</span>
+                        <span><i className="fa-solid fa-hand-holding-dollar"></i> COD Pending</span>
                         {codPendingList.length > 0 && (
-                          <span className="badge bg-warning text-dark rounded-pill">{codPendingList.length}</span>
+                          <span className="dash-nav-pill-count bg-warning text-dark">{codPendingList.length}</span>
                         )}
                       </button>
 
                       <button
                         type="button"
-                        className={`btn text-start rounded-pill px-3 py-2 ${activeTab === "reports" ? "btn-dark text-white" : "btn-light"}`}
+                        className={`dash-nav-btn ${activeTab === "reports" ? "active" : ""}`}
                         onClick={() => {
                           setActiveTab("reports");
                           handleLoadReports();
                         }}
                       >
-                        <i className="fa-solid fa-file-invoice-dollar me-2"></i> Balance & Reports
+                        <span><i className="fa-solid fa-file-invoice-dollar"></i> Balance & Reports</span>
                       </button>
                     </>
                   ) : (
                     <>
                       <button
                         type="button"
-                        className={`btn text-start rounded-pill px-3 py-2 ${activeTab === "orders" ? "btn-dark text-white" : "btn-light"}`}
+                        className={`dash-nav-btn ${activeTab === "orders" ? "active" : ""}`}
                         onClick={() => {
                           setActiveTab("orders");
                           loadResellerData();
                         }}
                       >
-                        <i className="fa-solid fa-box-open me-2"></i> My Orders {resellerOrders.length > 0 && `(${resellerOrders.length})`}
+                        <span><i className="fa-solid fa-box-open"></i> My Orders</span>
+                        {resellerOrders.length > 0 && (
+                          <span className="dash-nav-pill-count">{resellerOrders.length}</span>
+                        )}
                       </button>
 
                       <button
                         type="button"
-                        className={`btn text-start rounded-pill px-3 py-2 ${activeTab === "ledger" ? "btn-dark text-white" : "btn-light"}`}
+                        className={`dash-nav-btn ${activeTab === "ledger" ? "active" : ""}`}
                         onClick={() => setActiveTab("ledger")}
                       >
-                        <i className="fa-solid fa-file-lines me-2"></i> Statement & Ledger
+                        <span><i className="fa-solid fa-file-lines"></i> Statement & Ledger</span>
                       </button>
 
                       <button
                         type="button"
-                        className={`btn text-start rounded-pill px-3 py-2 ${activeTab === "business" ? "btn-dark text-white" : "btn-light"}`}
+                        className={`dash-nav-btn ${activeTab === "business" ? "active" : ""}`}
                         onClick={() => setActiveTab("business")}
                       >
-                        <i className="fa-solid fa-store me-2"></i> Business Profile
+                        <span><i className="fa-solid fa-store"></i> Business Profile</span>
                       </button>
                     </>
                   )}
@@ -545,9 +534,9 @@ export default function AccountDashboard() {
                   <button
                     type="button"
                     onClick={handleLogout}
-                    className="btn btn-outline-danger text-start rounded-pill px-3 py-2 mt-3"
+                    className="dash-logout-btn"
                   >
-                    <i className="fa-solid fa-arrow-right-from-bracket me-2"></i> Sign Out
+                    <i className="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
                   </button>
                 </div>
               </div>
@@ -555,7 +544,7 @@ export default function AccountDashboard() {
 
             {/* Main Content Area */}
             <div className="col-lg-9">
-              <div className="bg-white p-4 p-md-5 rounded-4 shadow-sm border">
+              <div className="dash-card p-4 p-md-5">
                 {/* ADMIN VIEW: Dashboard Tab */}
                 {role === "admin" && activeTab === "dashboard" && (
                   <div>
@@ -1016,77 +1005,113 @@ export default function AccountDashboard() {
                 {/* RESELLER VIEW: Dashboard Overview */}
                 {role === "reseller" && activeTab === "dashboard" && (
                   <div>
-                    <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+                    <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
                       <div>
-                        <h4 className="fw-bold mb-1">Welcome back, {user?.name}!</h4>
+                        <h4 className="fw-bold mb-1 text-dark" style={{ letterSpacing: "-0.02em" }}>Welcome back, {user?.name}!</h4>
                         <p className="text-muted mb-0 small">
-                          Wholesale account for <strong>{user?.businessInfo?.businessName || "Reseller Partner"}</strong>. Track wholesale orders, account ledger, and COD receivables.
+                          Wholesale portal for <strong className="text-dark">{user?.businessInfo?.businessName || "Reseller Partner"}</strong>. Track shipments, ledger statements, and receivables.
                         </p>
                       </div>
                       <button
                         type="button"
-                        className="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-sm align-self-start align-self-sm-center"
+                        className="btn-refresh-pill align-self-start align-self-sm-center"
                         onClick={loadResellerData}
                         disabled={loading}
                       >
-                        <i className={`fa-solid fa-rotate me-1 ${loading ? "fa-spin" : ""}`}></i> Refresh
+                        <i className={`fa-solid fa-rotate ${loading ? "fa-spin" : ""}`}></i>
+                        <span>Refresh Data</span>
                       </button>
                     </div>
 
                     {/* 4 Financial Metric Cards: 2x2 on Mobile, 4x1 on Desktop */}
                     <div className="row g-3 mb-4">
                       <div className="col-6 col-lg-3">
-                        <div className="p-3 bg-white rounded-4 border shadow-sm text-center h-100">
-                          <div className="rounded-circle bg-primary-subtle text-primary d-inline-flex align-items-center justify-content-center mb-2" style={{ width: "36px", height: "36px" }}>
-                            <i className="fa-solid fa-bag-shopping"></i>
+                        <div className="dash-metric-card">
+                          <div className="dash-metric-header">
+                            <span className="dash-metric-label">Total Purchases</span>
+                            <div className="dash-metric-icon blue">
+                              <i className="fa-solid fa-bag-shopping"></i>
+                            </div>
                           </div>
-                          <h4 className="fw-bold mb-0 text-primary">
-                            ₹{(((resellerSummary?.totalPurchasesPaise ?? resellerSummary?.data?.totalPurchasesPaise ?? 0) / 100)).toFixed(2)}
-                          </h4>
-                          <span className="text-muted small" style={{ fontSize: "12px" }}>Total Purchases</span>
+                          <div>
+                            <div className="dash-metric-value">
+                              ₹{(((resellerSummary?.totalPurchasesPaise ?? resellerSummary?.data?.totalPurchasesPaise ?? 0) / 100)).toFixed(2)}
+                            </div>
+                            <div className="dash-metric-subtext">
+                              <span>All-time wholesale</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
+
                       <div className="col-6 col-lg-3">
-                        <div className="p-3 bg-white rounded-4 border shadow-sm text-center h-100">
-                          <div className="rounded-circle bg-success-subtle text-success d-inline-flex align-items-center justify-content-center mb-2" style={{ width: "36px", height: "36px" }}>
-                            <i className="fa-solid fa-circle-check"></i>
+                        <div className="dash-metric-card">
+                          <div className="dash-metric-header">
+                            <span className="dash-metric-label">Total Settled</span>
+                            <div className="dash-metric-icon emerald">
+                              <i className="fa-solid fa-circle-check"></i>
+                            </div>
                           </div>
-                          <h4 className="fw-bold mb-0 text-success">
-                            ₹{(((resellerSummary?.totalPaymentsPaise ?? resellerSummary?.data?.totalPaymentsPaise ?? 0) / 100)).toFixed(2)}
-                          </h4>
-                          <span className="text-muted small" style={{ fontSize: "12px" }}>Total Paid</span>
+                          <div>
+                            <div className="dash-metric-value text-success">
+                              ₹{(((resellerSummary?.totalPaymentsPaise ?? resellerSummary?.data?.totalPaymentsPaise ?? 0) / 100)).toFixed(2)}
+                            </div>
+                            <div className="dash-metric-subtext">
+                              <span>Reconciled in ledger</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
+
                       <div className="col-6 col-lg-3">
-                        <div className="p-3 bg-white rounded-4 border shadow-sm text-center h-100">
-                          <div className="rounded-circle bg-warning-subtle text-warning d-inline-flex align-items-center justify-content-center mb-2" style={{ width: "36px", height: "36px" }}>
-                            <i className="fa-solid fa-truck-ramp-box"></i>
+                        <div className="dash-metric-card">
+                          <div className="dash-metric-header">
+                            <span className="dash-metric-label">COD In Transit</span>
+                            <div className="dash-metric-icon amber">
+                              <i className="fa-solid fa-truck-ramp-box"></i>
+                            </div>
                           </div>
-                          <h4 className="fw-bold mb-0 text-warning">
-                            ₹{(((resellerSummary?.codPendingPaise ?? resellerSummary?.data?.codPendingPaise ?? 0) / 100)).toFixed(2)}
-                          </h4>
-                          <span className="text-muted small" style={{ fontSize: "12px" }}>COD In Transit</span>
+                          <div>
+                            <div className="dash-metric-value text-warning">
+                              ₹{(((resellerSummary?.codPendingPaise ?? resellerSummary?.data?.codPendingPaise ?? 0) / 100)).toFixed(2)}
+                            </div>
+                            <div className="dash-metric-subtext">
+                              <span>With India Post</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
+
                       <div className="col-6 col-lg-3">
-                        <div className="p-3 bg-white rounded-4 border shadow-sm text-center h-100">
-                          <div className="rounded-circle bg-danger-subtle text-danger d-inline-flex align-items-center justify-content-center mb-2" style={{ width: "36px", height: "36px" }}>
-                            <i className="fa-solid fa-scale-balanced"></i>
+                        <div className="dash-metric-card">
+                          <div className="dash-metric-header">
+                            <span className="dash-metric-label">Net Balance</span>
+                            <div className="dash-metric-icon rose">
+                              <i className="fa-solid fa-scale-balanced"></i>
+                            </div>
                           </div>
-                          <h4 className="fw-bold mb-0 text-danger">
-                            ₹{(((resellerSummary?.outstandingBalancePaise ?? resellerSummary?.data?.outstandingBalancePaise ?? 0) / 100)).toFixed(2)}
-                          </h4>
-                          <span className="text-muted small" style={{ fontSize: "12px" }}>Net Balance Due</span>
+                          <div>
+                            <div className="dash-metric-value text-danger">
+                              ₹{(((resellerSummary?.outstandingBalancePaise ?? resellerSummary?.data?.outstandingBalancePaise ?? 0) / 100)).toFixed(2)}
+                            </div>
+                            <div className="dash-metric-subtext">
+                              <span>Outstanding balance</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
 
                     <div className="d-flex justify-content-between align-items-center mb-3">
-                      <h5 className="fw-bold mb-0">Recent Orders</h5>
+                      <div>
+                        <h5 className="fw-bold mb-0 text-dark" style={{ letterSpacing: "-0.015em" }}>Recent Orders</h5>
+                        <span className="text-muted small" style={{ fontSize: "12px" }}>Latest shipments dispatched to customers</span>
+                      </div>
                       {resellerOrders.length > 0 && (
                         <button
                           type="button"
-                          className="btn btn-sm btn-link text-decoration-none text-danger fw-semibold p-0"
+                          className="btn btn-sm btn-link text-decoration-none text-dark fw-semibold p-0"
+                          style={{ fontSize: "12.5px" }}
                           onClick={() => setActiveTab("orders")}
                         >
                           View All ({resellerOrders.length}) →
@@ -1110,29 +1135,30 @@ export default function AccountDashboard() {
                           {resellerOrders.slice(0, 5).map((o) => {
                             const pInfo = getDeliveryProgressInfo(o);
                             const totalAmount = (((o.customerSellingTotalPaise || o.totalPaise || 0) / 100)).toFixed(2);
+                            const isDelivered = pInfo.percent === 100;
                             return (
-                              <div key={o._id} className="card border rounded-3 shadow-sm mb-2 p-3 bg-white">
+                              <div key={o._id} className="dash-card mb-2 p-3">
                                 <div className="d-flex justify-content-between align-items-center mb-2">
                                   <div>
                                     <div className="fw-bold text-dark">{o.orderNumber}</div>
                                     <small className="text-muted" style={{ fontSize: "11px" }}>
-                                      {new Date(o.createdAt).toLocaleDateString()}
+                                      {new Date(o.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                                     </small>
                                   </div>
-                                  <span className="badge bg-light text-dark border" style={{ fontSize: "10px" }}>
+                                  <span className="badge bg-light text-dark border font-monospace" style={{ fontSize: "10px" }}>
                                     {o.paymentMethod.toUpperCase()}
                                   </span>
                                 </div>
                                 <div className="p-2 bg-light rounded-3 mb-2">
                                   <div className="d-flex justify-content-between align-items-center mb-1">
-                                    <span className={`badge ${pInfo.badgeClass}`} style={{ fontSize: "10px" }}>
+                                    <span className={pInfo.badgeClass}>
                                       {pInfo.label}
                                     </span>
                                     <span className="small text-muted fw-bold">{pInfo.percent}%</span>
                                   </div>
-                                  <div className="progress" style={{ height: "4px" }}>
+                                  <div className="dash-progress-track w-100">
                                     <div
-                                      className={`progress-bar ${pInfo.percent === 100 ? "bg-success" : "bg-danger"}`}
+                                      className={`dash-progress-fill ${isDelivered ? "delivered" : "active"}`}
                                       style={{ width: `${pInfo.percent}%` }}
                                     ></div>
                                   </div>
@@ -1140,14 +1166,14 @@ export default function AccountDashboard() {
                                 <div className="d-flex justify-content-between align-items-center">
                                   <div>
                                     <span className="text-muted small" style={{ fontSize: "11px" }}>Total: </span>
-                                    <span className="fw-bold text-dark">₹{totalAmount}</span>
+                                    <span className="fw-bold text-dark font-monospace">₹{totalAmount}</span>
                                   </div>
                                   <button
                                     type="button"
-                                    className="btn btn-sm btn-outline-danger rounded-pill px-3 py-1"
+                                    className="btn-track-pill"
                                     onClick={() => handleTrackOrder(o.trackingNumber || o.orderNumber)}
                                   >
-                                    <i className="fa-solid fa-location-crosshairs me-1"></i> Track
+                                    <i className="fa-solid fa-location-crosshairs text-muted"></i> Track
                                   </button>
                                 </div>
                               </div>
@@ -1156,13 +1182,13 @@ export default function AccountDashboard() {
                         </div>
 
                         {/* Desktop Recent Orders Table (>= 768px) */}
-                        <div className="d-none d-md-block table-responsive">
-                          <table className="table align-middle">
-                            <thead className="table-light">
+                        <div className="dash-table-wrapper d-none d-md-block mb-3">
+                          <table className="dash-table">
+                            <thead>
                               <tr>
                                 <th>Order #</th>
                                 <th>Date</th>
-                                <th>Delivery & Status</th>
+                                <th>Delivery &amp; Status</th>
                                 <th>Payment</th>
                                 <th>Total</th>
                                 <th className="text-end">Action</th>
@@ -1172,37 +1198,51 @@ export default function AccountDashboard() {
                               {resellerOrders.slice(0, 5).map((o) => {
                                 const pInfo = getDeliveryProgressInfo(o);
                                 const totalAmount = (((o.customerSellingTotalPaise || o.totalPaise || 0) / 100)).toFixed(2);
+                                const isDelivered = pInfo.percent === 100;
                                 return (
                                   <tr key={o._id}>
-                                    <td className="fw-semibold">
-                                      <div>{o.orderNumber}</div>
+                                    <td>
+                                      <div className="fw-semibold text-dark">{o.orderNumber}</div>
                                       {o.trackingNumber && (
-                                        <small className="text-muted font-monospace" style={{ fontSize: "11px" }}>{o.trackingNumber}</small>
+                                        <span className="badge bg-light text-muted font-monospace border mt-1" style={{ fontSize: "10.5px" }}>
+                                          {o.trackingNumber}
+                                        </span>
                                       )}
                                     </td>
-                                    <td>{new Date(o.createdAt).toLocaleDateString()}</td>
+                                    <td className="text-muted" style={{ fontSize: "12.5px" }}>
+                                      {new Date(o.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                                    </td>
                                     <td>
-                                      <div className="d-flex align-items-center gap-2 mb-1">
-                                        <span className={`badge ${pInfo.badgeClass}`} style={{ fontSize: "10px" }}>{pInfo.label}</span>
-                                        <span className="small text-muted" style={{ fontSize: "10px" }}>{pInfo.percent}%</span>
+                                      <div className="d-flex align-items-center gap-2">
+                                        <span className={pInfo.badgeClass}>
+                                          {pInfo.label}
+                                          <span className="opacity-75 font-monospace">{pInfo.percent}%</span>
+                                        </span>
                                       </div>
-                                      <div className="progress" style={{ height: "4px", width: "100px" }}>
+                                      <div className="dash-progress-track">
                                         <div
-                                          className={`progress-bar ${pInfo.percent === 100 ? "bg-success" : "bg-danger"}`}
+                                          className={`dash-progress-fill ${isDelivered ? "delivered" : "active"}`}
                                           style={{ width: `${pInfo.percent}%` }}
                                         ></div>
                                       </div>
                                     </td>
-                                    <td><span className="badge bg-light text-dark border">{o.paymentMethod.toUpperCase()} ({o.paymentStatus})</span></td>
-                                    <td className="fw-bold">₹{totalAmount}</td>
+                                    <td>
+                                      <span className="badge bg-light text-secondary border font-monospace" style={{ fontSize: "11px" }}>
+                                        {o.paymentMethod.toUpperCase()} {o.paymentStatus ? `• ${o.paymentStatus}` : ""}
+                                      </span>
+                                    </td>
+                                    <td>
+                                      <span className="fw-bold text-dark font-monospace">₹{totalAmount}</span>
+                                    </td>
                                     <td className="text-end">
                                       <button
                                         type="button"
-                                        className="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                        className="btn-track-pill"
                                         onClick={() => handleTrackOrder(o.trackingNumber || o.orderNumber)}
                                         title="Track Consignment Delivery"
                                       >
-                                        <i className="fa-solid fa-location-crosshairs me-1"></i> Track
+                                        <i className="fa-solid fa-location-crosshairs text-muted"></i>
+                                        <span>Track</span>
                                       </button>
                                     </td>
                                   </tr>
@@ -1381,10 +1421,10 @@ export default function AccountDashboard() {
                                         {progInfo.percent}%
                                       </span>
                                     </div>
-                                    <div className="progress mb-2" style={{ height: "6px" }}>
+                                    <div className="progress mb-2" style={{ height: "4px" }}>
                                       <div
-                                        className={`progress-bar progress-bar-striped progress-bar-animated ${
-                                          progInfo.percent === 100 ? "bg-success" : "bg-danger"
+                                        className={`progress-bar ${
+                                          progInfo.percent === 100 ? "bg-success" : "bg-primary"
                                         }`}
                                         style={{ width: `${progInfo.percent}%` }}
                                       ></div>
@@ -1491,12 +1531,12 @@ export default function AccountDashboard() {
                         </div>
 
                         {/* DESKTOP VIEW: Full Orders Table (>= 992px) */}
-                        <div className="d-none d-lg-block table-responsive">
-                          <table className="table align-middle">
-                            <thead className="table-light">
+                        <div className="dash-table-wrapper d-none d-lg-block mb-4">
+                          <table className="dash-table">
+                            <thead>
                               <tr>
                                 <th>Order #</th>
-                                <th>Delivery & Tracking</th>
+                                <th>Delivery &amp; Tracking</th>
                                 <th>Wholesale Cost</th>
                                 <th>Customer Price</th>
                                 <th>Expected Profit</th>
@@ -1518,11 +1558,12 @@ export default function AccountDashboard() {
                                 const codStatus = o.codCollectionStatus || o.cod?.collectionStatus || (o.paymentMethod === "COD" ? "PENDING" : "PREPAID");
                                 const settlementStatus = o.resellerSettlementStatus || "UNSETTLED";
                                 const progInfo = getDeliveryProgressInfo(o);
+                                const isDelivered = progInfo.percent === 100;
 
                                 return (
                                   <tr key={o._id}>
                                     <td>
-                                      <div className="fw-bold d-flex align-items-center gap-1">
+                                      <div className="fw-semibold text-dark d-flex align-items-center gap-1">
                                         <span>{o.orderNumber}</span>
                                         {o.isFastDelivery && (
                                           <span className="badge bg-danger text-white" style={{ fontSize: "9px" }}>
@@ -1530,51 +1571,49 @@ export default function AccountDashboard() {
                                           </span>
                                         )}
                                       </div>
-                                      <small className="text-muted">{new Date(o.createdAt).toLocaleDateString()}</small>
+                                      <small className="text-muted" style={{ fontSize: "11px" }}>{new Date(o.createdAt).toLocaleDateString()}</small>
                                     </td>
                                     <td>
                                       <div className="d-flex align-items-center gap-2 mb-1">
-                                        <span className={`badge ${progInfo.badgeClass}`} style={{ fontSize: "11px" }}>
+                                        <span className={progInfo.badgeClass}>
                                           {progInfo.label}
                                         </span>
-                                        <span className="small text-muted fw-semibold" style={{ fontSize: "11px" }}>
+                                        <span className="small text-muted fw-semibold font-monospace" style={{ fontSize: "11px" }}>
                                           {progInfo.percent}%
                                         </span>
                                       </div>
-                                      <div className="progress mb-1" style={{ height: "6px", width: "120px" }}>
+                                      <div className="dash-progress-track">
                                         <div
-                                          className={`progress-bar progress-bar-striped progress-bar-animated ${
-                                            progInfo.percent === 100 ? "bg-success" : "bg-danger"
-                                          }`}
+                                          className={`dash-progress-fill ${isDelivered ? "delivered" : "active"}`}
                                           style={{ width: `${progInfo.percent}%` }}
                                         ></div>
                                       </div>
-                                      <div className="small text-muted" style={{ fontSize: "11px" }}>
+                                      <div className="small text-muted mt-1" style={{ fontSize: "11px" }}>
                                         {o.courierName || "India Post (Business Parcel)"}
                                       </div>
                                       {o.trackingNumber ? (
-                                        <div className="small text-dark font-monospace fw-semibold" style={{ fontSize: "11px" }}>
+                                        <span className="badge bg-light text-muted font-monospace border mt-1" style={{ fontSize: "10.5px" }}>
                                           {o.trackingNumber}
-                                        </div>
+                                        </span>
                                       ) : (
                                         <span className="text-muted" style={{ fontSize: "10px" }}>
                                           AWB Assigned Upon Dispatch
                                         </span>
                                       )}
                                     </td>
-                                    <td className="fw-semibold text-secondary">
+                                    <td className="fw-semibold text-secondary font-monospace">
                                       ₹{wholesaleCost}
                                     </td>
-                                    <td className="fw-bold text-dark">
+                                    <td className="fw-bold text-dark font-monospace">
                                       ₹{customerSelling}
                                     </td>
                                     <td>
-                                      <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fw-bold">
+                                      <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fw-bold font-monospace">
                                         +₹{expectedProfit}
                                       </span>
                                     </td>
                                     <td>
-                                      <div>₹{deliveryChargeAmt}</div>
+                                      <div className="font-monospace">₹{deliveryChargeAmt}</div>
                                       <span className={`badge ${o.deliveryChargeStatus === "PAID" ? "bg-success-subtle text-success" : "bg-warning-subtle text-warning"} text-capitalize`} style={{ fontSize: "10px" }}>
                                         {o.deliveryChargeStatus || "PENDING"}
                                       </span>
@@ -1582,7 +1621,7 @@ export default function AccountDashboard() {
                                     <td>
                                       {o.paymentMethod === "COD" ? (
                                         <div>
-                                          <div className="small fw-semibold">₹{collectedAmt} / ₹{targetCollection}</div>
+                                          <div className="small fw-semibold font-monospace">₹{collectedAmt} / ₹{targetCollection}</div>
                                           <div className="text-muted" style={{ fontSize: "10px" }}>
                                             {Number(collectedAmt) >= Number(targetCollection) && Number(targetCollection) > 0 ? "Fully Collected" : "Pending Courier Remit"}
                                           </div>
@@ -1598,7 +1637,7 @@ export default function AccountDashboard() {
                                           : codStatus === "PENDING"
                                           ? "bg-warning-subtle text-dark"
                                           : "bg-light text-dark border"
-                                      } text-uppercase`}>
+                                      } text-uppercase font-monospace`}>
                                         {codStatus}
                                       </span>
                                     </td>
@@ -1618,22 +1657,23 @@ export default function AccountDashboard() {
                                         href={`/api/orders/${o._id}/shipping-label?view=print&autoPrint=1&token=${localStorage.getItem("sparepro_token") || ""}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="btn btn-sm btn-outline-dark rounded-pill px-2 me-1"
+                                        className="btn-track-pill me-1"
                                         title="Download / Print Shipping Label with Barcode"
                                       >
-                                        <i className="fa-solid fa-barcode"></i> Label
+                                        <i className="fa-solid fa-barcode text-muted"></i> <span>Label</span>
                                       </a>
                                       <button
                                         type="button"
-                                        className="btn btn-sm btn-outline-danger rounded-pill px-3 me-2"
+                                        className="btn-track-pill me-1"
                                         onClick={() => handleTrackOrder(o.trackingNumber || o.orderNumber)}
                                         title="Track Delivery Progress"
                                       >
-                                        <i className="fa-solid fa-location-crosshairs me-1"></i> Track
+                                        <i className="fa-solid fa-location-crosshairs text-muted"></i> <span>Track</span>
                                       </button>
                                       <button
                                         type="button"
                                         className="btn btn-sm btn-outline-dark rounded-pill px-3"
+                                        style={{ fontSize: "12px", padding: "5px 12px" }}
                                         onClick={() => setSelectedResellerOrder(o)}
                                       >
                                         View
@@ -2069,10 +2109,10 @@ export default function AccountDashboard() {
 
                       {/* Visual 5-Step Stepper & Progress */}
                       <div className="mt-4 pt-3 border-top">
-                        <div className="progress mb-3" style={{ height: "8px" }}>
+                        <div className="progress mb-3" style={{ height: "6px" }}>
                           <div
-                            className={`progress-bar progress-bar-striped progress-bar-animated ${
-                              trackingData.progressPercent === 100 ? "bg-success" : "bg-danger"
+                            className={`progress-bar ${
+                              trackingData.progressPercent === 100 ? "bg-success" : "bg-primary"
                             }`}
                             role="progressbar"
                             style={{ width: `${trackingData.progressPercent || 40}%` }}
@@ -2081,25 +2121,25 @@ export default function AccountDashboard() {
 
                         <div className="row text-center g-2 small">
                           <div className="col">
-                            <div className={`fw-bold ${(trackingData.progressPercent || 0) >= 20 ? "text-danger" : "text-muted"}`}>
+                            <div className={`fw-bold ${(trackingData.progressPercent || 0) >= 20 ? (trackingData.progressPercent === 100 ? "text-success" : "text-primary") : "text-muted"}`}>
                               <i className="fa-solid fa-box mb-1 d-block"></i>
                               <span>Booked</span>
                             </div>
                           </div>
                           <div className="col">
-                            <div className={`fw-bold ${(trackingData.progressPercent || 0) >= 50 ? "text-danger" : "text-muted"}`}>
+                            <div className={`fw-bold ${(trackingData.progressPercent || 0) >= 50 ? (trackingData.progressPercent === 100 ? "text-success" : "text-primary") : "text-muted"}`}>
                               <i className="fa-solid fa-warehouse mb-1 d-block"></i>
                               <span>Dispatched</span>
                             </div>
                           </div>
                           <div className="col">
-                            <div className={`fw-bold ${(trackingData.progressPercent || 0) >= 70 ? "text-danger" : "text-muted"}`}>
+                            <div className={`fw-bold ${(trackingData.progressPercent || 0) >= 70 ? (trackingData.progressPercent === 100 ? "text-success" : "text-primary") : "text-muted"}`}>
                               <i className="fa-solid fa-truck mb-1 d-block"></i>
                               <span>In Transit</span>
                             </div>
                           </div>
                           <div className="col">
-                            <div className={`fw-bold ${(trackingData.progressPercent || 0) >= 90 ? "text-danger" : "text-muted"}`}>
+                            <div className={`fw-bold ${(trackingData.progressPercent || 0) >= 90 ? (trackingData.progressPercent === 100 ? "text-success" : "text-primary") : "text-muted"}`}>
                               <i className="fa-solid fa-person-biking mb-1 d-block"></i>
                               <span>Out for Delivery</span>
                             </div>
