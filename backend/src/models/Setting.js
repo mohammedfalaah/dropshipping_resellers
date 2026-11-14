@@ -36,6 +36,16 @@ const SettingSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    indiapostApiUrl: {
+      type: String,
+      default: "https://test.cept.gov.in/beextcustomer",
+      trim: true,
+    },
+    indiapostBearerToken: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

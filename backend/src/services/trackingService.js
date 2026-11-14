@@ -1,5 +1,6 @@
 const axios = require("axios");
 const Order = require("../models/Order");
+const Setting = require("../models/Setting");
 const CodCollection = require("../models/CodCollection");
 const AuditLog = require("../models/AuditLog");
 
@@ -88,13 +89,40 @@ const computeProgress = (deliveryStatus, orderStatus) => {
       return { stage: "OUT_FOR_DELIVERY", percent: 90, label: "Out for Delivery" };
     case "DELIVERED":
       return { stage: "DELIVERED", percent: 100, label: "Delivered Successfully" };
+    case "RETURNED":
+      return { stage: "DELIVERED", percent: 100, label: "Delivered (Returned to Sender)" };
     case "CANCELLED":
     case "FAILED":
-    case "RETURNED":
       return { stage: "FAILED", percent: 100, label: "Delivery Returned / Cancelled" };
     default:
       return { stage: "IN_TRANSIT", percent: 50, label: "Shipment in Transit" };
   }
+};
+
+/**
+ * Map live India Post status string to canonical stage and progress percent
+ */
+const mapIndiaPostStatusToStage = (statusStr) => {
+  const s = (statusStr || "").toUpperCase();
+  if (s.includes("DELIVERED") || s.includes("RETURNED TO SENDER")) {
+    return { stage: "DELIVERED", percent: 100, label: statusStr || "Delivered Successfully" };
+  }
+  if (s.includes("OUT FOR DELIVERY") || s.includes("BEAT") || s.includes("DISPATCH TO POSTMAN") || s.includes("OUT FOR")) {
+    return { stage: "OUT_FOR_DELIVERY", percent: 90, label: statusStr || "Out for Delivery" };
+  }
+  if (s.includes("RECEIVED AT DESTINATION") || s.includes("DESTINATION") || s.includes("REACHED")) {
+    return { stage: "IN_TRANSIT", percent: 80, label: statusStr || "Received at Destination Office" };
+  }
+  if (s.includes("TRANSIT") || s.includes("LINE-HAUL") || s.includes("RECEIVED")) {
+    return { stage: "IN_TRANSIT", percent: 70, label: statusStr || "In Transit" };
+  }
+  if (s.includes("DISPATCH") || s.includes("BAGGED") || s.includes("SORTING") || s.includes("SHIPPED")) {
+    return { stage: "DISPATCHED", percent: 50, label: statusStr || "Dispatched from Sorting Hub" };
+  }
+  if (s.includes("BOOKED") || s.includes("MANIFEST")) {
+    return { stage: "BOOKED", percent: 30, label: statusStr || "Consignment Booked" };
+  }
+  return { stage: "IN_TRANSIT", percent: 65, label: statusStr || "Shipment in Transit" };
 };
 
 /**
@@ -123,9 +151,21 @@ const getTrackingInfo = async (trackingIdentifier) => {
     : "Destination Hub, India";
   const origin = "Tirur Sorting Hub, Malappuram, Kerala - 676107";
 
-  // 2. If this is India Post and external API token is configured in process.env, try calling India Post
-  const indiaPostApiUrl = process.env.INDIAPOST_API_URL || "https://test.cept.gov.in/beextcustomer";
-  const indiaPostToken = process.env.INDIAPOST_BEARER_TOKEN;
+  // 2. Fetch platform settings for India Post credentials
+  let settings = null;
+  try {
+    settings = await Setting.findOne({ key: "platform_settings" });
+  } catch (err) {
+    // ignore
+  }
+
+  const indiaPostApiUrl =
+    settings?.indiapostApiUrl ||
+    process.env.INDIAPOST_API_URL ||
+    "https://test.cept.gov.in/beextcustomer";
+  const indiaPostToken =
+    settings?.indiapostBearerToken ||
+    process.env.INDIAPOST_BEARER_TOKEN;
 
   if (courierMeta.code === "INDIAPOST" && indiaPostToken) {
     try {
@@ -134,35 +174,81 @@ const getTrackingInfo = async (trackingIdentifier) => {
           Authorization: `Bearer ${indiaPostToken}`,
           accept: "application/json",
         },
-        timeout: 4000,
+        timeout: 5000,
       });
 
       if (response.data?.success && response.data?.data) {
+        const liveData = response.data.data;
+        const mappedProgress = mapIndiaPostStatusToStage(liveData.currentStatus);
+
+        const liveHistory = Array.isArray(liveData.history)
+          ? liveData.history.map((h) => ({
+              timestamp: h.timestamp ? new Date(h.timestamp).toISOString() : new Date().toISOString(),
+              location: h.location || origin,
+              status: h.status || "Status Scanned",
+              details: h.details || `${h.status} at ${h.location || "postal facility"}`,
+            }))
+          : [];
+
+        // Reverse so newest checkpoint is at the top
+        const sortedLiveHistory = [...liveHistory].sort(
+          (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+        );
+
+        // Auto-sync with Order in MongoDB
+        if (order) {
+          const updates = {};
+          if (mappedProgress.stage === "DELIVERED" && order.deliveryStatus !== "DELIVERED") {
+            updates.deliveryStatus = "DELIVERED";
+            updates.orderStatus = "DELIVERED";
+            updates.deliveredAt = sortedLiveHistory[0]?.timestamp
+              ? new Date(sortedLiveHistory[0].timestamp)
+              : new Date();
+          } else if (mappedProgress.stage && mappedProgress.stage !== order.deliveryStatus) {
+            updates.deliveryStatus = mappedProgress.stage;
+          }
+          if (sortedLiveHistory.length > 0) {
+            updates.trackingHistory = sortedLiveHistory;
+          }
+          if (Object.keys(updates).length > 0) {
+            await Order.findByIdAndUpdate(order._id, updates);
+          }
+        }
+
         return {
           source: "LIVE_API",
           trackingNumber,
           courierName: courierMeta.name,
           courierCode: courierMeta.code,
-          currentStatus: response.data.data.currentStatus || "In Transit",
-          origin: response.data.data.origin || origin,
-          destination: response.data.data.destination || destination,
-          history: response.data.data.history || [],
-          estimatedDelivery: response.data.data.estimatedDelivery || null,
-          officialTrackingUrl: courierMeta.portalUrl,
+          currentStatus: liveData.currentStatus || mappedProgress.label,
+          statusStage: mappedProgress.stage,
+          progressPercent: mappedProgress.percent,
+          origin: liveData.origin || origin,
+          destination: liveData.destination || destination,
+          history: sortedLiveHistory,
+          estimatedDelivery: liveData.estimatedDelivery || null,
+          officialTrackingUrl: "https://app.indiapost.gov.in/customer-selfservice/track",
           order: order
             ? {
                 _id: order._id,
                 orderNumber: order.orderNumber,
-                resellerName: order.reseller?.name,
-                recipientName: order.shippingAddress?.fullName || order.shippingAddress?.firstName,
+                resellerId: order.reseller?._id || order.reseller,
+                resellerName: order.reseller?.name || "Direct Reseller",
+                recipientName:
+                  order.shippingAddress?.fullName ||
+                  `${order.shippingAddress?.firstName || ""} ${order.shippingAddress?.lastName || ""}`.trim(),
+                recipientPhone: order.shippingAddress?.phone,
                 orderStatus: order.orderStatus,
+                deliveryStatus: mappedProgress.stage,
+                paymentMethod: order.paymentMethod,
                 isFastDelivery: Boolean(order.isFastDelivery),
+                totalAmountPaise: order.totalPaise || order.customerSellingTotalPaise,
               }
             : null,
         };
       }
     } catch (e) {
-      console.warn("[IndiaPost API]: Live endpoint failed or returned non-200. Falling back to local timeline generator:", e.message);
+      console.warn("[IndiaPost API]: Live endpoint failed or returned non-200. Falling back to database checkpoints:", e.message);
     }
   }
 
@@ -241,18 +327,24 @@ const getTrackingInfo = async (trackingIdentifier) => {
   // Reverse so newest checkpoint is at the top
   const sortedHistory = [...history].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
+  // If the newest checkpoint has a specific detailed status (e.g. "Delivered (Returned to Sender)"), use it
+  let currentStatus = progress.label;
+  if (sortedHistory.length > 0 && sortedHistory[0].status) {
+    currentStatus = sortedHistory[0].status;
+  }
+
   return {
     source: "SYSTEM_SYNCED",
     trackingNumber,
     courierName: courierMeta.name,
     courierCode: courierMeta.code,
-    currentStatus: progress.label,
+    currentStatus,
     statusStage: progress.stage,
     progressPercent: progress.percent,
     origin,
     destination,
     estimatedDelivery: estDate.toISOString().split("T")[0],
-    officialTrackingUrl: courierMeta.portalUrl,
+    officialTrackingUrl: "https://app.indiapost.gov.in/customer-selfservice/track",
     history: sortedHistory,
     order: order
       ? {

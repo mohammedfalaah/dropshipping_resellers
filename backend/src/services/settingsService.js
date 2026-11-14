@@ -69,6 +69,14 @@ const updateSettings = async (data = {}, adminUser = null) => {
     settings.autoApproveResellers = data.autoApproveResellers;
   }
 
+  if (typeof data.indiapostApiUrl === "string") {
+    settings.indiapostApiUrl = data.indiapostApiUrl.trim();
+  }
+
+  if (typeof data.indiapostBearerToken === "string") {
+    settings.indiapostBearerToken = data.indiapostBearerToken.trim();
+  }
+
   if (adminUser?._id) {
     settings.updatedBy = adminUser._id;
   }
