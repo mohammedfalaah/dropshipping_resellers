@@ -46,6 +46,19 @@ const SettingSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    indiapostRefreshToken: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    indiapostTokenExpiresAt: {
+      type: Date,
+      default: null,
+    },
+    indiapostLastTokenRefresh: {
+      type: Date,
+      default: null,
+    },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

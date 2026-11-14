@@ -73,8 +73,56 @@ const updateSettings = async (data = {}, adminUser = null) => {
     settings.indiapostApiUrl = data.indiapostApiUrl.trim();
   }
 
+  // Intelligent Token Parsing: Extract access_token, refresh_token, expires_in if full JSON was pasted
+  const parseTokenPayload = (inputStr) => {
+    if (!inputStr || typeof inputStr !== "string") return null;
+    const trimmed = inputStr.trim();
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        return parsed.data || parsed;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  };
+
   if (typeof data.indiapostBearerToken === "string") {
-    settings.indiapostBearerToken = data.indiapostBearerToken.trim();
+    const rawBearer = data.indiapostBearerToken.trim();
+    const parsedPayload = parseTokenPayload(rawBearer);
+    if (parsedPayload) {
+      if (parsedPayload.access_token) {
+        settings.indiapostBearerToken = String(parsedPayload.access_token).trim();
+      }
+      if (parsedPayload.refresh_token) {
+        settings.indiapostRefreshToken = String(parsedPayload.refresh_token).trim();
+      }
+      if (parsedPayload.expires_in) {
+        const sec = Number(parsedPayload.expires_in) || 900;
+        settings.indiapostTokenExpiresAt = new Date(Date.now() + (sec - 60) * 1000);
+      }
+      settings.indiapostLastTokenRefresh = new Date();
+    } else {
+      settings.indiapostBearerToken = rawBearer;
+    }
+  }
+
+  if (typeof data.indiapostRefreshToken === "string") {
+    const rawRefresh = data.indiapostRefreshToken.trim();
+    const parsedPayload = parseTokenPayload(rawRefresh);
+    if (parsedPayload && parsedPayload.refresh_token) {
+      settings.indiapostRefreshToken = String(parsedPayload.refresh_token).trim();
+      if (parsedPayload.access_token && !data.indiapostBearerToken) {
+        settings.indiapostBearerToken = String(parsedPayload.access_token).trim();
+      }
+    } else if (rawRefresh) {
+      settings.indiapostRefreshToken = rawRefresh;
+    }
+  }
+
+  if (data.indiapostTokenExpiresAt) {
+    settings.indiapostTokenExpiresAt = new Date(data.indiapostTokenExpiresAt);
   }
 
   if (adminUser?._id) {

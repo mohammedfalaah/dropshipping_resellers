@@ -1,4 +1,5 @@
 const settingsService = require("../services/settingsService");
+const trackingService = require("../services/trackingService");
 const { successResponse, errorResponse } = require("../utils/response");
 
 /**
@@ -54,9 +55,37 @@ const updateAdminSettings = async (req, res, next) => {
   }
 };
 
+/**
+ * Test India Post API connectivity & Token Refresh
+ */
+const testIndiaPostIntegration = async (req, res, next) => {
+  try {
+    const settings = await settingsService.getSettings();
+    if (!settings.indiapostBearerToken && !settings.indiapostRefreshToken) {
+      return errorResponse(res, "No India Post Access Token or Refresh Token configured yet.", 400);
+    }
+
+    let tokenResult = null;
+    if (settings.indiapostRefreshToken) {
+      tokenResult = await trackingService.refreshIndiaPostToken(settings);
+    }
+
+    return successResponse(res, "India Post API status checked", {
+      hasAccessToken: Boolean(settings.indiapostBearerToken),
+      hasRefreshToken: Boolean(settings.indiapostRefreshToken),
+      tokenExpiresAt: settings.indiapostTokenExpiresAt,
+      lastRefreshedAt: settings.indiapostLastTokenRefresh,
+      autoRefreshSuccess: Boolean(tokenResult),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getPublicSettings,
   getAdminSettings,
   updateAdminSettings,
+  testIndiaPostIntegration,
 };
 

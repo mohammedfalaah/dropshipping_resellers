@@ -12,7 +12,10 @@ export default function Settings() {
   const [deliveryCharge, setDeliveryCharge] = useState("50");
   const [indiapostApiUrl, setIndiapostApiUrl] = useState("https://test.cept.gov.in/beextcustomer");
   const [indiapostBearerToken, setIndiapostBearerToken] = useState("");
+  const [indiapostRefreshToken, setIndiapostRefreshToken] = useState("");
   const [showToken, setShowToken] = useState(false);
+  const [showRefreshToken, setShowRefreshToken] = useState(false);
+  const [jsonInput, setJsonInput] = useState("");
   const [razorpayKey, setRazorpayKey] = useState("rzp_live_TyLo7eXzFHYXh4");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -42,6 +45,9 @@ export default function Settings() {
           if (data.indiapostBearerToken) {
             setIndiapostBearerToken(data.indiapostBearerToken);
           }
+          if (data.indiapostRefreshToken) {
+            setIndiapostRefreshToken(data.indiapostRefreshToken);
+          }
         }
       })
       .catch((err) => {
@@ -55,6 +61,30 @@ export default function Settings() {
       isMounted = false;
     };
   }, []);
+
+  const handleParseJson = (text) => {
+    try {
+      const parsed = JSON.parse(text.trim());
+      const d = parsed.data || parsed;
+      let found = false;
+      if (d.access_token) {
+        setIndiapostBearerToken(d.access_token);
+        found = true;
+      }
+      if (d.refresh_token) {
+        setIndiapostRefreshToken(d.refresh_token);
+        found = true;
+      }
+      if (found) {
+        addToast("Successfully extracted access_token and refresh_token from JSON!", "success");
+        setJsonInput("");
+      } else {
+        addToast("Could not find access_token or refresh_token in pasted JSON.", "error");
+      }
+    } catch (err) {
+      addToast("Invalid JSON string. Please ensure valid JSON format.", "error");
+    }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -74,6 +104,7 @@ export default function Settings() {
         autoApproveResellers: autoApprove,
         indiapostApiUrl,
         indiapostBearerToken,
+        indiapostRefreshToken,
       });
       addToast(`Platform settings updated! Delivery charge set to ₹${parsedCharge.toFixed(2)}.`, "success");
     } catch (err) {
@@ -205,17 +236,47 @@ export default function Settings() {
 
                 <h6 className="fw-bold text-dark mb-3 border-bottom pb-2">
                   <i className="fa-solid fa-envelopes-bulk text-danger me-2"></i>
-                  India Post Developer API Integration (Live Tracking)
+                  India Post Developer API Integration (Live Tracking &amp; Token Refresh)
                 </h6>
                 <div className="p-3 bg-light rounded-3 mb-4 border">
                   <div className="row g-3">
                     <div className="col-12">
                       <div className="small text-muted mb-2">
                         Configure India Post Developer Portal API credentials to enable automated live tracking updates (Booked, In Transit, Out for Delivery, Delivered) across all consignments.
-                        Documentation: <code>app.indiapost.gov.in/developer-portal/apidoc</code>
+                        <br />
+                        <span className="text-dark fw-semibold">Note on Token Expiry:</span> Access Tokens expire after 15 minutes (<code>expires_in: 900</code>). When you provide the <strong>Refresh Token</strong>, VEXORA automatically calls <code>POST /v1/access/TokenWithRtoken</code> to renew tokens 24/7 without interruption.
+                      </div>
+
+                      {/* Quick JSON Paste & Auto-Extraction Box */}
+                      <div className="p-3 bg-white rounded-3 border mb-3">
+                        <label className="form-label small fw-bold text-dark mb-1">
+                          <i className="fa-solid fa-wand-magic-sparkles text-primary me-1"></i>
+                          Quick Import: Paste Full JSON Response from Developer Portal
+                        </label>
+                        <div className="input-group">
+                          <textarea
+                            className="form-control font-monospace small"
+                            rows="2"
+                            placeholder='Paste JSON containing {"success":true,"data":{"access_token":"...","refresh_token":"..."}}'
+                            value={jsonInput}
+                            onChange={(e) => setJsonInput(e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-outline-primary px-3"
+                            onClick={() => handleParseJson(jsonInput)}
+                            disabled={!jsonInput.trim()}
+                          >
+                            Extract Tokens
+                          </button>
+                        </div>
+                        <div className="small text-muted mt-1" style={{ fontSize: "11px" }}>
+                          Paste the response from <code>Customer Login and Token Generation</code> or <code>TokenWithRtoken</code> to auto-fill both Access &amp; Refresh tokens.
+                        </div>
                       </div>
                     </div>
-                    <div className="col-md-6">
+
+                    <div className="col-12">
                       <label className="form-label small fw-semibold">India Post API Base URL</label>
                       <input
                         type="text"
@@ -226,15 +287,28 @@ export default function Settings() {
                       />
                       <div className="small text-muted mt-1">Default test sandbox: <code>https://test.cept.gov.in/beextcustomer</code></div>
                     </div>
+
                     <div className="col-md-6">
-                      <label className="form-label small fw-semibold">Developer Portal Bearer Token</label>
+                      <label className="form-label small fw-semibold">
+                        Access Token (Bearer)
+                        {indiapostBearerToken && (
+                          <span className="badge bg-success-subtle text-success ms-2 font-monospace" style={{ fontSize: "10px" }}>Active</span>
+                        )}
+                      </label>
                       <div className="input-group">
                         <input
                           type={showToken ? "text" : "password"}
                           className="form-control"
-                          placeholder="Paste Bearer token from developer portal"
+                          placeholder="Paste access_token (JWT)"
                           value={indiapostBearerToken}
-                          onChange={(e) => setIndiapostBearerToken(e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val.trim().startsWith("{")) {
+                              handleParseJson(val);
+                            } else {
+                              setIndiapostBearerToken(val);
+                            }
+                          }}
                         />
                         <button
                           type="button"
@@ -245,7 +319,41 @@ export default function Settings() {
                           <i className={`fa-solid ${showToken ? "fa-eye-slash" : "fa-eye"}`}></i>
                         </button>
                       </div>
-                      <div className="small text-muted mt-1">Bearer token obtained from Department of Posts Developer Portal.</div>
+                      <div className="small text-muted mt-1">Used in <code>Authorization: Bearer &lt;access_token&gt;</code> for <code>GET /v1/tracking/</code>.</div>
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label small fw-semibold">
+                        Refresh Token (Auto-Renewal)
+                        {indiapostRefreshToken && (
+                          <span className="badge bg-primary-subtle text-primary ms-2 font-monospace" style={{ fontSize: "10px" }}>Auto-Refresh Enabled</span>
+                        )}
+                      </label>
+                      <div className="input-group">
+                        <input
+                          type={showRefreshToken ? "text" : "password"}
+                          className="form-control"
+                          placeholder="Paste refresh_token (HS512 JWT)"
+                          value={indiapostRefreshToken}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val.trim().startsWith("{")) {
+                              handleParseJson(val);
+                            } else {
+                              setIndiapostRefreshToken(val);
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-outline-secondary"
+                          onClick={() => setShowRefreshToken(!showRefreshToken)}
+                          title={showRefreshToken ? "Hide token" : "Show token"}
+                        >
+                          <i className={`fa-solid ${showRefreshToken ? "fa-eye-slash" : "fa-eye"}`}></i>
+                        </button>
+                      </div>
+                      <div className="small text-muted mt-1">Used in <code>POST /v1/access/TokenWithRtoken</code> to automatically generate fresh tokens every 15 min.</div>
                     </div>
                   </div>
                 </div>

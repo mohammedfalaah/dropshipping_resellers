@@ -90,5 +90,6 @@ router.get("/reports/sales/csv", reportController.exportReport);
 router.get("/settings", settingsController.getAdminSettings);
 router.put("/settings", settingsController.updateAdminSettings);
 router.patch("/settings", settingsController.updateAdminSettings);
+router.post("/settings/test-indiapost", settingsController.testIndiaPostIntegration);
 
 module.exports = router;

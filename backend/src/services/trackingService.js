@@ -126,6 +126,70 @@ const mapIndiaPostStatusToStage = (statusStr) => {
 };
 
 /**
+ * Refresh access token using India Post refresh token endpoint:
+ * POST /v1/access/TokenWithRtoken
+ * Header: Authorization: Bearer <refresh_token>
+ */
+const refreshIndiaPostToken = async (existingSettings = null) => {
+  let settings = existingSettings;
+  if (!settings) {
+    try {
+      settings = await Setting.findOne({ key: "platform_settings" });
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  const refreshToken = settings?.indiapostRefreshToken || process.env.INDIAPOST_REFRESH_TOKEN;
+  const apiUrl = settings?.indiapostApiUrl || process.env.INDIAPOST_API_URL || "https://test.cept.gov.in/beextcustomer";
+
+  if (!refreshToken) {
+    return null;
+  }
+
+  try {
+    const response = await axios.post(
+      `${apiUrl}/v1/access/TokenWithRtoken`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${refreshToken}`,
+          accept: "application/json",
+        },
+        timeout: 6000,
+      }
+    );
+
+    if (response.data?.success && response.data?.data) {
+      const data = response.data.data;
+      const newAccessToken = data.access_token;
+      const newRefreshToken = data.refresh_token || refreshToken;
+      const expiresIn = Number(data.expires_in) || 900;
+      const expiresAt = new Date(Date.now() + (expiresIn - 60) * 1000);
+
+      if (settings && newAccessToken) {
+        settings.indiapostBearerToken = newAccessToken;
+        settings.indiapostRefreshToken = newRefreshToken;
+        settings.indiapostTokenExpiresAt = expiresAt;
+        settings.indiapostLastTokenRefresh = new Date();
+        await settings.save();
+      }
+
+      return {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+        expiresIn,
+        expiresAt,
+      };
+    }
+  } catch (err) {
+    console.warn("[IndiaPost API]: Failed to refresh token via TokenWithRtoken:", err.message);
+  }
+
+  return null;
+};
+
+/**
  * Fetch tracking details: Checks India Post API if configured,
  * otherwise builds a synchronized, audit-grade tracking timeline
  */
@@ -163,19 +227,56 @@ const getTrackingInfo = async (trackingIdentifier) => {
     settings?.indiapostApiUrl ||
     process.env.INDIAPOST_API_URL ||
     "https://test.cept.gov.in/beextcustomer";
-  const indiaPostToken =
+
+  let indiaPostToken =
     settings?.indiapostBearerToken ||
     process.env.INDIAPOST_BEARER_TOKEN;
 
+  const refreshToken =
+    settings?.indiapostRefreshToken ||
+    process.env.INDIAPOST_REFRESH_TOKEN;
+
+  // Check if access token is expired or missing, and refresh token is available
+  const isTokenExpired = settings?.indiapostTokenExpiresAt && new Date(settings.indiapostTokenExpiresAt) <= new Date();
+  if ((!indiaPostToken || isTokenExpired) && refreshToken) {
+    const refreshed = await refreshIndiaPostToken(settings);
+    if (refreshed?.accessToken) {
+      indiaPostToken = refreshed.accessToken;
+    }
+  }
+
   if (courierMeta.code === "INDIAPOST" && indiaPostToken) {
     try {
-      const response = await axios.get(`${indiaPostApiUrl}/v1/tracking/${trackingNumber}`, {
-        headers: {
-          Authorization: `Bearer ${indiaPostToken}`,
-          accept: "application/json",
-        },
-        timeout: 5000,
-      });
+      let response = null;
+      try {
+        response = await axios.get(`${indiaPostApiUrl}/v1/tracking/${trackingNumber}`, {
+          headers: {
+            Authorization: `Bearer ${indiaPostToken}`,
+            accept: "application/json",
+          },
+          timeout: 5000,
+        });
+      } catch (reqErr) {
+        // If 401 Unauthorized (access token expired) and we have a refresh token, auto-refresh and retry once
+        if (reqErr.response?.status === 401 && refreshToken) {
+          console.log("[IndiaPost API]: Access token expired (401). Attempting automatic refresh...");
+          const refreshed = await refreshIndiaPostToken(settings);
+          if (refreshed?.accessToken) {
+            indiaPostToken = refreshed.accessToken;
+            response = await axios.get(`${indiaPostApiUrl}/v1/tracking/${trackingNumber}`, {
+              headers: {
+                Authorization: `Bearer ${indiaPostToken}`,
+                accept: "application/json",
+              },
+              timeout: 5000,
+            });
+          } else {
+            throw reqErr;
+          }
+        } else {
+          throw reqErr;
+        }
+      }
 
       if (response.data?.success && response.data?.data) {
         const liveData = response.data.data;
@@ -454,4 +555,5 @@ module.exports = {
   computeProgress,
   getTrackingInfo,
   updateOrderDeliveryProgress,
+  refreshIndiaPostToken,
 };
