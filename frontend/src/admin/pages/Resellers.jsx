@@ -24,11 +24,6 @@ export default function Resellers() {
   const [productsTab, setProductsTab] = useState("products"); // "products" or "orders"
   const [productSearch, setProductSearch] = useState("");
 
-  // Live Tracking Modal state
-  const [showTrackingModal, setShowTrackingModal] = useState(false);
-  const [trackingData, setTrackingData] = useState(null);
-  const [loadingTracking, setLoadingTracking] = useState(false);
-
   // Update Delivery Modal state
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [targetOrder, setTargetOrder] = useState(null);
@@ -154,27 +149,6 @@ export default function Resellers() {
       addToast("Failed to load ordered products.", "error");
     } finally {
       setLoadingProducts(false);
-    }
-  };
-
-  // Open Live Consignment Tracking modal (India Post / Courier)
-  const handleTrackConsignment = async (trackingIdentifier) => {
-    if (!trackingIdentifier) {
-      addToast("No tracking number assigned yet.", "info");
-      return;
-    }
-    setLoadingTracking(true);
-    setShowTrackingModal(true);
-    setTrackingData(null);
-
-    try {
-      const res = await adminApi.getTrackingInfo(trackingIdentifier);
-      setTrackingData(res.data || res);
-    } catch (err) {
-      console.error("Tracking lookup error:", err);
-      addToast(err.message || "Failed to fetch consignment tracking.", "error");
-    } finally {
-      setLoadingTracking(false);
     }
   };
 
@@ -776,14 +750,6 @@ export default function Resellers() {
                                     <div className="btn-group btn-group-sm">
                                       <button
                                         type="button"
-                                        className="btn btn-sm btn-outline-primary"
-                                        title="Track Consignment Live on India Post"
-                                        onClick={() => handleTrackConsignment(o.trackingNumber || o.orderNumber)}
-                                      >
-                                        <i className="fa-solid fa-location-dot me-1"></i> Track
-                                      </button>
-                                      <button
-                                        type="button"
                                         className="btn btn-sm btn-light border"
                                         title="Update Delivery Status"
                                         onClick={() => handleOpenUpdateDelivery(o)}
@@ -829,150 +795,6 @@ export default function Resellers() {
 
               <div className="modal-footer border-top bg-white">
                 <button type="button" className="btn btn-secondary rounded-pill px-4" onClick={() => setShowProductsModal(false)}>
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Live Consignment Tracking Modal (India Post & Multi-Courier) */}
-      {showTrackingModal && (
-        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div className="modal-content rounded-4 border-0 shadow">
-              <div className="modal-header border-bottom bg-light rounded-top-4">
-                <div className="d-flex align-items-center gap-2">
-                  <div
-                    className="p-2 rounded-3 bg-danger text-white d-flex align-items-center justify-content-center"
-                    style={{ width: "38px", height: "38px" }}
-                  >
-                    <i className="fa-solid fa-envelope-open-text"></i>
-                  </div>
-                  <div>
-                    <h5 className="modal-title fw-bold text-dark mb-0">Consignment Tracking</h5>
-                    <span className="text-muted small">
-                      {trackingData?.courierName || "India Post (Business Parcel)"} • {trackingData?.trackingNumber}
-                    </span>
-                  </div>
-                </div>
-                <button type="button" className="btn-close" onClick={() => setShowTrackingModal(false)}></button>
-              </div>
-
-              <div className="modal-body p-4">
-                {loadingTracking ? (
-                  <div className="text-center py-5">
-                    <div className="spinner-border text-danger" role="status"></div>
-                    <p className="text-muted small mt-2">Connecting to parcel tracking server...</p>
-                  </div>
-                ) : !trackingData ? (
-                  <div className="text-center py-5">
-                    <i className="fa-solid fa-triangle-exclamation fa-3x text-warning mb-3"></i>
-                    <h6 className="fw-bold">Tracking Data Unavailable</h6>
-                    <p className="text-muted small">No live checkpoints found for this consignment ID.</p>
-                  </div>
-                ) : (
-                  <>
-                    {/* Status Header Banner */}
-                    <div className="p-3 rounded-3 border mb-4 bg-light">
-                      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-                        <div>
-                          <span className="badge bg-danger-subtle text-danger border border-danger mb-1" style={{ fontSize: "11px" }}>
-                            {trackingData.courierName}
-                          </span>
-                          <h4 className="fw-bold text-dark mb-1">{trackingData.currentStatus}</h4>
-                          <div className="small text-muted">
-                            Consignment ID: <code className="fw-bold text-dark">{trackingData.trackingNumber}</code>
-                          </div>
-                        </div>
-
-                        {trackingData.officialTrackingUrl && (
-                          <a
-                            href={trackingData.officialTrackingUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-sm"
-                          >
-                            <i className="fa-solid fa-arrow-up-right-from-square me-1"></i> Track on India Post Portal
-                          </a>
-                        )}
-                      </div>
-
-                      {/* Visual Progress Bar */}
-                      <div className="mt-3 pt-3 border-top">
-                        <div className="progress" style={{ height: "8px" }}>
-                          <div
-                            className="progress-bar progress-bar-striped progress-bar-animated bg-danger"
-                            role="progressbar"
-                            style={{ width: `${trackingData.progressPercent || 50}%` }}
-                          ></div>
-                        </div>
-                        <div className="d-flex justify-content-between small text-muted mt-2">
-                          <span>Origin: <strong>{trackingData.origin}</strong></span>
-                          <span>Destination: <strong>{trackingData.destination}</strong></span>
-                        </div>
-                        {trackingData.estimatedDelivery && (
-                          <div className="small text-success fw-semibold mt-1">
-                            <i className="fa-regular fa-calendar-check me-1"></i>
-                            Estimated Delivery: {new Date(trackingData.estimatedDelivery).toLocaleDateString("en-IN", {
-                              weekday: "short",
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Checkpoint Timeline History */}
-                    <h6 className="fw-bold text-dark mb-3">
-                      <i className="fa-solid fa-timeline me-2 text-danger"></i>
-                      Consignment Checkpoint History
-                    </h6>
-
-                    {(!trackingData.history || trackingData.history.length === 0) ? (
-                      <p className="text-muted small">No tracking events posted yet.</p>
-                    ) : (
-                      <div className="position-relative ps-4 border-start border-2 border-danger ms-2">
-                        {trackingData.history.map((h, i) => (
-                          <div key={i} className="mb-3 position-relative">
-                            <div
-                              className="position-absolute bg-danger rounded-circle border border-2 border-white"
-                              style={{ width: "12px", height: "12px", left: "-23px", top: "5px" }}
-                            ></div>
-                            <div className="p-3 bg-white rounded-3 border shadow-sm">
-                              <div className="d-flex justify-content-between align-items-center mb-1">
-                                <strong className="text-dark fs-6">{h.status}</strong>
-                                <span className="small text-muted" style={{ fontSize: "11px" }}>
-                                  {new Date(h.timestamp).toLocaleString("en-IN", {
-                                    day: "numeric",
-                                    month: "short",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
-                                </span>
-                              </div>
-                              <div className="small text-muted mb-1">
-                                <i className="fa-solid fa-location-dot me-1 text-danger"></i> {h.location}
-                              </div>
-                              {h.details && (
-                                <div className="small text-secondary" style={{ fontSize: "11px" }}>
-                                  {h.details}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-
-              <div className="modal-footer border-top">
-                <button type="button" className="btn btn-secondary rounded-pill px-4" onClick={() => setShowTrackingModal(false)}>
                   Close
                 </button>
               </div>
