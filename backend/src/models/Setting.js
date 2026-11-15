@@ -38,7 +38,7 @@ const SettingSchema = new mongoose.Schema(
     },
     indiapostApiUrl: {
       type: String,
-      default: "https://test.cept.gov.in/beextcustomer",
+      default: "https://app.indiapost.gov.in/beextcustomer",
       trim: true,
     },
     indiapostBearerToken: {

@@ -66,6 +66,7 @@ export default function Products() {
   const [newSizeInput, setNewSizeInput] = useState("");
   const [showVariantMatrix, setShowVariantMatrix] = useState(false);
   const [uploadingVariantIndex, setUploadingVariantIndex] = useState(null);
+  const [uploadingColorName, setUploadingColorName] = useState(null);
 
   const clearError = (field) => {
     if (formErrors[field]) {
@@ -280,6 +281,57 @@ export default function Products() {
       ),
     }));
     toast.success(`Applied image to all "${color}" variants!`);
+  };
+
+  const handleUploadColorImageDirect = async (colorName, file) => {
+    if (!file || !colorName) return;
+    const data = new FormData();
+    data.append("image", file);
+    setUploadingColorName(colorName);
+    try {
+      const res = await productsApi.uploadImage(data);
+      if (res.success && res.data) {
+        const imageUrl = res.data.url;
+        setFormData((prev) => {
+          let updatedVariants = [...(prev.variants || [])];
+          if (updatedVariants.length === 0) {
+            updatedVariants = syncVariants(prev.colors, prev.sizes, []);
+          }
+          const hasColor = updatedVariants.some(
+            (v) => v.color && v.color.toLowerCase() === colorName.toLowerCase()
+          );
+          if (!hasColor) {
+            const baseSku = prev.sku?.trim() || "SKU";
+            const colorSku = colorName.toUpperCase().replace(/[^A-Z0-9]/g, "");
+            updatedVariants.push({
+              sku: `${baseSku}-${colorSku}`,
+              color: colorName,
+              size: prev.sizes?.[0] || "",
+              stockQuantity: parseInt(prev.stockQuantity, 10) || 10,
+              pricePaise: prev.resellerPrice ? Math.round(parseFloat(prev.resellerPrice) * 100) : 0,
+              image: imageUrl,
+            });
+          } else {
+            updatedVariants = updatedVariants.map((v) =>
+              v.color && v.color.toLowerCase() === colorName.toLowerCase()
+                ? { ...v, image: imageUrl }
+                : v
+            );
+          }
+          return {
+            ...prev,
+            variants: updatedVariants,
+          };
+        });
+        setShowVariantMatrix(true);
+        toast.success(`Photo set for "${colorName}" variant!`);
+      }
+    } catch (err) {
+      console.error("Failed to upload color variant image:", err);
+      toast.error(err.message || "Failed to upload image.");
+    } finally {
+      setUploadingColorName(null);
+    }
   };
 
   const handleRemoveVariant = (index) => {
@@ -1223,6 +1275,84 @@ export default function Products() {
                               Add Color
                             </button>
                           </div>
+
+                          {/* Dedicated Color Variant Photos Section */}
+                          {formData.colors?.length > 0 && (
+                            <div className="mt-3 pt-3 border-top">
+                              <div className="d-flex justify-content-between align-items-center mb-2">
+                                <label className="form-label small fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                  <i className="fa-solid fa-camera text-primary"></i>
+                                  <span>Color Variant Photos ({formData.colors.length})</span>
+                                </label>
+                                <span className="text-muted" style={{ fontSize: "11px" }}>
+                                  Upload photo for each color variant (auto-switches on product page)
+                                </span>
+                              </div>
+
+                              <div className="row g-2">
+                                {formData.colors.map((colorName) => {
+                                  const colorVariant = (formData.variants || []).find(
+                                    (v) => v.color && v.color.toLowerCase() === colorName.toLowerCase() && v.image
+                                  );
+                                  const colorImg = colorVariant?.image || "";
+                                  const isUploading = uploadingColorName === colorName;
+
+                                  return (
+                                    <div key={colorName} className="col-12 col-sm-6">
+                                      <div className="p-2 border rounded-3 bg-light d-flex align-items-center gap-2">
+                                        <div
+                                          className="position-relative rounded border d-flex align-items-center justify-content-center bg-white flex-shrink-0"
+                                          style={{ width: "48px", height: "48px", overflow: "hidden" }}
+                                        >
+                                          {colorImg ? (
+                                            <img
+                                              src={colorImg}
+                                              alt={colorName}
+                                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                            />
+                                          ) : (
+                                            <i className="fa-solid fa-image text-muted fs-5"></i>
+                                          )}
+                                          {isUploading && (
+                                            <div
+                                              className="position-absolute d-flex align-items-center justify-content-center bg-white bg-opacity-75"
+                                              style={{ top: 0, left: 0, right: 0, bottom: 0 }}
+                                            >
+                                              <span className="spinner-border spinner-border-sm text-primary" style={{ width: "14px", height: "14px" }}></span>
+                                            </div>
+                                          )}
+                                        </div>
+                                        <div className="flex-grow-1 min-w-0">
+                                          <div className="d-flex align-items-center gap-1">
+                                            <span className="badge bg-primary-subtle text-primary border border-primary-subtle py-0 px-2 fw-semibold" style={{ fontSize: "11px" }}>
+                                              {colorName}
+                                            </span>
+                                            <span className="text-muted" style={{ fontSize: "11px" }}>
+                                              {colorImg ? "Photo set" : "No photo"}
+                                            </span>
+                                          </div>
+                                          <label
+                                            className="btn btn-xs btn-outline-primary py-0 px-2 mt-1 rounded-pill"
+                                            style={{ fontSize: "11px", cursor: isUploading ? "not-allowed" : "pointer" }}
+                                          >
+                                            <i className="fa-solid fa-cloud-arrow-up me-1"></i>
+                                            {colorImg ? "Replace Photo" : "Upload Photo"}
+                                            <input
+                                              type="file"
+                                              accept="image/*"
+                                              className="d-none"
+                                              disabled={isUploading}
+                                              onChange={(e) => handleUploadColorImageDirect(colorName, e.target.files?.[0])}
+                                            />
+                                          </label>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         {/* Sizes Manager */}

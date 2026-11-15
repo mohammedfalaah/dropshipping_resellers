@@ -141,7 +141,7 @@ const refreshIndiaPostToken = async (existingSettings = null) => {
   }
 
   const refreshToken = settings?.indiapostRefreshToken || process.env.INDIAPOST_REFRESH_TOKEN;
-  const apiUrl = settings?.indiapostApiUrl || process.env.INDIAPOST_API_URL || "https://test.cept.gov.in/beextcustomer";
+  const apiUrl = settings?.indiapostApiUrl || process.env.INDIAPOST_API_URL || "https://app.indiapost.gov.in/beextcustomer";
 
   if (!refreshToken) {
     return null;
@@ -226,7 +226,7 @@ const getTrackingInfo = async (trackingIdentifier) => {
   const indiaPostApiUrl =
     settings?.indiapostApiUrl ||
     process.env.INDIAPOST_API_URL ||
-    "https://test.cept.gov.in/beextcustomer";
+    "https://app.indiapost.gov.in/beextcustomer";
 
   let indiaPostToken =
     settings?.indiapostBearerToken ||

@@ -10,7 +10,7 @@ export default function Settings() {
   const [autoApprove, setAutoApprove] = useState(false);
   const [defaultMoq, setDefaultMoq] = useState("1");
   const [deliveryCharge, setDeliveryCharge] = useState("50");
-  const [indiapostApiUrl, setIndiapostApiUrl] = useState("https://test.cept.gov.in/beextcustomer");
+  const [indiapostApiUrl, setIndiapostApiUrl] = useState("https://app.indiapost.gov.in/beextcustomer");
   const [indiapostBearerToken, setIndiapostBearerToken] = useState("");
   const [indiapostRefreshToken, setIndiapostRefreshToken] = useState("");
   const [showToken, setShowToken] = useState(false);
@@ -281,11 +281,11 @@ export default function Settings() {
                       <input
                         type="text"
                         className="form-control"
-                        placeholder="https://test.cept.gov.in/beextcustomer"
+                        placeholder="https://app.indiapost.gov.in/beextcustomer"
                         value={indiapostApiUrl}
                         onChange={(e) => setIndiapostApiUrl(e.target.value)}
                       />
-                      <div className="small text-muted mt-1">Default test sandbox: <code>https://test.cept.gov.in/beextcustomer</code></div>
+                      <div className="small text-muted mt-1">Live production gateway: <code>https://app.indiapost.gov.in/beextcustomer</code></div>
                     </div>
 
                     <div className="col-md-6">
