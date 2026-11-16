@@ -606,54 +606,58 @@ const getTrackingInfo = async (trackingIdentifier, requestingUser = null, forceR
         ? `Article ${trackingNumber} booked under Fast Delivery Priority Business Parcel Logistics at Tirur Booking Office (PIN 676107)`
         : `Article ${trackingNumber} booked under Business Parcel Logistics at Tirur Booking Office (PIN 676107)`,
     });
-
-    if (progress.percent >= 45) {
-      history.push({
-        timestamp: new Date(createdDate.getTime() + 1000 * 60 * 180).toISOString(),
-        location: origin,
-        status: "Item Received at Sorting Hub",
-        details: "Bagged for destination line-haul dispatch from Tirur Sorting Hub",
-      });
-    }
-
-    if (progress.percent >= 60) {
-      history.push({
-        timestamp: new Date(createdDate.getTime() + 1000 * 60 * 600).toISOString(),
-        location: "Interstate Transit Hub",
-        status: "Item Dispatched in Transit",
-        details: "Dispatched towards destination delivery center",
-      });
-    }
-
-    if (progress.percent >= 75) {
-      history.push({
-        timestamp: new Date(createdDate.getTime() + 1000 * 60 * 1440).toISOString(),
-        location: destination,
-        status: "Item Received at Destination Delivery Office",
-        details: "Sorting completed at local Delivery Post Office",
-      });
-    }
-
-    if (progress.percent >= 90) {
-      history.push({
-        timestamp: new Date(createdDate.getTime() + 1000 * 60 * 1800).toISOString(),
-        location: destination,
-        status: "Out for Delivery",
-        details: "Consignment assigned to delivery agent / beat postman",
-      });
-    }
-
-    if (progress.percent >= 100) {
-      history.push({
-        timestamp: (order?.deliveredAt ? new Date(order.deliveredAt) : new Date(createdDate.getTime() + 1000 * 60 * 2200)).toISOString(),
-        location: destination,
-        status: "Item Delivered Successfully",
-        details: "Delivered to recipient. Signature and acknowledgement captured.",
-      });
-    }
   }
 
-  // Sort descending
+  // Ensure checkpoints reflect progressive delivery stages if status has advanced
+  const existingStatuses = history.map((h) => (h.status || "").toUpperCase());
+  const hasStatus = (keyword) => existingStatuses.some((s) => s.includes(keyword));
+
+  if (progress.percent >= 45 && !hasStatus("SORTING") && !hasStatus("PROCESSING")) {
+    history.push({
+      timestamp: new Date(createdDate.getTime() + 1000 * 60 * 180).toISOString(),
+      location: origin,
+      status: "Item Received at Sorting Hub",
+      details: "Bagged for destination line-haul dispatch from Tirur Sorting Hub",
+    });
+  }
+
+  if (progress.percent >= 60 && !hasStatus("DISPATCH") && !hasStatus("TRANSIT")) {
+    history.push({
+      timestamp: new Date(createdDate.getTime() + 1000 * 60 * 600).toISOString(),
+      location: "Interstate Transit Hub",
+      status: "Item Dispatched in Transit",
+      details: "Dispatched towards destination delivery center",
+    });
+  }
+
+  if (progress.percent >= 75 && !hasStatus("DESTINATION")) {
+    history.push({
+      timestamp: new Date(createdDate.getTime() + 1000 * 60 * 1440).toISOString(),
+      location: destination,
+      status: "Item Received at Destination Delivery Office",
+      details: "Sorting completed at local Delivery Post Office",
+    });
+  }
+
+  if (progress.percent >= 90 && !hasStatus("OUT FOR DELIVERY") && !hasStatus("BEAT")) {
+    history.push({
+      timestamp: new Date(createdDate.getTime() + 1000 * 60 * 1800).toISOString(),
+      location: destination,
+      status: "Out for Delivery",
+      details: "Consignment assigned to delivery agent / beat postman",
+    });
+  }
+
+  if (progress.percent >= 100 && !hasStatus("DELIVERED")) {
+    history.push({
+      timestamp: (order?.deliveredAt ? new Date(order.deliveredAt) : new Date(createdDate.getTime() + 1000 * 60 * 2200)).toISOString(),
+      location: destination,
+      status: "Item Delivered Successfully",
+      details: "Delivered to recipient. Signature and acknowledgement captured.",
+    });
+  }
+
+  // Sort descending so newest checkpoint is at index 0
   const sortedHistory = [...history].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   const currentStatus = order?.latestTrackingStatus || sortedHistory[0]?.status || progress.label;
 
