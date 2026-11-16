@@ -21,6 +21,7 @@ const reportRoutes = require("./routes/reportRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const wishlistRoutes = require("./routes/wishlistRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
+const webhookRoutes = require("./routes/webhookRoutes");
 const paymentController = require("./controllers/paymentController");
 const settingsController = require("./controllers/settingsController");
 
@@ -170,6 +171,7 @@ app.use("/api/cod", codRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/webhooks", webhookRoutes);
 
 // 404 Handler
 app.use("*", (req, res) => {
