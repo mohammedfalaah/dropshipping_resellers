@@ -27,6 +27,12 @@ export default function AccountDashboard() {
   const [resellerLedger, setResellerLedger] = useState([]);
   const [selectedResellerOrder, setSelectedResellerOrder] = useState(null);
 
+  // Live Parcel Tracking States
+  const [showTrackingModal, setShowTrackingModal] = useState(false);
+  const [trackingData, setTrackingData] = useState(null);
+  const [loadingTracking, setLoadingTracking] = useState(false);
+  const [trackQuery, setTrackQuery] = useState("");
+
   // Fetch initial data based on role
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -140,6 +146,29 @@ export default function AccountDashboard() {
         return { stage: status, percent: 100, label: status === "RETURNED" ? "Returned to Sender" : "Cancelled", badgeClass: "dash-status-pill failed", pillClass: "failed" };
       default:
         return { stage: status, percent: 50, label: status.replace(/_/g, " "), badgeClass: "dash-status-pill transit", pillClass: "transit" };
+    }
+  };
+
+  const handleTrackOrder = async (identifier, forceRefresh = false) => {
+    const query = (identifier || trackQuery || "").trim();
+    if (!query) {
+      addToast("Please enter an Order Number or Consignment / Tracking ID", "error");
+      return;
+    }
+    setTrackQuery(query);
+    setLoadingTracking(true);
+    setShowTrackingModal(true);
+    try {
+      const res = await ordersApi.getTracking(query, forceRefresh);
+      const data = res.data?.data || res.data;
+      setTrackingData(data);
+    } catch (err) {
+      console.error("Failed to load tracking details:", err);
+      const errMsg = err.response?.data?.message || "Could not retrieve parcel tracking details.";
+      addToast(errMsg, "error");
+      setTrackingData(null);
+    } finally {
+      setLoadingTracking(false);
     }
   };
 
@@ -1124,13 +1153,24 @@ export default function AccountDashboard() {
                                     <span className="text-muted small" style={{ fontSize: "11px" }}>Total: </span>
                                     <span className="fw-bold text-dark font-monospace">₹{totalAmount}</span>
                                   </div>
-                                  <button
-                                    type="button"
-                                    className="btn-track-pill"
-                                    onClick={() => setSelectedResellerOrder(o)}
-                                  >
-                                    View
-                                  </button>
+                                  <div className="d-flex gap-1">
+                                    <button
+                                      type="button"
+                                      className="btn-track-pill"
+                                      onClick={() => handleTrackOrder(o.trackingNumber || o.orderNumber)}
+                                      title="Track Consignment Delivery"
+                                    >
+                                      <i className="fa-solid fa-location-crosshairs text-danger"></i> <span>Track</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-outline-dark rounded-pill px-2 py-1"
+                                      style={{ fontSize: "11px" }}
+                                      onClick={() => setSelectedResellerOrder(o)}
+                                    >
+                                      View
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             );
@@ -1175,14 +1215,23 @@ export default function AccountDashboard() {
                                     <td>
                                       <span className="fw-bold text-dark font-monospace">₹{totalAmount}</span>
                                     </td>
-                                    <td className="text-end">
+                                    <td className="text-end text-nowrap">
                                       <button
                                         type="button"
-                                        className="btn-track-pill"
+                                        className="btn-track-pill me-1"
+                                        onClick={() => handleTrackOrder(o.trackingNumber || o.orderNumber)}
+                                        title="Track Consignment Delivery"
+                                      >
+                                        <i className="fa-solid fa-location-crosshairs text-danger"></i> <span>Track</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-dark rounded-pill px-3"
+                                        style={{ fontSize: "12px", padding: "4px 10px" }}
                                         onClick={() => setSelectedResellerOrder(o)}
                                         title="View Order Details"
                                       >
-                                        <span>View</span>
+                                        View
                                       </button>
                                     </td>
                                   </tr>
@@ -1207,6 +1256,60 @@ export default function AccountDashboard() {
                       <span className="badge bg-dark rounded-pill px-3 py-2">
                         {resellerOrders.length} {resellerOrders.length === 1 ? "Order" : "Orders"} Total
                       </span>
+                    </div>
+
+                    {/* Track My Order Quick Search Box */}
+                    <div className="card border-0 rounded-4 shadow-sm mb-4" style={{ background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)", border: "1px solid #e2e8f0" }}>
+                      <div className="card-body p-3 p-md-4">
+                        <div className="row align-items-center g-3">
+                          <div className="col-lg-5">
+                            <div className="d-flex align-items-center gap-3">
+                              <div className="rounded-circle bg-danger-subtle text-danger d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: "42px", height: "42px" }}>
+                                <i className="fa-solid fa-truck-fast"></i>
+                              </div>
+                              <div>
+                                <h6 className="fw-bold text-dark mb-0">Track Consignment / Parcel</h6>
+                                <span className="text-muted small" style={{ fontSize: "11px" }}>
+                                  India Post live checkpoint updates &amp; delivery milestones
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="col-lg-7">
+                            <form
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                handleTrackOrder(trackQuery);
+                              }}
+                              className="d-flex gap-2"
+                            >
+                              <div className="input-group">
+                                <span className="input-group-text bg-white border-end-0 text-muted">
+                                  <i className="fa-solid fa-magnifying-glass"></i>
+                                </span>
+                                <input
+                                  type="text"
+                                  className="form-control border-start-0 font-monospace small"
+                                  placeholder="Enter Consignment AWB (e.g. SP866991875IN) or Order #"
+                                  value={trackQuery}
+                                  onChange={(e) => setTrackQuery(e.target.value)}
+                                />
+                              </div>
+                              <button
+                                type="submit"
+                                className="btn btn-dark rounded-pill px-4 text-nowrap"
+                                disabled={loadingTracking || !trackQuery.trim()}
+                              >
+                                {loadingTracking ? (
+                                  <span><i className="fa-solid fa-spinner fa-spin me-1"></i> Tracking...</span>
+                                ) : (
+                                  <span><i className="fa-solid fa-location-crosshairs me-1"></i> Track</span>
+                                )}
+                              </button>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     {resellerOrders.length === 0 ? (
@@ -1261,14 +1364,24 @@ export default function AccountDashboard() {
 
                                 <div className="card-body p-3">
                                   {/* Delivery Status Card */}
-                                  <div className="d-flex justify-content-between align-items-center p-2 rounded-3 bg-light border mb-3">
-                                    <span className="small text-muted" style={{ fontSize: "11px" }}>
-                                      <i className="fa-solid fa-truck text-danger me-1"></i>
-                                      {o.courierName || "India Post (Business Parcel)"}
-                                    </span>
-                                    <span className={`badge ${progInfo.badgeClass}`} style={{ fontSize: "10px" }}>
-                                      {progInfo.label}
-                                    </span>
+                                  <div className="p-2 rounded-3 bg-light border mb-3">
+                                    <div className="d-flex justify-content-between align-items-center mb-1">
+                                      <span className="small text-muted" style={{ fontSize: "11px" }}>
+                                        <i className="fa-solid fa-truck text-danger me-1"></i>
+                                        {o.courierName || "India Post (Business Parcel)"}
+                                      </span>
+                                      <span className={`badge ${progInfo.badgeClass}`} style={{ fontSize: "10px" }}>
+                                        {progInfo.label}
+                                      </span>
+                                    </div>
+                                    <div className="d-flex justify-content-between align-items-center pt-1 border-top" style={{ fontSize: "11px" }}>
+                                      <span className="text-muted">Consignment AWB:</span>
+                                      {o.trackingNumber ? (
+                                        <code className="text-primary fw-bold font-monospace">{o.trackingNumber}</code>
+                                      ) : (
+                                        <span className="text-muted fst-italic">Assigned on dispatch</span>
+                                      )}
+                                    </div>
                                   </div>
 
                                   {/* 3-Column Financial Snapshot (Wholesale, Customer Price, Expected Profit) */}
@@ -1318,6 +1431,14 @@ export default function AccountDashboard() {
 
                                   {/* Action Buttons Toolbar */}
                                   <div className="d-flex gap-2">
+                                    <button
+                                      type="button"
+                                      className="btn-track-pill flex-fill text-center justify-content-center"
+                                      onClick={() => handleTrackOrder(o.trackingNumber || o.orderNumber)}
+                                      title="Track Live India Post Consignment"
+                                    >
+                                      <i className="fa-solid fa-location-crosshairs text-danger"></i> <span>Track</span>
+                                    </button>
                                     <a
                                       href={printUrl}
                                       target="_blank"
@@ -1389,7 +1510,14 @@ export default function AccountDashboard() {
                                         {progInfo.label}
                                       </span>
                                       <div className="small text-muted mt-1" style={{ fontSize: "11px" }}>
-                                        {o.courierName || "India Post (Business Parcel)"}
+                                        {o.trackingNumber ? (
+                                          <span className="d-inline-flex align-items-center gap-1">
+                                            <span className="text-muted">AWB:</span>
+                                            <code className="text-primary fw-bold font-monospace">{o.trackingNumber}</code>
+                                          </span>
+                                        ) : (
+                                          <span>{o.courierName || "India Post (Business Parcel)"}</span>
+                                        )}
                                       </div>
                                     </td>
                                     <td className="fw-semibold text-secondary font-monospace">
@@ -1444,6 +1572,14 @@ export default function AccountDashboard() {
                                       </span>
                                     </td>
                                     <td className="text-end text-nowrap">
+                                      <button
+                                        type="button"
+                                        className="btn-track-pill me-1"
+                                        onClick={() => handleTrackOrder(o.trackingNumber || o.orderNumber)}
+                                        title="Track Consignment Delivery"
+                                      >
+                                        <i className="fa-solid fa-location-crosshairs text-danger"></i> <span>Track</span>
+                                      </button>
                                       <a
                                         href={`/api/orders/${o._id}/shipping-label?view=print&autoPrint=1&token=${localStorage.getItem("sparepro_token") || ""}`}
                                         target="_blank"
@@ -1496,7 +1632,7 @@ export default function AccountDashboard() {
                                   <div className="p-3 bg-light rounded-3 border mb-4">
                                     <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                                       <div>
-                                        <div className="d-flex align-items-center gap-2 mb-1">
+                                        <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
                                           <span className="badge bg-danger-subtle text-danger border border-danger" style={{ fontSize: "11px" }}>
                                             {selectedResellerOrder.courierName || "India Post (Business Parcel)"}
                                           </span>
@@ -1508,6 +1644,11 @@ export default function AccountDashboard() {
                                           <span className={`badge ${progInfo.badgeClass}`} style={{ fontSize: "11px" }}>
                                             {progInfo.label}
                                           </span>
+                                          {selectedResellerOrder.trackingNumber && (
+                                            <span className="badge bg-light text-dark border font-monospace" style={{ fontSize: "11px" }}>
+                                              AWB: {selectedResellerOrder.trackingNumber}
+                                            </span>
+                                          )}
                                         </div>
                                         {selectedResellerOrder.shippingAddress && (
                                           <div className="small text-muted">
@@ -1515,7 +1656,18 @@ export default function AccountDashboard() {
                                           </div>
                                         )}
                                       </div>
-                                      <div>
+                                      <div className="d-flex gap-2">
+                                        <button
+                                          type="button"
+                                          className="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-sm"
+                                          onClick={() => {
+                                            const tNum = selectedResellerOrder.trackingNumber || selectedResellerOrder.orderNumber;
+                                            setSelectedResellerOrder(null);
+                                            handleTrackOrder(tNum);
+                                          }}
+                                        >
+                                          <i className="fa-solid fa-location-crosshairs me-1"></i> Track Parcel Live
+                                        </button>
                                         <a
                                           href={`/api/orders/${selectedResellerOrder._id}/shipping-label?view=print&autoPrint=1&token=${localStorage.getItem("sparepro_token") || ""}`}
                                           target="_blank"
@@ -1767,6 +1919,237 @@ export default function AccountDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Reseller India Post Parcel Tracking Modal */}
+      {showTrackingModal && (
+        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div className="modal-content rounded-4 border-0 shadow">
+              <div className="modal-header border-bottom bg-light rounded-top-4 px-4 py-3">
+                <div className="d-flex align-items-center gap-2">
+                  <div className="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center" style={{ width: "38px", height: "38px" }}>
+                    <i className="fa-solid fa-truck-fast"></i>
+                  </div>
+                  <div>
+                    <h5 className="modal-title fw-bold text-dark mb-0">Order &amp; Parcel Tracking</h5>
+                    <span className="text-muted small">
+                      {trackingData?.courierName || "India Post (Business Parcel)"} •{" "}
+                      <span className="font-monospace fw-semibold">{trackingData?.trackingNumber || trackQuery}</span>
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => {
+                    setShowTrackingModal(false);
+                    setTrackingData(null);
+                  }}
+                ></button>
+              </div>
+
+              <div className="modal-body p-4">
+                {loadingTracking ? (
+                  <div className="text-center py-5">
+                    <div className="spinner-border text-danger" role="status" style={{ width: "3rem", height: "3rem" }}></div>
+                    <h6 className="fw-bold mt-3 mb-1">Connecting to India Post Logistics Network...</h6>
+                    <p className="text-muted small">Retrieving live consignment checkpoints and delivery status</p>
+                  </div>
+                ) : !trackingData ? (
+                  <div className="text-center py-5">
+                    <div
+                      className="rounded-circle bg-warning-subtle text-warning d-inline-flex align-items-center justify-content-center mb-3"
+                      style={{ width: "64px", height: "64px" }}
+                    >
+                      <i className="fa-solid fa-triangle-exclamation fa-2x"></i>
+                    </div>
+                    <h5 className="fw-bold text-dark mb-1">Tracking Information Unavailable</h5>
+                    <p className="text-muted small mb-4">
+                      We could not find active postal records for <strong>{trackQuery}</strong>.
+                      <br />
+                      Consignment tracking activates once the parcel is manifested and dispatched from our warehouse.
+                    </p>
+                    <button
+                      type="button"
+                      className="btn btn-outline-dark rounded-pill px-4"
+                      onClick={() => {
+                        setShowTrackingModal(false);
+                        setTrackingData(null);
+                      }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {/* Status Header Banner */}
+                    <div className="p-4 rounded-4 border mb-4" style={{ backgroundColor: "#f8fafc" }}>
+                      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                        <div>
+                          <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                            <span className="badge bg-danger text-white px-2 py-1" style={{ fontSize: "11px" }}>
+                              {trackingData.courierName}
+                            </span>
+                            <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                              {trackingData.statusStage || "IN TRANSIT"}
+                            </span>
+                          </div>
+                          <h4 className="fw-bold text-dark mb-1">{trackingData.currentStatus}</h4>
+                          <div className="small text-muted">
+                            Consignment / AWB:{" "}
+                            <code className="fw-bold text-dark fs-6 bg-white px-2 py-0.5 rounded border font-monospace">
+                              {trackingData.trackingNumber}
+                            </code>
+                          </div>
+                        </div>
+
+                        <div className="d-flex gap-2">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger rounded-pill px-3 py-2"
+                            onClick={() => handleTrackOrder(trackingData.trackingNumber, true)}
+                            title="Force refresh status from India Post"
+                          >
+                            <i className="fa-solid fa-rotate me-1"></i> Refresh Live
+                          </button>
+                          {trackingData.officialTrackingUrl && (
+                            <a
+                              href={trackingData.officialTrackingUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn btn-sm btn-outline-dark rounded-pill px-3 py-2 shadow-sm"
+                            >
+                              <i className="fa-solid fa-arrow-up-right-from-square me-1"></i> Official Portal
+                            </a>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Visual 5-Step Stepper & Progress */}
+                      <div className="mt-4 pt-3 border-top">
+                        <div className="progress mb-3" style={{ height: "6px" }}>
+                          <div
+                            className={`progress-bar ${trackingData.statusStage === "DELIVERED" ? "bg-success" : "bg-danger"}`}
+                            role="progressbar"
+                            style={{ width: `${trackingData.progressPercent || 30}%` }}
+                          ></div>
+                        </div>
+
+                        <div className="d-flex justify-content-between text-center small">
+                          <div className={`fw-semibold ${trackingData.progressPercent >= 20 ? "text-danger" : "text-muted"}`}>
+                            <i className="fa-solid fa-box mb-1 d-block"></i>
+                            <span>Booked</span>
+                          </div>
+                          <div className={`fw-semibold ${trackingData.progressPercent >= 50 ? "text-danger" : "text-muted"}`}>
+                            <i className="fa-solid fa-warehouse mb-1 d-block"></i>
+                            <span>Dispatched</span>
+                          </div>
+                          <div className={`fw-semibold ${trackingData.progressPercent >= 70 ? "text-danger" : "text-muted"}`}>
+                            <i className="fa-solid fa-truck-fast mb-1 d-block"></i>
+                            <span>In Transit</span>
+                          </div>
+                          <div className={`fw-semibold ${trackingData.progressPercent >= 90 ? "text-danger" : "text-muted"}`}>
+                            <i className="fa-solid fa-motorcycle mb-1 d-block"></i>
+                            <span>Out for Delivery</span>
+                          </div>
+                          <div className={`fw-semibold ${trackingData.progressPercent >= 100 ? "text-success" : "text-muted"}`}>
+                            <i className="fa-solid fa-circle-check mb-1 d-block"></i>
+                            <span>Delivered</span>
+                          </div>
+                        </div>
+
+                        <div className="d-flex flex-column flex-sm-row justify-content-between small text-muted mt-3 pt-2 border-top">
+                          <span>Origin Hub: <strong>{trackingData.origin || "Tirur Sorting Hub, Kerala"}</strong></span>
+                          <span>Destination: <strong>{trackingData.destination || "Destination Hub, India"}</strong></span>
+                        </div>
+
+                        {trackingData.estimatedDelivery && (
+                          <div className="small text-success fw-semibold mt-2">
+                            <i className="fa-regular fa-calendar-check me-1"></i>
+                            Estimated Delivery Date:{" "}
+                            {new Date(trackingData.estimatedDelivery).toLocaleDateString("en-IN", {
+                              weekday: "short",
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Checkpoint Timeline History */}
+                    <h6 className="fw-bold text-dark mb-3">
+                      <i className="fa-solid fa-timeline me-2 text-danger"></i>
+                      Consignment Checkpoint History
+                    </h6>
+
+                    {!trackingData.history || trackingData.history.length === 0 ? (
+                      <p className="text-muted small">No tracking checkpoints posted yet.</p>
+                    ) : (
+                      <div className="position-relative ps-4 border-start border-2 border-danger ms-2">
+                        {trackingData.history.map((h, i) => (
+                          <div key={i} className="mb-3 position-relative">
+                            <div
+                              className="position-absolute bg-danger rounded-circle border border-2 border-white"
+                              style={{ width: "12px", height: "12px", left: "-23px", top: "5px" }}
+                            ></div>
+                            <div className="p-3 bg-white rounded-3 border shadow-sm">
+                              <div className="d-flex justify-content-between align-items-center mb-1">
+                                <strong className="text-dark fs-6">{h.status}</strong>
+                                <span className="small text-muted" style={{ fontSize: "11px" }}>
+                                  {new Date(h.timestamp).toLocaleString("en-IN", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </span>
+                              </div>
+                              <div className="small text-muted mb-1">
+                                <i className="fa-solid fa-location-dot me-1 text-danger"></i> {h.location}
+                              </div>
+                              {h.details && (
+                                <div className="small text-secondary" style={{ fontSize: "11px" }}>
+                                  {h.details}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="modal-footer border-top bg-light rounded-bottom-4 px-4 py-3">
+                {trackingData?.officialTrackingUrl && (
+                  <a
+                    href={trackingData.officialTrackingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-outline-danger rounded-pill px-4 me-auto small"
+                  >
+                    <i className="fa-solid fa-external-link me-1"></i> Track on India Post Portal
+                  </a>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-secondary rounded-pill px-4"
+                  onClick={() => {
+                    setShowTrackingModal(false);
+                    setTrackingData(null);
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

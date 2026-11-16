@@ -27,9 +27,15 @@ const getPublicSettings = async (req, res, next) => {
 const getAdminSettings = async (req, res, next) => {
   try {
     const settings = await settingsService.getSettings();
+    const settingsObj = settings.toObject();
+
+    // Never expose plain text password to the frontend
+    settingsObj.hasIndiapostPassword = Boolean(settings.indiapostPassword);
+    settingsObj.indiapostPassword = settings.indiapostPassword ? "••••••••" : "";
+
     return successResponse(res, "Platform settings retrieved", {
       settings: {
-        ...settings.toObject(),
+        ...settingsObj,
         deliveryChargeRupees: Number((settings.deliveryChargePaise / 100).toFixed(2)),
       },
     });
@@ -44,9 +50,13 @@ const getAdminSettings = async (req, res, next) => {
 const updateAdminSettings = async (req, res, next) => {
   try {
     const updated = await settingsService.updateSettings(req.body, req.user);
+    const updatedObj = updated.toObject();
+    updatedObj.hasIndiapostPassword = Boolean(updated.indiapostPassword);
+    updatedObj.indiapostPassword = updated.indiapostPassword ? "••••••••" : "";
+
     return successResponse(res, "Platform settings updated successfully", {
       settings: {
-        ...updated.toObject(),
+        ...updatedObj,
         deliveryChargeRupees: Number((updated.deliveryChargePaise / 100).toFixed(2)),
       },
     });
@@ -56,26 +66,66 @@ const updateAdminSettings = async (req, res, next) => {
 };
 
 /**
- * Test India Post API connectivity & Token Refresh
+ * Test India Post API connectivity & Authentication
  */
 const testIndiaPostIntegration = async (req, res, next) => {
   try {
     const settings = await settingsService.getSettings();
-    if (!settings.indiapostBearerToken && !settings.indiapostRefreshToken) {
-      return errorResponse(res, "No India Post Access Token or Refresh Token configured yet.", 400);
+    const hasCreds = Boolean(
+      (settings.indiapostUsername && settings.indiapostPassword) ||
+      process.env.INDIAPOST_USERNAME ||
+      settings.indiapostRefreshToken ||
+      settings.indiapostBearerToken
+    );
+
+    if (!hasCreds) {
+      return errorResponse(
+        res,
+        "No India Post Wholesaler Username/Password or Refresh Token configured yet.",
+        "CONFIG_MISSING",
+        400
+      );
     }
 
-    let tokenResult = null;
-    if (settings.indiapostRefreshToken) {
-      tokenResult = await trackingService.refreshIndiaPostToken(settings);
+    let authResult = null;
+    let authMethod = "none";
+
+    // 1. Try Login via /v1/access/login if Username and Password exist
+    if (
+      (settings.indiapostUsername && settings.indiapostPassword) ||
+      (process.env.INDIAPOST_USERNAME && process.env.INDIAPOST_PASSWORD)
+    ) {
+      authResult = await trackingService.loginIndiaPost(settings);
+      if (authResult?.accessToken) {
+        authMethod = "login_credentials";
+      }
     }
 
-    return successResponse(res, "India Post API status checked", {
-      hasAccessToken: Boolean(settings.indiapostBearerToken),
-      hasRefreshToken: Boolean(settings.indiapostRefreshToken),
-      tokenExpiresAt: settings.indiapostTokenExpiresAt,
-      lastRefreshedAt: settings.indiapostLastTokenRefresh,
-      autoRefreshSuccess: Boolean(tokenResult),
+    // 2. If login wasn't used or failed, try refresh token if available
+    if (!authResult && settings.indiapostRefreshToken) {
+      authResult = await trackingService.refreshIndiaPostToken(settings);
+      if (authResult?.accessToken) {
+        authMethod = "refresh_token";
+      }
+    }
+
+    if (!authResult) {
+      return errorResponse(
+        res,
+        "India Post DOP API authentication failed. Please verify Wholesaler Username and Password.",
+        "AUTH_FAILED",
+        401
+      );
+    }
+
+    const updated = await settingsService.getSettings();
+
+    return successResponse(res, "India Post DOP API authenticated successfully!", {
+      authMethod,
+      hasAccessToken: Boolean(updated.indiapostBearerToken),
+      hasRefreshToken: Boolean(updated.indiapostRefreshToken),
+      tokenExpiresAt: updated.indiapostTokenExpiresAt,
+      lastRefreshedAt: updated.indiapostLastTokenRefresh,
     });
   } catch (err) {
     next(err);

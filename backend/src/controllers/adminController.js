@@ -563,11 +563,41 @@ const getResellerOrders = async (req, res, next) => {
 /**
  * Get Consignment Tracking Details (India Post & Multi-courier)
  */
+/**
+ * Admin view of tracking info (with force refresh support)
+ */
 const getTrackingInfo = async (req, res, next) => {
   try {
     const trackingService = require("../services/trackingService");
-    const trackingData = await trackingService.getTrackingInfo(req.params.trackingNumber);
+    const forceRefresh = req.query.force === "true" || req.query.refresh === "true";
+    const trackingData = await trackingService.getTrackingInfo(req.params.trackingNumber, req.user, forceRefresh);
     return successResponse(res, "Consignment tracking details retrieved successfully.", trackingData);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Admin live sync of single order tracking from India Post
+ */
+const syncOrderTracking = async (req, res, next) => {
+  try {
+    const trackingService = require("../services/trackingService");
+    const result = await trackingService.syncOrderTracking(req.params.id, req.user);
+    return successResponse(res, "Live tracking synced successfully.", result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Admin batch sync of all active in-transit shipments
+ */
+const syncAllOrdersTracking = async (req, res, next) => {
+  try {
+    const trackingService = require("../services/trackingService");
+    const result = await trackingService.syncAllActiveShipments(req.user);
+    return successResponse(res, `Batch tracking sync completed. ${result.syncedCount} shipments updated.`, result);
   } catch (err) {
     next(err);
   }
@@ -580,6 +610,8 @@ module.exports = {
   getResellerOrderedProducts,
   getResellerOrders,
   getTrackingInfo,
+  syncOrderTracking,
+  syncAllOrdersTracking,
   createReseller,
   updateReseller,
   approveReseller,

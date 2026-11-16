@@ -133,6 +133,8 @@ const OrderSchema = new mongoose.Schema(
     },
     estimatedDeliveryDate: { type: Date, default: null },
     trackingUrl: { type: String, default: "" },
+    lastTrackedAt: { type: Date, default: null },
+    latestTrackingStatus: { type: String, default: "" },
     trackingHistory: [
       {
         timestamp: { type: Date, default: Date.now },

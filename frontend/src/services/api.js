@@ -71,7 +71,8 @@ export const ordersApi = {
   getAll: (params) => api.get("/orders", { params }),
   getMyOrders: (params) => api.get("/orders/my-orders", { params }),
   getById: (id) => api.get(`/orders/${id}`),
-  getTracking: (trackingNumber) => api.get(`/orders/tracking/${encodeURIComponent(trackingNumber)}`),
+  getTracking: (trackingNumber, force = false) =>
+    api.get(`/orders/tracking/${encodeURIComponent(trackingNumber)}${force ? "?force=true" : ""}`),
   getShippingLabel: (id) => api.get(`/orders/${id}/shipping-label`),
   getShippingLabelPrintUrl: (id) => `/api/orders/${id}/shipping-label?view=print&autoPrint=1&token=${localStorage.getItem("sparepro_token") || ""}`,
 };
@@ -127,7 +128,11 @@ export const adminApi = {
   updateOrderStatus: (id, orderStatus) => api.patch(`/admin/orders/${id}/status`, { orderStatus }),
   updateOrderCodCollection: (id, data) => api.patch(`/admin/orders/${id}/cod-collection`, data),
   updateDeliveryProgress: (id, data) => api.patch(`/admin/orders/${id}/delivery-progress`, data),
-  getTrackingInfo: (trackingNumber) => api.get(`/admin/tracking/${trackingNumber}`),
+  getTrackingInfo: (trackingNumber, force = false) =>
+    api.get(`/admin/tracking/${encodeURIComponent(trackingNumber)}${force ? "?force=true" : ""}`),
+  syncOrderTracking: (id) => api.post(`/admin/orders/${id}/sync-tracking`),
+  syncAllTracking: () => api.post("/admin/tracking/sync-all"),
+  testIndiaPost: () => api.post("/admin/settings/test-indiapost"),
   getShippingLabel: (id) => api.get(`/orders/${id}/shipping-label`),
   getShippingLabelPrintUrl: (id) => `/api/orders/${id}/shipping-label?view=print&autoPrint=1&token=${localStorage.getItem("sparepro_token") || ""}`,
   getBalanceSheet: (params) => api.get("/admin/reports/balance-sheet", { params }),

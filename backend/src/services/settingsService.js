@@ -73,6 +73,22 @@ const updateSettings = async (data = {}, adminUser = null) => {
     settings.indiapostApiUrl = data.indiapostApiUrl.trim();
   }
 
+  if (typeof data.indiapostUsername === "string") {
+    settings.indiapostUsername = data.indiapostUsername.trim();
+  }
+
+  if (
+    typeof data.indiapostPassword === "string" &&
+    data.indiapostPassword.trim() &&
+    data.indiapostPassword !== "••••••••"
+  ) {
+    settings.indiapostPassword = data.indiapostPassword.trim();
+  }
+
+  if (typeof data.indiapostAutoSync === "boolean") {
+    settings.indiapostAutoSync = data.indiapostAutoSync;
+  }
+
   // Intelligent Token Parsing: Extract access_token, refresh_token, expires_in if full JSON was pasted
   const parseTokenPayload = (inputStr) => {
     if (!inputStr || typeof inputStr !== "string") return null;

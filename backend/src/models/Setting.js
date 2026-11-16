@@ -41,6 +41,16 @@ const SettingSchema = new mongoose.Schema(
       default: "https://app.indiapost.gov.in/beextcustomer",
       trim: true,
     },
+    indiapostUsername: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    indiapostPassword: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     indiapostBearerToken: {
       type: String,
       default: "",
@@ -56,6 +66,14 @@ const SettingSchema = new mongoose.Schema(
       default: null,
     },
     indiapostLastTokenRefresh: {
+      type: Date,
+      default: null,
+    },
+    indiapostAutoSync: {
+      type: Boolean,
+      default: true,
+    },
+    indiapostLastSyncAt: {
       type: Date,
       default: null,
     },

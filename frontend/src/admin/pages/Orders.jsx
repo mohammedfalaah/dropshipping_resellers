@@ -43,6 +43,12 @@ export default function Orders() {
   const [codTrackingNumber, setCodTrackingNumber] = useState("");
   const [submittingCod, setSubmittingCod] = useState(false);
 
+  // Live India Post Consignment Tracking
+  const [showTrackingModal, setShowTrackingModal] = useState(false);
+  const [trackingData, setTrackingData] = useState(null);
+  const [trackingLoading, setTrackingLoading] = useState(false);
+  const [syncingOrderId, setSyncingOrderId] = useState(null);
+
   const { addToast } = useToast();
 
   // Load resellers for filtering
@@ -188,6 +194,52 @@ export default function Orders() {
       ? adminApi.getShippingLabelPrintUrl(orderId)
       : `/api/orders/${orderId}/shipping-label?view=print&autoPrint=1&token=${localStorage.getItem("sparepro_token") || ""}`;
     window.open(printUrl, "_blank", "noopener,noreferrer,width=850,height=950");
+  };
+
+  const handleViewTracking = async (tNum, order = null) => {
+    if (!tNum) {
+      addToast("No tracking number assigned to this order yet.", "warning");
+      return;
+    }
+    setTrackingLoading(true);
+    setShowTrackingModal(true);
+    try {
+      const res = await adminApi.getTrackingInfo(tNum);
+      const data = res.data?.data || res.data;
+      setTrackingData(data);
+    } catch (err) {
+      console.error("Failed to load tracking:", err);
+      addToast(err.response?.data?.message || "Could not retrieve tracking details.", "error");
+      setTrackingData(null);
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
+
+  const handleSyncOrderTracking = async (orderId) => {
+    try {
+      setSyncingOrderId(orderId);
+      const res = await adminApi.syncOrderTracking(orderId);
+      const data = res.data?.data || res.data;
+      addToast("Live tracking synced from India Post DOP API!", "success");
+      if (showTrackingModal) {
+        setTrackingData(data);
+      }
+      if (selectedOrder && selectedOrder._id === orderId) {
+        setSelectedOrder((prev) => ({
+          ...prev,
+          latestTrackingStatus: data.currentStatus,
+          deliveryStatus: data.statusStage,
+          lastTrackedAt: new Date(),
+        }));
+      }
+      fetchOrders();
+    } catch (err) {
+      console.error("Failed to sync tracking:", err);
+      addToast(err.response?.data?.message || "Failed to sync tracking with India Post.", "error");
+    } finally {
+      setSyncingOrderId(null);
+    }
   };
 
   // Aggregated totals across current view
@@ -597,10 +649,31 @@ export default function Orders() {
                             </span>
                           )}
                         </div>
-                        <div className="small text-truncate" style={{ maxWidth: "160px", fontSize: "11px" }}>
-                          {o.courierName || "India Post"}:{" "}
+                        <div className="small text-truncate" style={{ maxWidth: "200px", fontSize: "11px" }}>
+                          <span className="text-muted">{o.courierName || "India Post"}: </span>
                           {o.trackingNumber ? (
-                            <code className="text-primary fw-bold">{o.trackingNumber}</code>
+                            <span className="d-inline-flex align-items-center gap-1">
+                              <code className="text-primary fw-bold">{o.trackingNumber}</code>
+                              <button
+                                type="button"
+                                className="btn btn-xs btn-outline-danger p-0 px-1 border-0"
+                                style={{ fontSize: "11px", lineHeight: "1" }}
+                                title="View India Post Tracking Checkpoints"
+                                onClick={() => handleViewTracking(o.trackingNumber, o)}
+                              >
+                                <i className="fa-solid fa-location-crosshairs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-xs btn-outline-secondary p-0 px-1 border-0"
+                                style={{ fontSize: "11px", lineHeight: "1" }}
+                                title="Sync Live DOP Status"
+                                disabled={syncingOrderId === o._id}
+                                onClick={() => handleSyncOrderTracking(o._id)}
+                              >
+                                <i className={`fa-solid fa-rotate ${syncingOrderId === o._id ? "fa-spin" : ""}`}></i>
+                              </button>
+                            </span>
                           ) : (
                             <span className="text-muted">Not assigned</span>
                           )}
@@ -1017,6 +1090,70 @@ export default function Orders() {
                   </div>
                 </div>
 
+                {/* India Post DOP Live Tracking Banner */}
+                <div className="p-3 bg-light rounded-3 border mb-4">
+                  <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                    <div>
+                      <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                        <span className="badge bg-danger text-white">
+                          {selectedOrder.courierName || "India Post (Business Parcel)"}
+                        </span>
+                        <span className="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace">
+                          AWB: {selectedOrder.trackingNumber || "Not assigned"}
+                        </span>
+                        {selectedOrder.latestTrackingStatus && (
+                          <span className="badge bg-success-subtle text-success border border-success-subtle">
+                            {selectedOrder.latestTrackingStatus}
+                          </span>
+                        )}
+                      </div>
+                      <div className="small text-muted">
+                        {selectedOrder.lastTrackedAt ? (
+                          <span>Last Synced: {new Date(selectedOrder.lastTrackedAt).toLocaleString()}</span>
+                        ) : (
+                          <span>Status: {selectedOrder.deliveryStatus || selectedOrder.orderStatus}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="d-flex gap-2">
+                      {selectedOrder.trackingNumber ? (
+                        <>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-sm"
+                            disabled={syncingOrderId === selectedOrder._id}
+                            onClick={() => handleSyncOrderTracking(selectedOrder._id)}
+                          >
+                            {syncingOrderId === selectedOrder._id ? (
+                              <span><i className="fa-solid fa-spinner fa-spin me-1"></i> Syncing...</span>
+                            ) : (
+                              <span><i className="fa-solid fa-rotate me-1"></i> Sync Live DOP</span>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-danger text-white rounded-pill px-3 shadow-sm"
+                            onClick={() => handleViewTracking(selectedOrder.trackingNumber, selectedOrder)}
+                          >
+                            <i className="fa-solid fa-location-crosshairs me-1"></i> View Checkpoints
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-dark rounded-pill px-3"
+                          onClick={() => {
+                            setShowDetailModal(false);
+                            handleOpenStatusModal(selectedOrder);
+                          }}
+                        >
+                          <i className="fa-solid fa-plus me-1"></i> Assign AWB
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {/* Items Snapshot */}
                 <h6 className="fw-bold border-bottom pb-2">Order Items Snapshot</h6>
                 <div className="table-responsive mb-4">
@@ -1123,6 +1260,217 @@ export default function Orders() {
                   </button>
                 </div>
                 <button type="button" className="btn btn-secondary rounded-pill px-4" onClick={() => setShowDetailModal(false)}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* India Post Consignment Tracking Modal */}
+      {showTrackingModal && (
+        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div className="modal-content rounded-4 border-0 shadow">
+              <div className="modal-header border-bottom bg-light rounded-top-4 px-4 py-3">
+                <div className="d-flex align-items-center gap-2">
+                  <div className="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center" style={{ width: "38px", height: "38px" }}>
+                    <i className="fa-solid fa-truck-fast"></i>
+                  </div>
+                  <div>
+                    <h5 className="modal-title fw-bold text-dark mb-0">India Post DOP Tracking</h5>
+                    <span className="text-muted small">
+                      {trackingData?.courierName || "India Post (Business Parcel)"} •{" "}
+                      <span className="font-monospace fw-semibold">{trackingData?.trackingNumber}</span>
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => {
+                    setShowTrackingModal(false);
+                    setTrackingData(null);
+                  }}
+                ></button>
+              </div>
+
+              <div className="modal-body p-4">
+                {trackingLoading ? (
+                  <div className="text-center py-5">
+                    <div className="spinner-border text-danger" role="status" style={{ width: "3rem", height: "3rem" }}></div>
+                    <h6 className="fw-bold mt-3 mb-1">Querying India Post DOP Logistics Network...</h6>
+                    <p className="text-muted small">Retrieving official consignment checkpoints and milestones</p>
+                  </div>
+                ) : !trackingData ? (
+                  <div className="text-center py-5">
+                    <i className="fa-solid fa-triangle-exclamation text-warning fa-3x mb-3"></i>
+                    <h6 className="fw-bold text-dark mb-1">No Tracking Information Available</h6>
+                    <p className="text-muted small">Could not retrieve tracking records from India Post DOP API.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Status Header Banner */}
+                    <div className="p-4 rounded-4 border mb-4" style={{ backgroundColor: "#f8fafc" }}>
+                      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                        <div>
+                          <div className="d-flex align-items-center gap-2 mb-2">
+                            <span className="badge bg-danger text-white px-2 py-1" style={{ fontSize: "11px" }}>
+                              {trackingData.courierName}
+                            </span>
+                            <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                              {trackingData.statusStage || "IN_TRANSIT"}
+                            </span>
+                            <span className="badge bg-light text-muted border px-2 py-1" style={{ fontSize: "10px" }}>
+                              Source: {trackingData.source || "DOP_API"}
+                            </span>
+                          </div>
+                          <h4 className="fw-bold text-dark mb-1">{trackingData.currentStatus}</h4>
+                          <div className="small text-muted">
+                            Consignment / AWB:{" "}
+                            <code className="fw-bold text-dark fs-6 bg-white px-2 py-0.5 rounded border">
+                              {trackingData.trackingNumber}
+                            </code>
+                          </div>
+                        </div>
+
+                        <div className="d-flex gap-2">
+                          {trackingData.order?._id && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-danger rounded-pill px-3 py-2"
+                              disabled={syncingOrderId === trackingData.order._id}
+                              onClick={() => handleSyncOrderTracking(trackingData.order._id)}
+                            >
+                              {syncingOrderId === trackingData.order._id ? (
+                                <span><i className="fa-solid fa-spinner fa-spin me-1"></i> Syncing...</span>
+                              ) : (
+                                <span><i className="fa-solid fa-rotate me-1"></i> Sync Live DOP</span>
+                              )}
+                            </button>
+                          )}
+                          {trackingData.officialTrackingUrl && (
+                            <a
+                              href={trackingData.officialTrackingUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn btn-sm btn-outline-dark rounded-pill px-3 py-2 shadow-sm"
+                            >
+                              <i className="fa-solid fa-arrow-up-right-from-square me-1"></i> Official Portal
+                            </a>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Visual 5-Step Stepper & Progress */}
+                      <div className="mt-4 pt-3 border-top">
+                        <div className="progress mb-3" style={{ height: "6px" }}>
+                          <div
+                            className={`progress-bar ${trackingData.statusStage === "DELIVERED" ? "bg-success" : "bg-danger"}`}
+                            role="progressbar"
+                            style={{ width: `${trackingData.progressPercent || 30}%` }}
+                          ></div>
+                        </div>
+
+                        <div className="d-flex justify-content-between text-center small">
+                          <div className={`fw-semibold ${trackingData.progressPercent >= 20 ? "text-danger" : "text-muted"}`}>
+                            <i className="fa-solid fa-box mb-1 d-block"></i>
+                            <span>Booked</span>
+                          </div>
+                          <div className={`fw-semibold ${trackingData.progressPercent >= 50 ? "text-danger" : "text-muted"}`}>
+                            <i className="fa-solid fa-warehouse mb-1 d-block"></i>
+                            <span>Dispatched</span>
+                          </div>
+                          <div className={`fw-semibold ${trackingData.progressPercent >= 70 ? "text-danger" : "text-muted"}`}>
+                            <i className="fa-solid fa-truck-fast mb-1 d-block"></i>
+                            <span>In Transit</span>
+                          </div>
+                          <div className={`fw-semibold ${trackingData.progressPercent >= 90 ? "text-danger" : "text-muted"}`}>
+                            <i className="fa-solid fa-motorcycle mb-1 d-block"></i>
+                            <span>Out for Delivery</span>
+                          </div>
+                          <div className={`fw-semibold ${trackingData.progressPercent >= 100 ? "text-success" : "text-muted"}`}>
+                            <i className="fa-solid fa-circle-check mb-1 d-block"></i>
+                            <span>Delivered</span>
+                          </div>
+                        </div>
+
+                        <div className="d-flex flex-column flex-sm-row justify-content-between small text-muted mt-3 pt-2 border-top">
+                          <span>Origin Hub: <strong>{trackingData.origin || "Tirur Sorting Hub, Kerala"}</strong></span>
+                          <span>Destination: <strong>{trackingData.destination || "Destination Hub, India"}</strong></span>
+                        </div>
+
+                        {trackingData.estimatedDelivery && (
+                          <div className="small text-success fw-semibold mt-2">
+                            <i className="fa-regular fa-calendar-check me-1"></i>
+                            Estimated Delivery Date:{" "}
+                            {new Date(trackingData.estimatedDelivery).toLocaleDateString("en-IN", {
+                              weekday: "short",
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Checkpoints Timeline */}
+                    <h6 className="fw-bold text-dark mb-3">
+                      <i className="fa-solid fa-timeline me-2 text-danger"></i>
+                      DOP Checkpoint Timeline
+                    </h6>
+
+                    {!trackingData.history || trackingData.history.length === 0 ? (
+                      <p className="text-muted small">No tracking checkpoints posted yet.</p>
+                    ) : (
+                      <div className="position-relative ps-4 border-start border-2 border-danger ms-2">
+                        {trackingData.history.map((h, i) => (
+                          <div key={i} className="mb-3 position-relative">
+                            <div
+                              className="position-absolute bg-danger rounded-circle border border-2 border-white"
+                              style={{ width: "12px", height: "12px", left: "-23px", top: "5px" }}
+                            ></div>
+                            <div className="p-3 bg-white rounded-3 border shadow-sm">
+                              <div className="d-flex justify-content-between align-items-center mb-1">
+                                <strong className="text-dark fs-6">{h.status}</strong>
+                                <span className="small text-muted" style={{ fontSize: "11px" }}>
+                                  {new Date(h.timestamp).toLocaleString("en-IN", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </span>
+                              </div>
+                              <div className="small text-muted mb-1">
+                                <i className="fa-solid fa-location-dot me-1 text-danger"></i> {h.location}
+                              </div>
+                              {h.details && (
+                                <div className="small text-secondary" style={{ fontSize: "11px" }}>
+                                  {h.details}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="modal-footer border-top bg-light rounded-bottom-4 px-4 py-3">
+                <button
+                  type="button"
+                  className="btn btn-secondary rounded-pill px-4"
+                  onClick={() => {
+                    setShowTrackingModal(false);
+                    setTrackingData(null);
+                  }}
+                >
                   Close
                 </button>
               </div>

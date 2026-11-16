@@ -11,8 +11,8 @@ const detectCourier = (trackingNumber, preferredCourier = "") => {
   const cleanNumber = (trackingNumber || "").trim().toUpperCase();
   const courier = (preferredCourier || "").toLowerCase();
 
-  // India Post consignments typically follow UPU S10 format (2 letters, 9 digits, IN)
-  // e.g. RM019388105IN, EM123456789IN, CP123456789IN, SP...
+  // India Post consignments follow UPU S10 format (2 letters, 9 digits, IN)
+  // e.g. RM019388105IN, EM123456789IN, SP866991875IN
   if (
     cleanNumber.endsWith("IN") ||
     courier.includes("india post") ||
@@ -126,6 +126,122 @@ const mapIndiaPostStatusToStage = (statusStr) => {
 };
 
 /**
+ * Robust date parser supporting Indian formats DD/MM/YYYY HH:mm:ss, ISO strings, timestamps
+ */
+const parseIndianOrIsoDate = (dateStr, fallbackTimeStr = "") => {
+  if (!dateStr) return new Date();
+  if (dateStr instanceof Date) return isNaN(dateStr.getTime()) ? new Date() : dateStr;
+  if (typeof dateStr === "number") return new Date(dateStr);
+  let s = String(dateStr).trim();
+
+  if (fallbackTimeStr && !s.includes(":") && !s.includes("T")) {
+    s = `${s} ${String(fallbackTimeStr).trim()}`;
+  }
+
+  // Direct ISO/standard parse
+  const stdDate = new Date(s);
+  if (!isNaN(stdDate.getTime())) return stdDate;
+
+  // Handle DD/MM/YYYY or DD-MM-YYYY [HH:mm[:ss]]
+  const match = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (match) {
+    const day = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1;
+    const year = parseInt(match[3], 10);
+    const hours = match[4] ? parseInt(match[4], 10) : 0;
+    const minutes = match[5] ? parseInt(match[5], 10) : 0;
+    const seconds = match[6] ? parseInt(match[6], 10) : 0;
+    const d = new Date(year, month, day, hours, minutes, seconds);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  return new Date();
+};
+
+/**
+ * Normalize raw DOP event into standardized checkpoint object
+ */
+const normalizeCheckpoint = (h, defaultOrigin = "Postal Sorting Hub") => {
+  const rawDate = h.timestamp || h.eventDate || h.date || h.dateTime;
+  const rawTime = h.eventTime || h.time || "";
+  const dateObj = parseIndianOrIsoDate(rawDate, rawTime);
+
+  const location = h.location || h.officeName || h.office || h.hub || h.city || defaultOrigin;
+  const status = h.status || h.eventDescription || h.event || h.activity || "Status Scanned";
+  const details = h.details || h.remarks || h.description || `${status} at ${location}`;
+
+  return {
+    timestamp: dateObj.toISOString(),
+    location,
+    status,
+    details,
+  };
+};
+
+/**
+ * Log in to India Post DOP using Wholesaler credentials:
+ * POST /v1/access/login
+ * Body: { username, password }
+ */
+const loginIndiaPost = async (existingSettings = null) => {
+  let settings = existingSettings;
+  if (!settings) {
+    try {
+      settings = await Setting.findOne({ key: "platform_settings" });
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  const username = settings?.indiapostUsername || process.env.INDIAPOST_USERNAME;
+  const password = settings?.indiapostPassword || process.env.INDIAPOST_PASSWORD;
+  const apiUrl = settings?.indiapostApiUrl || process.env.INDIAPOST_API_URL || "https://app.indiapost.gov.in/beextcustomer";
+
+  if (!username || !password) {
+    return null;
+  }
+
+  try {
+    const response = await axios.post(
+      `${apiUrl}/v1/access/login`,
+      { username, password },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          accept: "application/json",
+        },
+        timeout: 10000,
+      }
+    );
+
+    if (response.data?.success && response.data?.data) {
+      const { access_token, refresh_token, expires_in } = response.data.data;
+      const expiresInSec = Number(expires_in) || 900;
+      const expiresAt = new Date(Date.now() + (expiresInSec - 60) * 1000);
+
+      if (settings && access_token) {
+        settings.indiapostBearerToken = access_token;
+        if (refresh_token) settings.indiapostRefreshToken = refresh_token;
+        settings.indiapostTokenExpiresAt = expiresAt;
+        settings.indiapostLastTokenRefresh = new Date();
+        await settings.save();
+      }
+
+      return {
+        accessToken: access_token,
+        refreshToken: refresh_token || settings?.indiapostRefreshToken,
+        expiresIn: expiresInSec,
+        expiresAt,
+      };
+    }
+  } catch (err) {
+    console.warn("[IndiaPost API]: Failed to login via /v1/access/login:", err.response?.data || err.message);
+  }
+
+  return null;
+};
+
+/**
  * Refresh access token using India Post refresh token endpoint:
  * POST /v1/access/TokenWithRtoken
  * Header: Authorization: Bearer <refresh_token>
@@ -156,7 +272,7 @@ const refreshIndiaPostToken = async (existingSettings = null) => {
           Authorization: `Bearer ${refreshToken}`,
           accept: "application/json",
         },
-        timeout: 6000,
+        timeout: 8000,
       }
     );
 
@@ -183,20 +299,60 @@ const refreshIndiaPostToken = async (existingSettings = null) => {
       };
     }
   } catch (err) {
-    console.warn("[IndiaPost API]: Failed to refresh token via TokenWithRtoken:", err.message);
+    console.warn("[IndiaPost API]: Failed to refresh token via TokenWithRtoken:", err.response?.data || err.message);
   }
 
   return null;
 };
 
 /**
- * Fetch tracking details: Checks India Post API if configured,
- * otherwise builds a synchronized, audit-grade tracking timeline
+ * Get or regenerate a valid India Post Access Token
+ * Checks existing token validity -> tries refresh token -> falls back to login credentials
  */
-const getTrackingInfo = async (trackingIdentifier) => {
+const getValidIndiaPostToken = async (settings) => {
+  // 1. Check if existing access token is still unexpired (60s buffer)
+  const isTokenValid =
+    settings?.indiapostBearerToken &&
+    settings?.indiapostTokenExpiresAt &&
+    new Date(settings.indiapostTokenExpiresAt).getTime() > Date.now() + 60000;
+
+  if (isTokenValid) {
+    return settings.indiapostBearerToken;
+  }
+
+  // 2. If token expired, attempt refresh via TokenWithRtoken
+  if (settings?.indiapostRefreshToken) {
+    const refreshed = await refreshIndiaPostToken(settings);
+    if (refreshed?.accessToken) {
+      return refreshed.accessToken;
+    }
+  }
+
+  // 3. Fallback to login with Username and Password
+  if (settings?.indiapostUsername && settings?.indiapostPassword) {
+    const loggedIn = await loginIndiaPost(settings);
+    if (loggedIn?.accessToken) {
+      return loggedIn.accessToken;
+    }
+  }
+
+  return settings?.indiapostBearerToken || process.env.INDIAPOST_BEARER_TOKEN || null;
+};
+
+/**
+ * Fetch tracking details:
+ * - Validates ownership if requesting user is a reseller
+ * - Implements smart 15-minute caching and delivered-order caching
+ * - Queries live DOP API using wholesaler credentials
+ * - Auto-refreshes tokens / auto-relogs in on 401
+ * - Syncs live progress to Order in database
+ */
+const getTrackingInfo = async (trackingIdentifier, requestingUser = null, forceRefresh = false) => {
   const cleanId = (trackingIdentifier || "").trim();
   if (!cleanId) {
-    throw new Error("Tracking number or consignment ID is required");
+    const err = new Error("Tracking number or consignment ID is required");
+    err.statusCode = 400;
+    throw err;
   }
 
   // 1. Look up Order in our database by trackingNumber, orderNumber, or _id
@@ -208,6 +364,24 @@ const getTrackingInfo = async (trackingIdentifier) => {
     order = await Order.findById(cleanId).populate("reseller", "name email phone businessInfo");
   }
 
+  // 2. Security & Ownership Validation
+  if (requestingUser && requestingUser.role !== "admin") {
+    if (!order) {
+      const err = new Error("No order found matching this consignment or order number in your account.");
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const orderResellerId = order.reseller?._id ? order.reseller._id.toString() : order.reseller?.toString();
+    const currentUserId = requestingUser._id ? requestingUser._id.toString() : requestingUser.toString();
+
+    if (orderResellerId !== currentUserId) {
+      const err = new Error("Access denied: You do not have permission to view tracking for this order.");
+      err.statusCode = 403;
+      throw err;
+    }
+  }
+
   const trackingNumber = order?.trackingNumber || cleanId;
   const courierMeta = detectCourier(trackingNumber, order?.courierName || "");
   const destination = order?.shippingAddress
@@ -215,7 +389,61 @@ const getTrackingInfo = async (trackingIdentifier) => {
     : "Destination Hub, India";
   const origin = "Tirur Sorting Hub, Malappuram, Kerala - 676107";
 
-  // 2. Fetch platform settings for India Post credentials
+  // 3. Smart Caching Rule:
+  // If not force-refreshing, return cached DB tracking data if already delivered or tracked within last 15 mins
+  if (!forceRefresh && order) {
+    const isDelivered =
+      (order.deliveryStatus === "DELIVERED" || order.orderStatus === "DELIVERED") &&
+      order.trackingHistory &&
+      order.trackingHistory.length > 0;
+
+    const isRecentlyTracked =
+      order.lastTrackedAt &&
+      Date.now() - new Date(order.lastTrackedAt).getTime() < 15 * 60 * 1000 &&
+      order.trackingHistory &&
+      order.trackingHistory.length > 0;
+
+    if (isDelivered || isRecentlyTracked) {
+      const progress = computeProgress(order.deliveryStatus, order.orderStatus);
+      const sortedHistory = [...(order.trackingHistory || [])]
+        .map((h) => normalizeCheckpoint(h, origin))
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+      return {
+        source: isDelivered ? "DELIVERED_CACHE" : "CACHED_15MIN",
+        trackingNumber,
+        courierName: courierMeta.name,
+        courierCode: courierMeta.code,
+        currentStatus: order.latestTrackingStatus || sortedHistory[0]?.status || progress.label,
+        statusStage: progress.stage,
+        progressPercent: progress.percent,
+        origin,
+        destination,
+        estimatedDelivery: order.estimatedDeliveryDate
+          ? new Date(order.estimatedDeliveryDate).toISOString().split("T")[0]
+          : null,
+        officialTrackingUrl: "https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx",
+        history: sortedHistory,
+        order: {
+          _id: order._id,
+          orderNumber: order.orderNumber,
+          resellerId: order.reseller?._id || order.reseller,
+          resellerName: order.reseller?.name || "Direct Reseller",
+          recipientName:
+            order.shippingAddress?.fullName ||
+            `${order.shippingAddress?.firstName || ""} ${order.shippingAddress?.lastName || ""}`.trim(),
+          recipientPhone: order.shippingAddress?.phone,
+          orderStatus: order.orderStatus,
+          deliveryStatus: order.deliveryStatus || order.orderStatus,
+          paymentMethod: order.paymentMethod,
+          isFastDelivery: Boolean(order.isFastDelivery),
+          totalAmountPaise: order.totalPaise || order.customerSellingTotalPaise,
+        },
+      };
+    }
+  }
+
+  // 4. Fetch Wholesaler India Post settings
   let settings = null;
   try {
     settings = await Setting.findOne({ key: "platform_settings" });
@@ -228,23 +456,9 @@ const getTrackingInfo = async (trackingIdentifier) => {
     process.env.INDIAPOST_API_URL ||
     "https://app.indiapost.gov.in/beextcustomer";
 
-  let indiaPostToken =
-    settings?.indiapostBearerToken ||
-    process.env.INDIAPOST_BEARER_TOKEN;
+  let indiaPostToken = await getValidIndiaPostToken(settings);
 
-  const refreshToken =
-    settings?.indiapostRefreshToken ||
-    process.env.INDIAPOST_REFRESH_TOKEN;
-
-  // Check if access token is expired or missing, and refresh token is available
-  const isTokenExpired = settings?.indiapostTokenExpiresAt && new Date(settings.indiapostTokenExpiresAt) <= new Date();
-  if ((!indiaPostToken || isTokenExpired) && refreshToken) {
-    const refreshed = await refreshIndiaPostToken(settings);
-    if (refreshed?.accessToken) {
-      indiaPostToken = refreshed.accessToken;
-    }
-  }
-
+  // 5. Query live India Post Customer Integration API
   if (courierMeta.code === "INDIAPOST" && indiaPostToken) {
     try {
       let response = null;
@@ -254,21 +468,21 @@ const getTrackingInfo = async (trackingIdentifier) => {
             Authorization: `Bearer ${indiaPostToken}`,
             accept: "application/json",
           },
-          timeout: 5000,
+          timeout: 8000,
         });
       } catch (reqErr) {
-        // If 401 Unauthorized (access token expired) and we have a refresh token, auto-refresh and retry once
-        if (reqErr.response?.status === 401 && refreshToken) {
-          console.log("[IndiaPost API]: Access token expired (401). Attempting automatic refresh...");
-          const refreshed = await refreshIndiaPostToken(settings);
-          if (refreshed?.accessToken) {
-            indiaPostToken = refreshed.accessToken;
+        // If 401 Unauthorized, re-login once with wholesaler credentials and retry
+        if (reqErr.response?.status === 401) {
+          console.log("[IndiaPost API]: Token expired (401). Attempting re-authentication with DOP credentials...");
+          const freshLogin = await loginIndiaPost(settings);
+          if (freshLogin?.accessToken) {
+            indiaPostToken = freshLogin.accessToken;
             response = await axios.get(`${indiaPostApiUrl}/v1/tracking/${trackingNumber}`, {
               headers: {
                 Authorization: `Bearer ${indiaPostToken}`,
                 accept: "application/json",
               },
-              timeout: 5000,
+              timeout: 8000,
             });
           } else {
             throw reqErr;
@@ -278,28 +492,29 @@ const getTrackingInfo = async (trackingIdentifier) => {
         }
       }
 
-      if (response.data?.success && response.data?.data) {
+      if (response && response.data?.success && response.data?.data) {
         const liveData = response.data.data;
         const mappedProgress = mapIndiaPostStatusToStage(liveData.currentStatus);
 
-        const liveHistory = Array.isArray(liveData.history)
-          ? liveData.history.map((h) => ({
-              timestamp: h.timestamp ? new Date(h.timestamp).toISOString() : new Date().toISOString(),
-              location: h.location || origin,
-              status: h.status || "Status Scanned",
-              details: h.details || `${h.status} at ${h.location || "postal facility"}`,
-            }))
-          : [];
+        const rawList = Array.isArray(liveData.history) ? liveData.history : [];
+        const liveHistory = rawList.map((h) => normalizeCheckpoint(h, liveData.origin || origin));
 
-        // Reverse so newest checkpoint is at the top
+        // Sort descending so newest checkpoint is at index 0
         const sortedLiveHistory = [...liveHistory].sort(
           (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
         );
 
+        const currentStatus =
+          liveData.currentStatus || sortedLiveHistory[0]?.status || mappedProgress.label;
+
         // Auto-sync with Order in MongoDB
         if (order) {
-          const updates = {};
-          if (mappedProgress.stage === "DELIVERED" && order.deliveryStatus !== "DELIVERED") {
+          const updates = {
+            lastTrackedAt: new Date(),
+            latestTrackingStatus: currentStatus,
+          };
+
+          if (mappedProgress.stage === "DELIVERED") {
             updates.deliveryStatus = "DELIVERED";
             updates.orderStatus = "DELIVERED";
             updates.deliveredAt = sortedLiveHistory[0]?.timestamp
@@ -308,11 +523,26 @@ const getTrackingInfo = async (trackingIdentifier) => {
           } else if (mappedProgress.stage && mappedProgress.stage !== order.deliveryStatus) {
             updates.deliveryStatus = mappedProgress.stage;
           }
+
           if (sortedLiveHistory.length > 0) {
             updates.trackingHistory = sortedLiveHistory;
           }
-          if (Object.keys(updates).length > 0) {
-            await Order.findByIdAndUpdate(order._id, updates);
+
+          if (liveData.estimatedDelivery) {
+            updates.estimatedDeliveryDate = parseIndianOrIsoDate(liveData.estimatedDelivery);
+          }
+
+          await Order.findByIdAndUpdate(order._id, updates);
+
+          // Sync COD collection record if applicable
+          if (order.paymentMethod === "COD") {
+            await CodCollection.findOneAndUpdate(
+              { order: order._id },
+              {
+                deliveryStatus: updates.deliveryStatus || order.deliveryStatus,
+                trackingNumber: order.trackingNumber || trackingNumber,
+              }
+            );
           }
         }
 
@@ -321,14 +551,14 @@ const getTrackingInfo = async (trackingIdentifier) => {
           trackingNumber,
           courierName: courierMeta.name,
           courierCode: courierMeta.code,
-          currentStatus: liveData.currentStatus || mappedProgress.label,
+          currentStatus,
           statusStage: mappedProgress.stage,
           progressPercent: mappedProgress.percent,
           origin: liveData.origin || origin,
           destination: liveData.destination || destination,
           history: sortedLiveHistory,
           estimatedDelivery: liveData.estimatedDelivery || null,
-          officialTrackingUrl: "https://app.indiapost.gov.in/customer-selfservice/track",
+          officialTrackingUrl: "https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx",
           order: order
             ? {
                 _id: order._id,
@@ -349,11 +579,14 @@ const getTrackingInfo = async (trackingIdentifier) => {
         };
       }
     } catch (e) {
-      console.warn("[IndiaPost API]: Live endpoint failed or returned non-200. Falling back to database checkpoints:", e.message);
+      console.warn(
+        `[IndiaPost API]: Live endpoint failed for AWB ${trackingNumber}. Falling back to internal checkpoints:`,
+        e.response?.data || e.message
+      );
     }
   }
 
-  // 3. Construct or retrieve existing tracking history from Order document
+  // 6. Resilient Fallback: Retrieve existing checkpoints or generate progressive timeline
   const progress = computeProgress(order?.deliveryStatus, order?.orderStatus);
   const createdDate = order?.createdAt ? new Date(order.createdAt) : new Date(Date.now() - 86400000 * 2);
   const estDate = order?.estimatedDeliveryDate
@@ -362,20 +595,15 @@ const getTrackingInfo = async (trackingIdentifier) => {
 
   let history = [];
   if (order?.trackingHistory && order.trackingHistory.length > 0) {
-    history = order.trackingHistory.map((h) => ({
-      timestamp: h.timestamp ? new Date(h.timestamp).toISOString() : new Date().toISOString(),
-      location: h.location || origin,
-      status: h.status || "Item Processed",
-      details: h.details || "Processed at postal hub",
-    }));
+    history = order.trackingHistory.map((h) => normalizeCheckpoint(h, origin));
   } else {
-    // Generate realistic, progressive checkpoints based on current stage
+    // Generate manifest checkpoint
     history.push({
       timestamp: new Date(createdDate.getTime() + 1000 * 60 * 30).toISOString(),
-      location: "Spare pro Origin Hub, Tirur, Kerala - 676107",
+      location: origin,
       status: "Consignment Manifest Generated",
       details: order?.isFastDelivery
-        ? `Article ${trackingNumber} booked under Fast Delivery (Priority Dispatch) Business Parcel Logistics at Tirur Booking Office (PIN 676107)`
+        ? `Article ${trackingNumber} booked under Fast Delivery Priority Business Parcel Logistics at Tirur Booking Office (PIN 676107)`
         : `Article ${trackingNumber} booked under Business Parcel Logistics at Tirur Booking Office (PIN 676107)`,
     });
 
@@ -384,7 +612,7 @@ const getTrackingInfo = async (trackingIdentifier) => {
         timestamp: new Date(createdDate.getTime() + 1000 * 60 * 180).toISOString(),
         location: origin,
         status: "Item Received at Sorting Hub",
-        details: "Bagged for destination line-haul dispatch from Tirur",
+        details: "Bagged for destination line-haul dispatch from Tirur Sorting Hub",
       });
     }
 
@@ -425,14 +653,9 @@ const getTrackingInfo = async (trackingIdentifier) => {
     }
   }
 
-  // Reverse so newest checkpoint is at the top
+  // Sort descending
   const sortedHistory = [...history].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-  // If the newest checkpoint has a specific detailed status (e.g. "Delivered (Returned to Sender)"), use it
-  let currentStatus = progress.label;
-  if (sortedHistory.length > 0 && sortedHistory[0].status) {
-    currentStatus = sortedHistory[0].status;
-  }
+  const currentStatus = order?.latestTrackingStatus || sortedHistory[0]?.status || progress.label;
 
   return {
     source: "SYSTEM_SYNCED",
@@ -445,7 +668,7 @@ const getTrackingInfo = async (trackingIdentifier) => {
     origin,
     destination,
     estimatedDelivery: estDate.toISOString().split("T")[0],
-    officialTrackingUrl: "https://app.indiapost.gov.in/customer-selfservice/track",
+    officialTrackingUrl: "https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx",
     history: sortedHistory,
     order: order
       ? {
@@ -465,6 +688,86 @@ const getTrackingInfo = async (trackingIdentifier) => {
         }
       : null,
   };
+};
+
+/**
+ * Force live sync of a specific order by ID
+ */
+const syncOrderTracking = async (orderId, adminUser = null) => {
+  const order = await Order.findById(orderId);
+  if (!order) {
+    const err = new Error("Order not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  if (!order.trackingNumber) {
+    const err = new Error("Order does not have a tracking / consignment number assigned yet");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const result = await getTrackingInfo(order.trackingNumber, adminUser, true);
+
+  if (adminUser) {
+    await AuditLog.create({
+      user: adminUser._id,
+      userName: adminUser.name || "Admin",
+      userRole: adminUser.role || "admin",
+      action: "DELIVERY_PROGRESS_UPDATED",
+      targetType: "ORDER",
+      targetId: order._id.toString(),
+      description: `Live tracking synced for ${order.orderNumber} (AWB: ${order.trackingNumber}): ${result.currentStatus}`,
+    });
+  }
+
+  return result;
+};
+
+/**
+ * Batch sync all active in-transit shipments
+ */
+const syncAllActiveShipments = async (adminUser = null) => {
+  const activeOrders = await Order.find({
+    trackingNumber: { $exists: true, $ne: "" },
+    deliveryStatus: { $nin: ["DELIVERED", "CANCELLED", "RETURNED", "FAILED"] },
+  }).select("_id trackingNumber orderNumber deliveryStatus");
+
+  let syncedCount = 0;
+  let failedCount = 0;
+
+  for (const o of activeOrders) {
+    try {
+      await getTrackingInfo(o.trackingNumber, null, true);
+      syncedCount += 1;
+      // Gentle 250ms throttle between orders to respect DOP rate limits
+      await new Promise((r) => setTimeout(r, 250));
+    } catch (err) {
+      failedCount += 1;
+    }
+  }
+
+  try {
+    await Setting.findOneAndUpdate(
+      { key: "platform_settings" },
+      { indiapostLastSyncAt: new Date() }
+    );
+  } catch (e) {
+    // ignore
+  }
+
+  if (adminUser) {
+    await AuditLog.create({
+      user: adminUser._id,
+      userName: adminUser.name || "Admin",
+      userRole: adminUser.role || "admin",
+      action: "DELIVERY_PROGRESS_UPDATED",
+      targetType: "SETTING",
+      description: `Batch India Post tracking sync executed: ${syncedCount} shipments updated, ${failedCount} errors.`,
+    });
+  }
+
+  return { total: activeOrders.length, syncedCount, failedCount };
 };
 
 /**
@@ -553,7 +856,14 @@ const updateOrderDeliveryProgress = async (
 module.exports = {
   detectCourier,
   computeProgress,
-  getTrackingInfo,
-  updateOrderDeliveryProgress,
+  mapIndiaPostStatusToStage,
+  parseIndianOrIsoDate,
+  normalizeCheckpoint,
+  loginIndiaPost,
   refreshIndiaPostToken,
+  getValidIndiaPostToken,
+  getTrackingInfo,
+  syncOrderTracking,
+  syncAllActiveShipments,
+  updateOrderDeliveryProgress,
 };

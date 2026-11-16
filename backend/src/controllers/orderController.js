@@ -363,14 +363,22 @@ const updateDeliveryProgress = async (req, res, next) => {
 };
 
 /**
- * Public Consignment / Order Tracking
+ * Consignment / Order Tracking with strict ownership verification
  */
 const getPublicTracking = async (req, res, next) => {
   try {
     const trackingService = require("../services/trackingService");
-    const trackingData = await trackingService.getTrackingInfo(req.params.trackingNumber);
+    const identifier = req.params.trackingNumber || req.params.identifier;
+    const forceRefresh = req.query.force === "true" || req.query.refresh === "true";
+    const trackingData = await trackingService.getTrackingInfo(identifier, req.user, forceRefresh);
     return successResponse(res, "Tracking details retrieved.", trackingData);
   } catch (err) {
+    if (err.statusCode === 403) {
+      return errorResponse(res, err.message || "Access denied to tracking for this order.", "FORBIDDEN", 403);
+    }
+    if (err.statusCode === 404) {
+      return errorResponse(res, err.message || "Tracking details not found.", "NOT_FOUND", 404);
+    }
     next(err);
   }
 };
