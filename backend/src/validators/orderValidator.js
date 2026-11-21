@@ -80,6 +80,27 @@ const createOrderSchema = z.object({
   deliveryPaymentDetails: z.any().optional(),
   isFastDelivery: z.boolean().optional(),
   fastDelivery: z.boolean().optional(),
+  courierName: z.string().optional(),
+  selectedCourier: z.string().optional(),
+}).refine((data) => {
+  const isFast = Boolean(data.isFastDelivery || data.fastDelivery);
+  if (isFast && data.paymentMethod === "COD") {
+    return false;
+  }
+  return true;
+}, {
+  message: "Fast Delivery orders require online payment. Cash on Delivery (COD) is not available for priority shipping.",
+  path: ["paymentMethod"],
+}).refine((data) => {
+  const isFast = Boolean(data.isFastDelivery || data.fastDelivery);
+  const courier = (data.courierName || data.selectedCourier || "").trim();
+  if (isFast && !courier) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Courier selection is mandatory for Fast Delivery orders (Professional Courier or DTDC).",
+  path: ["courierName"],
 });
 
 const updateOrderStatusSchema = z.object({

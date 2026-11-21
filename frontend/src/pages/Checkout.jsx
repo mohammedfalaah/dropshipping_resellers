@@ -41,8 +41,30 @@ export default function Checkout() {
 
   const [paymentMethod, setPaymentMethod] = useState("cash_on_delivery");
   const [isFastDelivery, setIsFastDelivery] = useState(false);
+  const [selectedCourier, setSelectedCourier] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [dbProducts, setDbProducts] = useState([]);
+
+  const handleToggleFastDelivery = (targetChecked) => {
+    const nextState = typeof targetChecked === "boolean" ? targetChecked : !isFastDelivery;
+    setIsFastDelivery(nextState);
+    if (nextState) {
+      if (paymentMethod === "cash_on_delivery") {
+        setPaymentMethod("razorpay");
+        addToast("Fast Delivery requires online payment. Switched to Razorpay.", "info");
+      }
+    } else {
+      setSelectedCourier("");
+    }
+  };
+
+  const handleSelectPaymentMethod = (method) => {
+    if (isFastDelivery && method === "cash_on_delivery") {
+      addToast("Fast Delivery orders require online payment only. Cash on Delivery is disabled.", "warning");
+      return;
+    }
+    setPaymentMethod(method);
+  };
 
   useEffect(() => {
     // Pre-fetch DB products to map frontend cart items to MongoDB _ids and SKUs
@@ -97,6 +119,18 @@ export default function Checkout() {
     if (isAuthenticated && approvalStatus === "pending") {
       addToast("Order blocked: Reseller account is pending admin approval.", "error");
       return;
+    }
+
+    if (isFastDelivery) {
+      if (!selectedCourier) {
+        addToast("Please select a courier partner (Professional Courier or DTDC) for Fast Delivery.", "error");
+        return;
+      }
+      if (paymentMethod === "cash_on_delivery") {
+        addToast("Fast Delivery orders require online payment. Cash on Delivery is not available.", "error");
+        setPaymentMethod("razorpay");
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -181,6 +215,8 @@ export default function Checkout() {
           },
           paymentMethod: backendPaymentMethod,
           isFastDelivery,
+          courierName: isFastDelivery ? selectedCourier : "India Post (Business Parcel)",
+          selectedCourier: isFastDelivery ? selectedCourier : "",
           notes: form.notes || "",
         };
 
@@ -218,6 +254,8 @@ export default function Checkout() {
                 : "Bank Transfer",
             customer: form,
             isFastDelivery,
+            courierName: isFastDelivery ? selectedCourier : "India Post (Business Parcel)",
+            selectedCourier: isFastDelivery ? selectedCourier : "",
             paymentStatus: paymentMethod === "razorpay" ? "PENDING" : "CONFIRMED",
           })
         );
@@ -280,6 +318,8 @@ export default function Checkout() {
             : "Bank Transfer",
         customer: form,
         isFastDelivery,
+        courierName: isFastDelivery ? selectedCourier : "India Post (Business Parcel)",
+        selectedCourier: isFastDelivery ? selectedCourier : "",
       };
 
       localStorage.setItem("sparepro_latest_order", JSON.stringify(orderData));
@@ -707,7 +747,7 @@ export default function Checkout() {
                             : "bg-light border-secondary-subtle"
                         }`}
                         style={{ transition: "all 0.2s ease" }}
-                        onClick={() => setIsFastDelivery((prev) => !prev)}
+                        onClick={() => handleToggleFastDelivery()}
                       >
                         <div className="form-check d-flex align-items-start gap-2 mb-0">
                           <input
@@ -715,7 +755,7 @@ export default function Checkout() {
                             type="checkbox"
                             id="fastDeliveryCheckbox"
                             checked={isFastDelivery}
-                            onChange={(e) => setIsFastDelivery(e.target.checked)}
+                            onChange={(e) => handleToggleFastDelivery(e.target.checked)}
                             onClick={(e) => e.stopPropagation()}
                             style={{ cursor: "pointer", width: "1.2em", height: "1.2em" }}
                           />
@@ -741,6 +781,102 @@ export default function Checkout() {
                             </div>
                           </label>
                         </div>
+
+                        {/* Mandatory Courier Selection when Fast Delivery is enabled */}
+                        {isFastDelivery && (
+                          <div
+                            className="mt-3 pt-3 border-top"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="d-flex justify-content-between align-items-center mb-2">
+                              <label className="form-label small fw-bold text-dark mb-0 d-flex align-items-center gap-1">
+                                <i className="fa-solid fa-truck text-danger"></i>
+                                <span>Select Courier Service</span>
+                                <span className="text-danger">* (Required)</span>
+                              </label>
+                              <span className="badge bg-danger text-white" style={{ fontSize: "10px" }}>
+                                Mandatory
+                              </span>
+                            </div>
+                            <p className="text-muted small mb-3" style={{ fontSize: "11.5px" }}>
+                              Choose your express courier partner. This selection is required for priority dispatch:
+                            </p>
+                            <div className="row g-2">
+                              <div className="col-12 col-sm-6">
+                                <div
+                                  className={`p-3 border rounded-3 cursor-pointer d-flex align-items-center gap-3 bg-white ${
+                                    selectedCourier === "Professional Courier"
+                                      ? "border-danger shadow-sm bg-danger-subtle bg-opacity-10"
+                                      : "border-light-subtle"
+                                  }`}
+                                  style={{
+                                    transition: "all 0.15s ease",
+                                    borderColor: selectedCourier === "Professional Courier" ? "#ef4444" : "#cbd5e1"
+                                  }}
+                                  onClick={() => setSelectedCourier("Professional Courier")}
+                                >
+                                  <input
+                                    type="radio"
+                                    name="courierRadio"
+                                    id="courierProfessional"
+                                    className="form-check-input mt-0"
+                                    checked={selectedCourier === "Professional Courier"}
+                                    onChange={() => setSelectedCourier("Professional Courier")}
+                                  />
+                                  <label htmlFor="courierProfessional" className="mb-0 w-100" style={{ cursor: "pointer" }}>
+                                    <div className="fw-bold text-dark d-flex align-items-center justify-content-between">
+                                      <span>Professional Courier</span>
+                                      <i className="fa-solid fa-plane-departure text-danger"></i>
+                                    </div>
+                                    <small className="text-muted" style={{ fontSize: "11px" }}>
+                                      Express air &amp; surface logistics network
+                                    </small>
+                                  </label>
+                                </div>
+                              </div>
+                              <div className="col-12 col-sm-6">
+                                <div
+                                  className={`p-3 border rounded-3 cursor-pointer d-flex align-items-center gap-3 bg-white ${
+                                    selectedCourier === "DTDC"
+                                      ? "border-danger shadow-sm bg-danger-subtle bg-opacity-10"
+                                      : "border-light-subtle"
+                                  }`}
+                                  style={{
+                                    transition: "all 0.15s ease",
+                                    borderColor: selectedCourier === "DTDC" ? "#ef4444" : "#cbd5e1"
+                                  }}
+                                  onClick={() => setSelectedCourier("DTDC")}
+                                >
+                                  <input
+                                    type="radio"
+                                    name="courierRadio"
+                                    id="courierDtdc"
+                                    className="form-check-input mt-0"
+                                    checked={selectedCourier === "DTDC"}
+                                    onChange={() => setSelectedCourier("DTDC")}
+                                  />
+                                  <label htmlFor="courierDtdc" className="mb-0 w-100" style={{ cursor: "pointer" }}>
+                                    <div className="fw-bold text-dark d-flex align-items-center justify-content-between">
+                                      <span>DTDC</span>
+                                      <i className="fa-solid fa-truck-fast text-primary"></i>
+                                    </div>
+                                    <small className="text-muted" style={{ fontSize: "11px" }}>
+                                      DTDC Express priority delivery network
+                                    </small>
+                                  </label>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Informative notice about online payment requirement */}
+                            <div className="mt-3 p-2 rounded-2 bg-warning-subtle border border-warning-subtle d-flex align-items-center gap-2">
+                              <i className="fa-solid fa-circle-exclamation text-warning fs-6"></i>
+                              <span className="small text-dark" style={{ fontSize: "11.5px" }}>
+                                <strong>Fast Delivery Notice:</strong> Cash on Delivery (COD) is not available for Fast Delivery. Online payment is required.
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -748,7 +884,23 @@ export default function Checkout() {
 
                 {/* Payment Methods */}
                 <div className="bg-white p-4 p-md-5 rounded-4 shadow-sm border">
-                  <h4 className="fw-bold mb-4">Payment Method</h4>
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h4 className="fw-bold mb-0">Payment Method</h4>
+                    {isFastDelivery && (
+                      <span className="badge bg-danger-subtle text-danger border border-danger-subtle">
+                        <i className="fa-solid fa-lock me-1"></i> Online Payment Only
+                      </span>
+                    )}
+                  </div>
+
+                  {isFastDelivery && (
+                    <div className="alert alert-warning py-2 px-3 rounded-3 mb-3 d-flex align-items-center gap-2" style={{ fontSize: "12px" }}>
+                      <i className="fa-solid fa-triangle-exclamation text-warning fs-6"></i>
+                      <div>
+                        <strong>Fast Delivery Selected:</strong> Cash on Delivery (COD) is disabled for priority express orders. Please complete checkout with <strong>Online Payment</strong>.
+                      </div>
+                    </div>
+                  )}
 
                   <div className="mb-3">
                     {/* Razorpay Standard Checkout */}
@@ -757,6 +909,7 @@ export default function Checkout() {
                         paymentMethod === "razorpay" ? "border-primary bg-primary-subtle bg-opacity-10" : ""
                       }`}
                       style={{ transition: "all 0.2s ease" }}
+                      onClick={() => handleSelectPaymentMethod("razorpay")}
                     >
                       <input
                         className="form-check-input"
@@ -764,7 +917,7 @@ export default function Checkout() {
                         name="paymentRadio"
                         id="paymentRazorpay"
                         checked={paymentMethod === "razorpay"}
-                        onChange={() => setPaymentMethod("razorpay")}
+                        onChange={() => handleSelectPaymentMethod("razorpay")}
                       />
                       <label
                         className="form-check-label fw-semibold ms-2 d-flex flex-column gap-1 w-100"
@@ -789,42 +942,77 @@ export default function Checkout() {
                     </div>
 
                     {/* Cash On Delivery */}
-                    <div
-                      className={`form-check p-3 border rounded-3 mb-2 cursor-pointer ${
-                        paymentMethod === "cash_on_delivery" ? "border-primary bg-primary-subtle bg-opacity-10" : ""
-                      }`}
-                      style={{ transition: "all 0.2s ease" }}
-                    >
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        name="paymentRadio"
-                        id="paymentCod"
-                        checked={paymentMethod === "cash_on_delivery"}
-                        onChange={() => setPaymentMethod("cash_on_delivery")}
-                      />
-                      <label
-                        className="form-check-label fw-semibold ms-2 d-flex flex-column gap-1 w-100"
-                        htmlFor="paymentCod"
-                        style={{ cursor: "pointer" }}
+                    {isFastDelivery ? (
+                      <div
+                        className="form-check p-3 border rounded-3 mb-2 bg-light text-muted opacity-75"
+                        style={{ cursor: "not-allowed", borderStyle: "dashed" }}
+                        onClick={() => addToast("Fast Delivery orders require online payment. Cash on Delivery is disabled.", "warning")}
                       >
-                        <div className="d-flex justify-content-between align-items-center">
-                          <span className="text-dark fw-bold d-flex align-items-center gap-2">
-                            <span>Cash on Delivery (COD)</span>
-                            <span className="badge bg-warning text-dark" style={{ fontSize: "11px" }}>
-                              Pay ₹{Number(deliveryCharge).toLocaleString("en-IN")} Delivery Charge Online
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="paymentRadio"
+                          id="paymentCodDisabled"
+                          disabled
+                          checked={false}
+                        />
+                        <label
+                          className="form-check-label ms-2 d-flex flex-column gap-1 w-100"
+                          htmlFor="paymentCodDisabled"
+                          style={{ cursor: "not-allowed" }}
+                        >
+                          <div className="d-flex justify-content-between align-items-center">
+                            <span className="text-muted fw-bold d-flex align-items-center gap-2">
+                              <span className="text-decoration-line-through">Cash on Delivery (COD)</span>
+                              <span className="badge bg-secondary text-white" style={{ fontSize: "10px" }}>
+                                Disabled
+                              </span>
                             </span>
+                            <span className="badge bg-danger-subtle text-danger border border-danger-subtle" style={{ fontSize: "10px" }}>
+                              <i className="fa-solid fa-ban me-1"></i> Not Available for Fast Delivery
+                            </span>
+                          </div>
+                          <span className="text-danger small mt-1" style={{ fontSize: "11px" }}>
+                            <i className="fa-solid fa-circle-exclamation me-1"></i> Fast Delivery orders require prepaid online payment. Turn off Fast Delivery to use COD.
                           </span>
-                          <span className="badge bg-secondary-subtle text-secondary">Dropshipping Policy</span>
-                        </div>
-                        <span className="text-muted small fw-normal">
-                          Pay ₹{Number(deliveryCharge).toLocaleString("en-IN")} delivery charge now via Razorpay &bull; Balance ₹{cartCustomerSellingTotal > 0 ? Number(cartCustomerSellingTotal).toLocaleString("en-IN") : "0"} will be collected in cash on delivery
-                        </span>
-                      </label>
-                    </div>
-
-                    {/* Bank Transfer */}
-                  
+                        </label>
+                      </div>
+                    ) : (
+                      <div
+                        className={`form-check p-3 border rounded-3 mb-2 cursor-pointer ${
+                          paymentMethod === "cash_on_delivery" ? "border-primary bg-primary-subtle bg-opacity-10" : ""
+                        }`}
+                        style={{ transition: "all 0.2s ease" }}
+                        onClick={() => handleSelectPaymentMethod("cash_on_delivery")}
+                      >
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="paymentRadio"
+                          id="paymentCod"
+                          checked={paymentMethod === "cash_on_delivery"}
+                          onChange={() => handleSelectPaymentMethod("cash_on_delivery")}
+                        />
+                        <label
+                          className="form-check-label fw-semibold ms-2 d-flex flex-column gap-1 w-100"
+                          htmlFor="paymentCod"
+                          style={{ cursor: "pointer" }}
+                        >
+                          <div className="d-flex justify-content-between align-items-center">
+                            <span className="text-dark fw-bold d-flex align-items-center gap-2">
+                              <span>Cash on Delivery (COD)</span>
+                              <span className="badge bg-warning text-dark" style={{ fontSize: "11px" }}>
+                                Pay ₹{Number(deliveryCharge).toLocaleString("en-IN")} Delivery Charge Online
+                              </span>
+                            </span>
+                            <span className="badge bg-secondary-subtle text-secondary">Dropshipping Policy</span>
+                          </div>
+                          <span className="text-muted small fw-normal">
+                            Pay ₹{Number(deliveryCharge).toLocaleString("en-IN")} delivery charge now via Razorpay &bull; Balance ₹{cartCustomerSellingTotal > 0 ? Number(cartCustomerSellingTotal).toLocaleString("en-IN") : "0"} will be collected in cash on delivery
+                          </span>
+                        </label>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -963,10 +1151,18 @@ export default function Checkout() {
                         </span>
                       </div>
                       {isFastDelivery && (
-                        <div className="d-flex justify-content-between mb-2 small fw-semibold text-danger">
-                          <span><i className="fa-solid fa-bolt me-1"></i> Delivery Speed</span>
-                          <span className="badge bg-danger text-white">⚡ Fast Delivery (Priority)</span>
-                        </div>
+                        <>
+                          <div className="d-flex justify-content-between mb-2 small fw-semibold text-danger">
+                            <span><i className="fa-solid fa-bolt me-1"></i> Delivery Speed</span>
+                            <span className="badge bg-danger text-white">⚡ Fast Delivery (Priority)</span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small fw-semibold">
+                            <span className="text-muted"><i className="fa-solid fa-truck text-danger me-1"></i> Express Courier</span>
+                            <span className={selectedCourier ? "fw-bold text-dark" : "text-danger fst-italic"}>
+                              {selectedCourier || "Select courier *"}
+                            </span>
+                          </div>
+                        </>
                       )}
                       <div className="d-flex justify-content-between mb-3 text-muted small">
                         <span>Delivery charge</span>
@@ -999,13 +1195,15 @@ export default function Checkout() {
 
                       <button
                         type="submit"
-                        disabled={submitting || (isAuthenticated && approvalStatus === "pending")}
+                        disabled={submitting || (isAuthenticated && approvalStatus === "pending") || isFastDelivery}
                         className="btn btn-dark w-100 rounded-pill py-3 fw-semibold mb-3 d-flex align-items-center justify-content-center gap-2"
                       >
                         {submitting ? (
                           <span><i className="fa-solid fa-spinner fa-spin me-2"></i> Booking COD Order...</span>
                         ) : isAuthenticated && approvalStatus === "pending" ? (
                           "Approval Pending (Cannot Checkout)"
+                        ) : isFastDelivery ? (
+                          <span><i className="fa-solid fa-lock me-1"></i> Online Payment Required for Fast Delivery</span>
                         ) : (
                           `Confirm COD Order (Pay ₹${Number(deliveryCharge).toLocaleString("en-IN")} Delivery Charge)`
                         )}
@@ -1023,10 +1221,18 @@ export default function Checkout() {
                         <span className="fw-semibold text-dark">₹{Number(cartWholesaleSubtotal).toLocaleString("en-IN")}</span>
                       </div>
                       {isFastDelivery && (
-                        <div className="d-flex justify-content-between mb-2 small fw-semibold text-danger">
-                          <span><i className="fa-solid fa-bolt me-1"></i> Delivery Speed</span>
-                          <span className="badge bg-danger text-white">⚡ Fast Delivery (Priority)</span>
-                        </div>
+                        <>
+                          <div className="d-flex justify-content-between mb-2 small fw-semibold text-danger">
+                            <span><i className="fa-solid fa-bolt me-1"></i> Delivery Speed</span>
+                            <span className="badge bg-danger text-white">⚡ Fast Delivery (Priority)</span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small fw-semibold">
+                            <span className="text-muted"><i className="fa-solid fa-truck text-danger me-1"></i> Express Courier</span>
+                            <span className={selectedCourier ? "fw-bold text-dark" : "text-danger fst-italic"}>
+                              {selectedCourier || "Select courier *"}
+                            </span>
+                          </div>
+                        </>
                       )}
                       <div className="d-flex justify-content-between mb-2 text-muted small">
                         <span>Delivery charge</span>
@@ -1051,7 +1257,7 @@ export default function Checkout() {
 
                       <button
                         type="submit"
-                        disabled={submitting || (isAuthenticated && approvalStatus === "pending")}
+                        disabled={submitting || (isAuthenticated && approvalStatus === "pending") || (isFastDelivery && !selectedCourier)}
                         className="btn btn-dark w-100 rounded-pill py-3 fw-semibold mb-3 d-flex align-items-center justify-content-center gap-2"
                         style={{ backgroundColor: "#0c2340", borderColor: "#0c2340" }}
                       >
@@ -1059,6 +1265,8 @@ export default function Checkout() {
                           <span><i className="fa-solid fa-spinner fa-spin me-2"></i> Processing...</span>
                         ) : isAuthenticated && approvalStatus === "pending" ? (
                           "Approval Pending (Cannot Checkout)"
+                        ) : isFastDelivery && !selectedCourier ? (
+                          <span><i className="fa-solid fa-truck me-2"></i> Select Courier to Proceed</span>
                         ) : (
                           <span><i className="fa-solid fa-shield-halved me-1"></i> Pay ₹{Number(cartWholesaleSubtotal + deliveryCharge).toLocaleString("en-IN")} with Razorpay</span>
                         )}

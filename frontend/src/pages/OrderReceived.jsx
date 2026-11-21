@@ -158,14 +158,26 @@ export default function OrderReceived() {
                 </div>
 
                 {currentOrder.isFastDelivery && (
-                  <div className="d-flex justify-content-between py-1 small align-items-center">
-                    <span className="text-muted">
-                      <i className="fa-solid fa-bolt text-danger me-1"></i> Delivery Speed:
-                    </span>
-                    <span className="badge bg-danger text-white">
-                      ⚡ Fast Delivery (Priority Dispatch)
-                    </span>
-                  </div>
+                  <>
+                    <div className="d-flex justify-content-between py-1 small align-items-center">
+                      <span className="text-muted">
+                        <i className="fa-solid fa-bolt text-danger me-1"></i> Delivery Speed:
+                      </span>
+                      <span className="badge bg-danger text-white">
+                        ⚡ Fast Delivery (Priority Dispatch)
+                      </span>
+                    </div>
+                    {currentOrder.courierName && (
+                      <div className="d-flex justify-content-between py-1 small align-items-center">
+                        <span className="text-muted">
+                          <i className="fa-solid fa-truck text-secondary me-1"></i> Courier Service:
+                        </span>
+                        <span className="fw-bold text-dark">
+                          {currentOrder.courierName}
+                        </span>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {currentOrder.paymentMethod?.toLowerCase().includes("cod") || currentOrder.paymentMethod?.toLowerCase().includes("cash on delivery") ? (

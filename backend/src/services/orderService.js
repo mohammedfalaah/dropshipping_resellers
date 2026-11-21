@@ -19,11 +19,35 @@ const generateOrderNumber = () => {
 /**
  * Create a new order with atomic stock validation and deduction
  */
-const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, userObj, isFastDelivery = false }) => {
+const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, userObj, isFastDelivery = false, courierName = "" }) => {
   // Normalize payment method to supported enum (auto-map legacy CASHFREE to RAZORPAY)
   let normalizedPaymentMethod = String(paymentMethod || "COD").toUpperCase().trim();
   if (normalizedPaymentMethod === "CASHFREE") {
     normalizedPaymentMethod = "RAZORPAY";
+  }
+
+  // Fast Delivery restrictions & validations
+  const fastDeliveryEnabled = Boolean(isFastDelivery);
+  if (fastDeliveryEnabled) {
+    if (normalizedPaymentMethod === "COD") {
+      throw new Error("Fast Delivery orders require online prepaid payment. Cash on Delivery (COD) is not available for expedited priority shipping.");
+    }
+    const cleanCourier = String(courierName || "").trim();
+    if (!cleanCourier) {
+      throw new Error("Mandatory courier selection missing for Fast Delivery. Please select Professional Courier or DTDC.");
+    }
+  }
+
+  let assignedCourier = "India Post (Business Parcel)";
+  if (fastDeliveryEnabled) {
+    const cleanCourier = String(courierName || "").trim();
+    if (/professional/i.test(cleanCourier)) {
+      assignedCourier = "Professional Courier";
+    } else if (/dtdc/i.test(cleanCourier)) {
+      assignedCourier = "DTDC";
+    } else {
+      assignedCourier = cleanCourier;
+    }
   }
   if (!items || items.length === 0) {
     throw new Error("Order must contain at least one item");
@@ -177,22 +201,22 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
     orderStatus,
     shippingAddress,
     trackingNumber: consignmentBarcode,
-    isFastDelivery: Boolean(isFastDelivery),
-    courierName: "India Post (Business Parcel)",
+    isFastDelivery: fastDeliveryEnabled,
+    courierName: assignedCourier,
     deliveryStatus: "BOOKED",
     shippingLabel: {
       barcode: consignmentBarcode,
       base64Image: barcodeMeta.dataUri,
       generatedAt: new Date(),
-      serviceType: "BUSINESS_PARCEL",
+      serviceType: fastDeliveryEnabled ? "EXPRESS_PARCEL" : "BUSINESS_PARCEL",
     },
     trackingHistory: [
       {
         timestamp: new Date(),
         location: "Spare pro Logistics Hub, Tirur, Kerala - 676107",
         status: "Consignment Manifest Generated",
-        details: isFastDelivery
-          ? `Article ${consignmentBarcode} booked under Fast Delivery (Priority Dispatch) Business Parcel Logistics at Tirur Booking Office (PIN 676107). Priority dispatch scheduled.`
+        details: fastDeliveryEnabled
+          ? `Article ${consignmentBarcode} booked under Fast Delivery (${assignedCourier}) at Tirur Logistics Center. Priority dispatch scheduled.`
           : `Article ${consignmentBarcode} booked under Business Parcel Logistics at Tirur Booking Office (PIN 676107). Ready for dispatch.`,
       },
     ],
