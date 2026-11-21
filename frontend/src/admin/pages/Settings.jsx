@@ -10,6 +10,7 @@ export default function Settings() {
   const [autoApprove, setAutoApprove] = useState(false);
   const [defaultMoq, setDefaultMoq] = useState("1");
   const [deliveryCharge, setDeliveryCharge] = useState("50");
+  const [fastDeliveryCharge, setFastDeliveryCharge] = useState("100");
 
   // India Post DOP Wholesaler Credentials & Token Integration
   const [indiapostApiUrl, setIndiapostApiUrl] = useState("https://app.indiapost.gov.in/beextcustomer");
@@ -45,6 +46,13 @@ export default function Settings() {
             setDeliveryCharge(String(data.deliveryChargeRupees));
           } else if (data.deliveryChargePaise !== undefined) {
             setDeliveryCharge(String(data.deliveryChargePaise / 100));
+          }
+          if (data.fastDeliveryChargeRupees !== undefined) {
+            setFastDeliveryCharge(String(data.fastDeliveryChargeRupees));
+          } else if (data.fastDeliveryChargePaise !== undefined) {
+            setFastDeliveryCharge(String(data.fastDeliveryChargePaise / 100));
+          } else if (data.fastDeliveryCharge !== undefined) {
+            setFastDeliveryCharge(String(data.fastDeliveryCharge));
           }
           if (typeof data.autoApproveResellers === "boolean") {
             setAutoApprove(data.autoApproveResellers);
@@ -150,7 +158,12 @@ export default function Settings() {
     e.preventDefault();
     const parsedCharge = Number(deliveryCharge);
     if (isNaN(parsedCharge) || parsedCharge < 0) {
-      addToast("Please enter a valid non-negative delivery charge (₹).", "error");
+      addToast("Please enter a valid non-negative standard delivery charge (₹).", "error");
+      return;
+    }
+    const parsedFastCharge = Number(fastDeliveryCharge);
+    if (isNaN(parsedFastCharge) || parsedFastCharge < 0) {
+      addToast("Please enter a valid non-negative fast delivery charge (₹).", "error");
       return;
     }
 
@@ -161,6 +174,7 @@ export default function Settings() {
         supportEmail,
         defaultMoq: Number(defaultMoq) || 1,
         deliveryCharge: parsedCharge,
+        fastDeliveryCharge: parsedFastCharge,
         autoApproveResellers: autoApprove,
         indiapostApiUrl,
         indiapostUsername,
@@ -169,7 +183,7 @@ export default function Settings() {
         indiapostRefreshToken,
         indiapostAutoSync,
       });
-      addToast(`Platform settings updated! Delivery charge set to ₹${parsedCharge.toFixed(2)}.`, "success");
+      addToast(`Platform settings updated! Standard: ₹${parsedCharge.toFixed(2)}, Fast Delivery: ₹${parsedFastCharge.toFixed(2)}.`, "success");
       if (indiapostPassword && indiapostPassword !== "••••••••") {
         setHasIndiapostPassword(true);
         setIndiapostPassword("••••••••");
@@ -263,6 +277,24 @@ export default function Settings() {
                       />
                     </div>
                     <div className="small text-muted mt-1">Charged once per cart checkout regardless of parcel item volume.</div>
+                  </div>
+                  <div className="col-sm-6">
+                    <label className="form-label small fw-semibold d-flex align-items-center gap-1">
+                      <i className="fa-solid fa-bolt text-danger"></i>
+                      <span>Fast Delivery Charge (₹)</span>
+                    </label>
+                    <div className="input-group">
+                      <span className="input-group-text">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="form-control"
+                        value={fastDeliveryCharge}
+                        onChange={(e) => setFastDeliveryCharge(e.target.value)}
+                      />
+                    </div>
+                    <div className="small text-muted mt-1">Charged when reseller enables priority Fast Delivery at checkout.</div>
                   </div>
                   <div className="col-sm-6">
                     <label className="form-label small fw-semibold">Reseller Approval Policy</label>

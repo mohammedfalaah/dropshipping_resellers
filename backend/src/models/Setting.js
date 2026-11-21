@@ -23,6 +23,11 @@ const SettingSchema = new mongoose.Schema(
       default: 5000, // ₹50.00 in integer paise
       min: 0,
     },
+    fastDeliveryChargePaise: {
+      type: Number,
+      default: 10000, // ₹100.00 in integer paise
+      min: 0,
+    },
     defaultMoq: {
       type: Number,
       default: 1,
@@ -92,6 +97,10 @@ const SettingSchema = new mongoose.Schema(
 
 SettingSchema.virtual("deliveryChargeRupees").get(function () {
   return Number(((this.deliveryChargePaise || 0) / 100).toFixed(2));
+});
+
+SettingSchema.virtual("fastDeliveryChargeRupees").get(function () {
+  return Number(((this.fastDeliveryChargePaise || 0) / 100).toFixed(2));
 });
 
 module.exports = mongoose.model("Setting", SettingSchema);

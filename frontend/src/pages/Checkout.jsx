@@ -13,10 +13,11 @@ export default function Checkout() {
     cartWholesaleSubtotal,
     cartCustomerSellingTotal,
     cartExpectedProfit,
-    deliveryCharge,
+    deliveryCharge: baseDeliveryCharge,
+    fastDeliveryCharge: baseFastDeliveryCharge,
     shipping,
-    cartTotal,
-    codPayableNow,
+    cartTotal: baseCartTotal,
+    codPayableNow: baseCodPayableNow,
     codCollectionAmount,
     updateCustomerSellingPrice,
     commitCustomerSellingPrice,
@@ -44,6 +45,13 @@ export default function Checkout() {
   const [selectedCourier, setSelectedCourier] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [dbProducts, setDbProducts] = useState([]);
+
+  // Dynamically calculate delivery charge and cart total based on Fast Delivery toggle
+  const deliveryCharge = isFastDelivery
+    ? (baseFastDeliveryCharge || 100)
+    : baseDeliveryCharge;
+  const cartTotal = cartWholesaleSubtotal + deliveryCharge;
+  const codPayableNow = deliveryCharge;
 
   const handleToggleFastDelivery = (targetChecked) => {
     const nextState = typeof targetChecked === "boolean" ? targetChecked : !isFastDelivery;
@@ -769,7 +777,7 @@ export default function Checkout() {
                                 <i className="fa-solid fa-bolt text-danger"></i>
                                 <span>Fast Delivery</span>
                                 <span className="badge bg-danger text-white" style={{ fontSize: "11px" }}>
-                                  Priority Dispatch
+                                  ₹{Number(baseFastDeliveryCharge || 100).toLocaleString("en-IN")} • Priority Dispatch
                                 </span>
                               </span>
                               <span className="badge bg-white text-dark border" style={{ fontSize: "11px" }}>

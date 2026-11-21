@@ -20,6 +20,7 @@ export const CartProvider = ({ children }) => {
 
   const [coupon, setCoupon] = useState({ code: "", discountPercent: 0, applied: false });
   const [adminDeliveryCharge, setAdminDeliveryCharge] = useState(50);
+  const [adminFastDeliveryCharge, setAdminFastDeliveryCharge] = useState(100);
 
   // Fetch configured delivery charge from platform settings
   useEffect(() => {
@@ -28,13 +29,19 @@ export const CartProvider = ({ children }) => {
       .getPublic()
       .then((res) => {
         const data = res?.data || res;
-        if (isMounted && typeof data?.deliveryCharge === "number") {
-          setAdminDeliveryCharge(data.deliveryCharge);
+        const payload = data?.data || data;
+        if (isMounted) {
+          if (typeof payload?.deliveryCharge === "number") {
+            setAdminDeliveryCharge(payload.deliveryCharge);
+          }
+          if (typeof payload?.fastDeliveryCharge === "number") {
+            setAdminFastDeliveryCharge(payload.fastDeliveryCharge);
+          }
         }
       })
       .catch((err) => {
         // Fallback to default ₹50 quietly if server is initializing
-        console.log("[CartContext] Settings delivery charge fetch fallback to ₹50:", err.message);
+        console.log("[CartContext] Settings delivery charge fetch fallback to defaults:", err.message);
       });
     return () => {
       isMounted = false;
@@ -249,6 +256,7 @@ export const CartProvider = ({ children }) => {
 
   // Platform managed delivery charge for dropshipping
   const deliveryCharge = cart.length > 0 ? adminDeliveryCharge : 0;
+  const fastDeliveryCharge = cart.length > 0 ? adminFastDeliveryCharge : 0;
   const shipping = deliveryCharge;
 
   const discountAmount = coupon.applied ? (cartSubtotal * coupon.discountPercent) / 100 : 0;
@@ -278,6 +286,9 @@ export const CartProvider = ({ children }) => {
         cartExpectedProfit,
         hasMissingCustomerPrices,
         deliveryCharge,
+        fastDeliveryCharge,
+        adminDeliveryCharge,
+        adminFastDeliveryCharge,
         shipping,
         cartTotal,
         codPayableNow,

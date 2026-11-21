@@ -137,8 +137,10 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
     });
   }
 
-  // Delivery charge from platform settings (admin-managed, default ₹50 = 5000 paise)
-  const deliveryChargePaise = await settingsService.getDeliveryChargePaise();
+  // Delivery charge from platform settings (admin-managed: fast delivery vs standard)
+  const deliveryChargePaise = fastDeliveryEnabled
+    ? await settingsService.getFastDeliveryChargePaise()
+    : await settingsService.getDeliveryChargePaise();
   const discountPaise = 0;
 
   // Determine financial amounts based on payment method

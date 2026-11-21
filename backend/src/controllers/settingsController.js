@@ -12,6 +12,8 @@ const getPublicSettings = async (req, res, next) => {
     return successResponse(res, "Public platform settings retrieved", {
       deliveryChargePaise: settings.deliveryChargePaise,
       deliveryCharge: Number((settings.deliveryChargePaise / 100).toFixed(2)),
+      fastDeliveryChargePaise: settings.fastDeliveryChargePaise ?? 10000,
+      fastDeliveryCharge: Number(((settings.fastDeliveryChargePaise ?? 10000) / 100).toFixed(2)),
       platformName: settings.platformName,
       currency: settings.currency || "INR",
       defaultMoq: settings.defaultMoq || 1,
@@ -37,6 +39,8 @@ const getAdminSettings = async (req, res, next) => {
       settings: {
         ...settingsObj,
         deliveryChargeRupees: Number((settings.deliveryChargePaise / 100).toFixed(2)),
+        fastDeliveryChargeRupees: Number(((settings.fastDeliveryChargePaise ?? 10000) / 100).toFixed(2)),
+        fastDeliveryCharge: Number(((settings.fastDeliveryChargePaise ?? 10000) / 100).toFixed(2)),
       },
     });
   } catch (err) {
@@ -58,6 +62,8 @@ const updateAdminSettings = async (req, res, next) => {
       settings: {
         ...updatedObj,
         deliveryChargeRupees: Number((updated.deliveryChargePaise / 100).toFixed(2)),
+        fastDeliveryChargeRupees: Number(((updated.fastDeliveryChargePaise ?? 10000) / 100).toFixed(2)),
+        fastDeliveryCharge: Number(((updated.fastDeliveryChargePaise ?? 10000) / 100).toFixed(2)),
       },
     });
   } catch (err) {

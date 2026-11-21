@@ -12,6 +12,7 @@ const getSettings = async () => {
       platformName: "SPARE PRO Wholesale & Dropshipping",
       supportEmail: "support@sparepro.com",
       deliveryChargePaise: 5000,
+      fastDeliveryChargePaise: 10000,
       defaultMoq: 1,
       currency: "INR",
       autoApproveResellers: false,
@@ -35,6 +36,20 @@ const getDeliveryChargePaise = async () => {
 };
 
 /**
+ * Get current fast delivery charge in integer paise
+ * Fallback to default 10000 paise (₹100) if DB unavailable
+ */
+const getFastDeliveryChargePaise = async () => {
+  try {
+    const settings = await getSettings();
+    return typeof settings.fastDeliveryChargePaise === "number" ? settings.fastDeliveryChargePaise : 10000;
+  } catch (err) {
+    console.warn("[SettingsService] Falling back to default fast delivery charge (10000 paise):", err.message);
+    return 10000;
+  }
+};
+
+/**
  * Update platform settings (Admin only)
  */
 const updateSettings = async (data = {}, adminUser = null) => {
@@ -48,6 +63,15 @@ const updateSettings = async (data = {}, adminUser = null) => {
     }
   } else if (typeof data.deliveryChargePaise === "number" && data.deliveryChargePaise >= 0) {
     settings.deliveryChargePaise = Math.round(data.deliveryChargePaise);
+  }
+
+  if (data.fastDeliveryCharge !== undefined && data.fastDeliveryCharge !== null && data.fastDeliveryCharge !== "") {
+    const parsedFastRupees = Number(data.fastDeliveryCharge);
+    if (!isNaN(parsedFastRupees) && parsedFastRupees >= 0) {
+      settings.fastDeliveryChargePaise = Math.round(parsedFastRupees * 100);
+    }
+  } else if (typeof data.fastDeliveryChargePaise === "number" && data.fastDeliveryChargePaise >= 0) {
+    settings.fastDeliveryChargePaise = Math.round(data.fastDeliveryChargePaise);
   }
 
   if (typeof data.platformName === "string" && data.platformName.trim()) {
@@ -182,6 +206,7 @@ const updateSettings = async (data = {}, adminUser = null) => {
 module.exports = {
   getSettings,
   getDeliveryChargePaise,
+  getFastDeliveryChargePaise,
   updateSettings,
 };
 
