@@ -29,19 +29,18 @@ export const CartProvider = ({ children }) => {
       .getPublic()
       .then((res) => {
         const data = res?.data || res;
-        const payload = data?.data || data;
         if (isMounted) {
-          if (typeof payload?.deliveryCharge === "number") {
-            setAdminDeliveryCharge(payload.deliveryCharge);
+          if (typeof data?.deliveryCharge === "number") {
+            setAdminDeliveryCharge(data.deliveryCharge);
           }
-          if (typeof payload?.fastDeliveryCharge === "number") {
-            setAdminFastDeliveryCharge(payload.fastDeliveryCharge);
+          if (typeof data?.fastDeliveryCharge === "number") {
+            setAdminFastDeliveryCharge(data.fastDeliveryCharge);
           }
         }
       })
       .catch((err) => {
-        // Fallback to default ₹50 quietly if server is initializing
-        console.log("[CartContext] Settings delivery charge fetch fallback to defaults:", err.message);
+        // Fallback to defaults quietly if server is initializing
+        console.log("[CartContext] Settings delivery charge fetch fallback:", err.message);
       });
     return () => {
       isMounted = false;
@@ -256,7 +255,6 @@ export const CartProvider = ({ children }) => {
 
   // Platform managed delivery charge for dropshipping
   const deliveryCharge = cart.length > 0 ? adminDeliveryCharge : 0;
-  const fastDeliveryCharge = cart.length > 0 ? adminFastDeliveryCharge : 0;
   const shipping = deliveryCharge;
 
   const discountAmount = coupon.applied ? (cartSubtotal * coupon.discountPercent) / 100 : 0;
@@ -286,9 +284,8 @@ export const CartProvider = ({ children }) => {
         cartExpectedProfit,
         hasMissingCustomerPrices,
         deliveryCharge,
-        fastDeliveryCharge,
-        adminDeliveryCharge,
-        adminFastDeliveryCharge,
+        fastDeliveryCharge: adminFastDeliveryCharge,
+        standardDeliveryCharge: adminDeliveryCharge,
         shipping,
         cartTotal,
         codPayableNow,

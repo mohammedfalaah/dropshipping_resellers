@@ -100,7 +100,7 @@ SettingSchema.virtual("deliveryChargeRupees").get(function () {
 });
 
 SettingSchema.virtual("fastDeliveryChargeRupees").get(function () {
-  return Number(((this.fastDeliveryChargePaise || 0) / 100).toFixed(2));
+  return Number(((this.fastDeliveryChargePaise || 10000) / 100).toFixed(2));
 });
 
 module.exports = mongoose.model("Setting", SettingSchema);

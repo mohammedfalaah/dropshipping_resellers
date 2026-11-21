@@ -13,11 +13,11 @@ export default function Checkout() {
     cartWholesaleSubtotal,
     cartCustomerSellingTotal,
     cartExpectedProfit,
-    deliveryCharge: baseDeliveryCharge,
-    fastDeliveryCharge: baseFastDeliveryCharge,
+    deliveryCharge,
+    fastDeliveryCharge,
     shipping,
-    cartTotal: baseCartTotal,
-    codPayableNow: baseCodPayableNow,
+    cartTotal,
+    codPayableNow,
     codCollectionAmount,
     updateCustomerSellingPrice,
     commitCustomerSellingPrice,
@@ -46,12 +46,8 @@ export default function Checkout() {
   const [submitting, setSubmitting] = useState(false);
   const [dbProducts, setDbProducts] = useState([]);
 
-  // Dynamically calculate delivery charge and cart total based on Fast Delivery toggle
-  const deliveryCharge = isFastDelivery
-    ? (baseFastDeliveryCharge || 100)
-    : baseDeliveryCharge;
-  const cartTotal = cartWholesaleSubtotal + deliveryCharge;
-  const codPayableNow = deliveryCharge;
+  const effectiveDeliveryCharge = isFastDelivery ? (Number(fastDeliveryCharge) || 100) : Number(deliveryCharge || 50);
+  const effectiveTotal = isFastDelivery ? (cartWholesaleSubtotal + effectiveDeliveryCharge) : cartTotal;
 
   const handleToggleFastDelivery = (targetChecked) => {
     const nextState = typeof targetChecked === "boolean" ? targetChecked : !isFastDelivery;
@@ -245,13 +241,13 @@ export default function Checkout() {
             orderId: orderNumber,
             date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
             items: [...cart],
-            total: paymentMethod === "cash_on_delivery" ? codPayableNow : cartTotal,
+            total: paymentMethod === "cash_on_delivery" ? codPayableNow : effectiveTotal,
             subtotal: cartSubtotal,
             wholesaleCost: cartWholesaleSubtotal,
             customerSellingTotal: cartCustomerSellingTotal,
             expectedProfit: cartExpectedProfit,
-            deliveryCharge: deliveryCharge,
-            shipping: deliveryCharge,
+            deliveryCharge: effectiveDeliveryCharge,
+            shipping: effectiveDeliveryCharge,
             codPayableNow: codPayableNow,
             codCollectionAmount: codCollectionAmount,
             paymentMethod:
@@ -271,7 +267,7 @@ export default function Checkout() {
         if (paymentMethod === "razorpay") {
           await handleRazorpayPayment({
             orderNumber,
-            amountPaise: Math.round(cartTotal * 100),
+            amountPaise: Math.round(effectiveTotal * 100),
             customerDetails: form,
             existingOrderId: razorpayData?.id,
             existingKeyId: razorpayData?.keyId,
@@ -282,7 +278,7 @@ export default function Checkout() {
         }
 
         if (paymentMethod === "cash_on_delivery") {
-          const codDeliveryPaise = Math.round(Number(deliveryCharge || codPayableNow || 0) * 100);
+          const codDeliveryPaise = Math.round(Number(effectiveDeliveryCharge || codPayableNow || 0) * 100);
           if (codDeliveryPaise > 0) {
             await handleRazorpayPayment({
               orderNumber,
@@ -309,13 +305,13 @@ export default function Checkout() {
         orderId: guestOrderNumber,
         date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
         items: [...cart],
-        total: paymentMethod === "cash_on_delivery" ? codPayableNow : cartTotal,
+        total: paymentMethod === "cash_on_delivery" ? codPayableNow : effectiveTotal,
         subtotal: cartSubtotal,
         wholesaleCost: cartWholesaleSubtotal,
         customerSellingTotal: cartCustomerSellingTotal,
         expectedProfit: cartExpectedProfit,
-        deliveryCharge: deliveryCharge,
-        shipping: deliveryCharge,
+        deliveryCharge: effectiveDeliveryCharge,
+        shipping: effectiveDeliveryCharge,
         codPayableNow: codPayableNow,
         codCollectionAmount: codCollectionAmount,
         paymentMethod:
@@ -335,7 +331,7 @@ export default function Checkout() {
       if (paymentMethod === "razorpay") {
         await handleRazorpayPayment({
           orderNumber: guestOrderNumber,
-          amountPaise: Math.round(cartTotal * 100),
+          amountPaise: Math.round(effectiveTotal * 100),
           customerDetails: form,
           isCod: false,
         });
@@ -777,7 +773,7 @@ export default function Checkout() {
                                 <i className="fa-solid fa-bolt text-danger"></i>
                                 <span>Fast Delivery</span>
                                 <span className="badge bg-danger text-white" style={{ fontSize: "11px" }}>
-                                  ₹{Number(baseFastDeliveryCharge || 100).toLocaleString("en-IN")} • Priority Dispatch
+                                  Priority Dispatch (₹{Number(fastDeliveryCharge || 100)})
                                 </span>
                               </span>
                               <span className="badge bg-white text-dark border" style={{ fontSize: "11px" }}>
@@ -1244,12 +1240,17 @@ export default function Checkout() {
                       )}
                       <div className="d-flex justify-content-between mb-2 text-muted small">
                         <span>Delivery charge</span>
-                        <span className="fw-semibold text-dark">₹{Number(deliveryCharge).toLocaleString("en-IN")}</span>
+                        <span className="fw-semibold text-dark">
+                          ₹{Number(effectiveDeliveryCharge).toLocaleString("en-IN")}
+                          {isFastDelivery && (
+                            <span className="badge bg-danger text-white ms-2" style={{ fontSize: "10px" }}>Priority Rate</span>
+                          )}
+                        </span>
                       </div>
                       <div className="border-top pt-3 mb-3 d-flex justify-content-between align-items-center">
                         <span className="h5 fw-bold mb-0">Total Due Now</span>
                         <span className="h4 fw-bold mb-0" style={{ color: "#0c2340" }}>
-                          ₹{Number(cartWholesaleSubtotal + deliveryCharge).toLocaleString("en-IN")}
+                          ₹{Number(cartWholesaleSubtotal + effectiveDeliveryCharge).toLocaleString("en-IN")}
                         </span>
                       </div>
                       <div className="p-2 mb-4 rounded-3 bg-light border small text-muted">
@@ -1276,7 +1277,7 @@ export default function Checkout() {
                         ) : isFastDelivery && !selectedCourier ? (
                           <span><i className="fa-solid fa-truck me-2"></i> Select Courier to Proceed</span>
                         ) : (
-                          <span><i className="fa-solid fa-shield-halved me-1"></i> Pay ₹{Number(cartWholesaleSubtotal + deliveryCharge).toLocaleString("en-IN")} with Razorpay</span>
+                          <span><i className="fa-solid fa-shield-halved me-1"></i> Pay ₹{Number(cartWholesaleSubtotal + effectiveDeliveryCharge).toLocaleString("en-IN")} with Razorpay</span>
                         )}
                       </button>
 

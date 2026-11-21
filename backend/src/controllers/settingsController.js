@@ -40,7 +40,6 @@ const getAdminSettings = async (req, res, next) => {
         ...settingsObj,
         deliveryChargeRupees: Number((settings.deliveryChargePaise / 100).toFixed(2)),
         fastDeliveryChargeRupees: Number(((settings.fastDeliveryChargePaise ?? 10000) / 100).toFixed(2)),
-        fastDeliveryCharge: Number(((settings.fastDeliveryChargePaise ?? 10000) / 100).toFixed(2)),
       },
     });
   } catch (err) {
@@ -63,7 +62,6 @@ const updateAdminSettings = async (req, res, next) => {
         ...updatedObj,
         deliveryChargeRupees: Number((updated.deliveryChargePaise / 100).toFixed(2)),
         fastDeliveryChargeRupees: Number(((updated.fastDeliveryChargePaise ?? 10000) / 100).toFixed(2)),
-        fastDeliveryCharge: Number(((updated.fastDeliveryChargePaise ?? 10000) / 100).toFixed(2)),
       },
     });
   } catch (err) {
