@@ -1334,7 +1334,6 @@ export default function AccountDashboard() {
                             const targetCollection = ((o.customerCollectionPaise || o.cod?.codAmountPaise || 0) / 100).toFixed(2);
                             const codStatus = o.codCollectionStatus || o.cod?.collectionStatus || (o.paymentMethod === "COD" ? "PENDING" : "PREPAID");
                             const progInfo = getDeliveryProgressInfo(o);
-                            const printUrl = `/api/orders/${o._id}/shipping-label?view=print&autoPrint=1&token=${localStorage.getItem("sparepro_token") || ""}`;
 
                             return (
                               <div key={o._id} className="card border rounded-4 shadow-sm mb-3 overflow-hidden bg-white">
@@ -1433,27 +1432,18 @@ export default function AccountDashboard() {
                                   <div className="d-flex gap-2">
                                     <button
                                       type="button"
-                                      className="btn-track-pill flex-fill text-center justify-content-center"
+                                      className="btn-track-pill flex-fill text-center justify-content-center py-2"
                                       onClick={() => handleTrackOrder(o.trackingNumber || o.orderNumber)}
                                       title="Track Live India Post Consignment"
                                     >
                                       <i className="fa-solid fa-location-crosshairs text-danger"></i> <span>Track</span>
                                     </button>
-                                    <a
-                                      href={printUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="btn btn-sm btn-outline-dark rounded-pill flex-fill text-center py-2"
-                                      title="Download or Print Shipping Label"
-                                    >
-                                      <i className="fa-solid fa-barcode me-1"></i> Label
-                                    </a>
                                     <button
                                       type="button"
                                       className="btn btn-sm btn-dark rounded-pill flex-fill py-2"
                                       onClick={() => setSelectedResellerOrder(o)}
                                     >
-                                      <i className="fa-regular fa-eye me-1"></i> View
+                                      <i className="fa-regular fa-eye me-1"></i> View Details
                                     </button>
                                   </div>
                                 </div>
@@ -1588,15 +1578,6 @@ export default function AccountDashboard() {
                                       >
                                         <i className="fa-solid fa-location-crosshairs text-danger"></i> <span>Track</span>
                                       </button>
-                                      <a
-                                        href={`/api/orders/${o._id}/shipping-label?view=print&autoPrint=1&token=${localStorage.getItem("sparepro_token") || ""}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="btn-track-pill me-1"
-                                        title="Download / Print Shipping Label with Barcode"
-                                      >
-                                        <i className="fa-solid fa-barcode text-muted"></i> <span>Label</span>
-                                      </a>
                                       <button
                                         type="button"
                                         className="btn btn-sm btn-outline-dark rounded-pill px-3"
@@ -1676,14 +1657,6 @@ export default function AccountDashboard() {
                                         >
                                           <i className="fa-solid fa-location-crosshairs me-1"></i> Track Parcel Live
                                         </button>
-                                        <a
-                                          href={`/api/orders/${selectedResellerOrder._id}/shipping-label?view=print&autoPrint=1&token=${localStorage.getItem("sparepro_token") || ""}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="btn btn-sm btn-outline-dark rounded-pill px-3 shadow-sm"
-                                        >
-                                          <i className="fa-solid fa-barcode me-1"></i> Print / Download Label
-                                        </a>
                                       </div>
                                     </div>
                                   </div>
