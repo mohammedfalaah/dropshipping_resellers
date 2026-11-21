@@ -1752,8 +1752,31 @@ html, body, #root, .site-wrapper {
   background: #ffffff;
   border: 1px solid #edf2f7;
   border-radius: 14px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+
+.dash-table-wrapper::-webkit-scrollbar {
+  height: 6px;
+}
+
+.dash-table-wrapper::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 6px;
+}
+
+.dash-table-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 6px;
+}
+
+.dash-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .dash-table {
@@ -1763,6 +1786,10 @@ html, body, #root, .site-wrapper {
   border-spacing: 0;
 }
 
+.dash-table-wholesale {
+  min-width: 1080px;
+}
+
 .dash-table thead th {
   background: #f8fafc;
   color: #64748b;
@@ -1770,18 +1797,20 @@ html, body, #root, .site-wrapper {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  padding: 12px 18px;
+  padding: 12px 14px;
   border-bottom: 1px solid #e2e8f0;
   border-top: none;
+  white-space: nowrap;
 }
 
 .dash-table tbody td {
-  padding: 14px 18px;
+  padding: 13px 14px;
   font-size: 13px;
   vertical-align: middle;
   border-bottom: 1px solid #f1f5f9;
   color: #334155;
-  background: transparent;
+  background: #ffffff;
+  white-space: nowrap;
 }
 
 .dash-table tbody tr:last-child td {
@@ -1792,8 +1821,30 @@ html, body, #root, .site-wrapper {
   transition: background-color 0.15s ease;
 }
 
-.dash-table tbody tr:hover {
+.dash-table tbody tr:hover td {
   background-color: #f8fafc;
+}
+
+/* Sticky Action Column */
+.dash-table th.sticky-action-col,
+.dash-table td.sticky-action-col {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  box-shadow: -4px 0 8px rgba(0, 0, 0, 0.04);
+}
+
+.dash-table th.sticky-action-col {
+  background: #f8fafc !important;
+  z-index: 3;
+}
+
+.dash-table td.sticky-action-col {
+  background: #ffffff !important;
+}
+
+.dash-table tbody tr:hover td.sticky-action-col {
+  background: #f8fafc !important;
 }
 
 /* Minimalist Status Pills */

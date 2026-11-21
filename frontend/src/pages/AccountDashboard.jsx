@@ -1187,7 +1187,7 @@ export default function AccountDashboard() {
                                 <th>Status</th>
                                 <th>Payment</th>
                                 <th>Total</th>
-                                <th className="text-end">Action</th>
+                                <th className="text-end sticky-action-col">Action</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1215,7 +1215,7 @@ export default function AccountDashboard() {
                                     <td>
                                       <span className="fw-bold text-dark font-monospace">₹{totalAmount}</span>
                                     </td>
-                                    <td className="text-end text-nowrap">
+                                    <td className="text-end text-nowrap sticky-action-col">
                                       <button
                                         type="button"
                                         className="btn-track-pill me-1"
@@ -1463,8 +1463,16 @@ export default function AccountDashboard() {
                         </div>
 
                         {/* DESKTOP VIEW: Full Orders Table (>= 992px) */}
+                        <div className="d-none d-lg-flex justify-content-between align-items-center mb-2 px-1">
+                          <span className="text-muted" style={{ fontSize: "11.5px" }}>
+                            <i className="fa-solid fa-arrows-left-right me-1 text-secondary"></i> Scroll horizontally to view full financial breakdown &amp; settlement status
+                          </span>
+                          <span className="badge bg-light text-muted border" style={{ fontSize: "10.5px" }}>
+                            <i className="fa-solid fa-thumbtack me-1 text-primary"></i> Actions column pinned
+                          </span>
+                        </div>
                         <div className="dash-table-wrapper d-none d-lg-block mb-4">
-                          <table className="dash-table">
+                          <table className="dash-table dash-table-wholesale">
                             <thead>
                               <tr>
                                 <th>Order #</th>
@@ -1476,7 +1484,7 @@ export default function AccountDashboard() {
                                 <th>Customer Collection</th>
                                 <th>COD Status</th>
                                 <th>Settlement</th>
-                                <th className="text-end">Actions</th>
+                                <th className="text-end sticky-action-col">Actions</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1571,7 +1579,7 @@ export default function AccountDashboard() {
                                         {settlementStatus}
                                       </span>
                                     </td>
-                                    <td className="text-end text-nowrap">
+                                    <td className="text-end text-nowrap sticky-action-col">
                                       <button
                                         type="button"
                                         className="btn-track-pill me-1"
