@@ -156,7 +156,7 @@ export default function Settings() {
     e.preventDefault();
     const parsedCharge = Number(deliveryCharge);
     if (isNaN(parsedCharge) || parsedCharge < 0) {
-      addToast("Please enter a valid non-negative delivery charge (₹).", "error");
+      addToast("Please enter a valid non-negative standard delivery charge (₹).", "error");
       return;
     }
     const parsedFastCharge = Number(fastDeliveryCharge);
@@ -181,7 +181,7 @@ export default function Settings() {
         indiapostRefreshToken,
         indiapostAutoSync,
       });
-      addToast(`Platform settings updated! Standard: ₹${parsedCharge.toFixed(2)}, Fast: ₹${parsedFastCharge.toFixed(2)}.`, "success");
+      addToast(`Platform settings updated! Standard: ₹${parsedCharge.toFixed(2)}, Fast Delivery: ₹${parsedFastCharge.toFixed(2)}.`, "success");
       if (indiapostPassword && indiapostPassword !== "••••••••") {
         setHasIndiapostPassword(true);
         setIndiapostPassword("••••••••");
@@ -274,26 +274,26 @@ export default function Settings() {
                         onChange={(e) => setDeliveryCharge(e.target.value)}
                       />
                     </div>
-                    <div className="small text-muted mt-1">Standard courier charge for normal dispatches (India Post).</div>
+                    <div className="small text-muted mt-1">Default delivery charge for standard postal / business parcel orders.</div>
                   </div>
+
                   <div className="col-sm-6">
                     <label className="form-label small fw-semibold d-flex align-items-center gap-1">
-                      <i className="fa-solid fa-bolt text-danger"></i>
                       <span>Fast Delivery Charge (₹)</span>
+                      <span className="badge bg-danger text-white" style={{ fontSize: "10px" }}>Priority Logistics</span>
                     </label>
                     <div className="input-group">
-                      <span className="input-group-text bg-danger-subtle text-danger fw-bold">₹</span>
+                      <span className="input-group-text">₹</span>
                       <input
                         type="number"
                         min="0"
                         step="0.01"
                         className="form-control"
-                        placeholder="100.00"
                         value={fastDeliveryCharge}
                         onChange={(e) => setFastDeliveryCharge(e.target.value)}
                       />
                     </div>
-                    <div className="small text-muted mt-1">Priority dispatch charge applied when customer selects Fast Delivery.</div>
+                    <div className="small text-muted mt-1">Applied automatically when customer selects Fast Delivery / Priority Dispatch at checkout.</div>
                   </div>
                   <div className="col-sm-6">
                     <label className="form-label small fw-semibold">Reseller Approval Policy</label>

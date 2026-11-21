@@ -36,7 +36,7 @@ const getDeliveryChargePaise = async () => {
 };
 
 /**
- * Get current fast delivery charge in integer paise
+ * Get current Fast Delivery charge in integer paise
  * Fallback to default 10000 paise (₹100) if DB unavailable
  */
 const getFastDeliveryChargePaise = async () => {
@@ -66,9 +66,9 @@ const updateSettings = async (data = {}, adminUser = null) => {
   }
 
   if (data.fastDeliveryCharge !== undefined && data.fastDeliveryCharge !== null && data.fastDeliveryCharge !== "") {
-    const parsedFastRupees = Number(data.fastDeliveryCharge);
-    if (!isNaN(parsedFastRupees) && parsedFastRupees >= 0) {
-      settings.fastDeliveryChargePaise = Math.round(parsedFastRupees * 100);
+    const parsedFast = Number(data.fastDeliveryCharge);
+    if (!isNaN(parsedFast) && parsedFast >= 0) {
+      settings.fastDeliveryChargePaise = Math.round(parsedFast * 100);
     }
   } else if (typeof data.fastDeliveryChargePaise === "number" && data.fastDeliveryChargePaise >= 0) {
     settings.fastDeliveryChargePaise = Math.round(data.fastDeliveryChargePaise);

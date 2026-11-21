@@ -22,7 +22,7 @@ export const CartProvider = ({ children }) => {
   const [adminDeliveryCharge, setAdminDeliveryCharge] = useState(50);
   const [adminFastDeliveryCharge, setAdminFastDeliveryCharge] = useState(100);
 
-  // Fetch configured delivery charge from platform settings
+  // Fetch configured delivery charges from platform settings
   useEffect(() => {
     let isMounted = true;
     settingsApi
@@ -39,7 +39,7 @@ export const CartProvider = ({ children }) => {
         }
       })
       .catch((err) => {
-        // Fallback to defaults quietly if server is initializing
+        // Fallback to default ₹50 and ₹100 quietly if server is initializing
         console.log("[CartContext] Settings delivery charge fetch fallback:", err.message);
       });
     return () => {
@@ -253,8 +253,10 @@ export const CartProvider = ({ children }) => {
 
   const cartExpectedProfit = Math.max(0, cartCustomerSellingTotal - cartWholesaleSubtotal);
 
-  // Platform managed delivery charge for dropshipping
-  const deliveryCharge = cart.length > 0 ? adminDeliveryCharge : 0;
+  // Platform managed delivery charges for dropshipping
+  const standardDeliveryCharge = cart.length > 0 ? adminDeliveryCharge : 0;
+  const fastDeliveryCharge = cart.length > 0 ? adminFastDeliveryCharge : 0;
+  const deliveryCharge = standardDeliveryCharge;
   const shipping = deliveryCharge;
 
   const discountAmount = coupon.applied ? (cartSubtotal * coupon.discountPercent) / 100 : 0;
@@ -284,8 +286,10 @@ export const CartProvider = ({ children }) => {
         cartExpectedProfit,
         hasMissingCustomerPrices,
         deliveryCharge,
-        fastDeliveryCharge: adminFastDeliveryCharge,
-        standardDeliveryCharge: adminDeliveryCharge,
+        standardDeliveryCharge,
+        fastDeliveryCharge,
+        adminDeliveryCharge,
+        adminFastDeliveryCharge,
         shipping,
         cartTotal,
         codPayableNow,

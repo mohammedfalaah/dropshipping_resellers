@@ -138,9 +138,9 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
   }
 
   // Delivery charge from platform settings (admin-managed: standard vs fast delivery)
-  const standardDeliveryChargePaise = await settingsService.getDeliveryChargePaise();
-  const fastDeliveryChargePaise = await settingsService.getFastDeliveryChargePaise();
-  const deliveryChargePaise = fastDeliveryEnabled ? fastDeliveryChargePaise : standardDeliveryChargePaise;
+  const deliveryChargePaise = fastDeliveryEnabled
+    ? await settingsService.getFastDeliveryChargePaise()
+    : await settingsService.getDeliveryChargePaise();
   const discountPaise = 0;
 
   // Determine financial amounts based on payment method
