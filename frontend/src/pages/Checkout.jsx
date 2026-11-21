@@ -20,6 +20,12 @@ export default function Checkout() {
     cartTotal,
     codPayableNow,
     codCollectionAmount,
+    codOrderValue,
+    codCalculation,
+    codFixedCharge = 70,
+    codCommission = 0,
+    codTotalCharge = 70,
+    isCodCommissionApplied = false,
     updateCustomerSellingPrice,
     commitCustomerSellingPrice,
     clearCart,
@@ -252,6 +258,11 @@ export default function Checkout() {
             shipping: activeDeliveryCharge,
             codPayableNow: activeDeliveryCharge,
             codCollectionAmount: codCollectionAmount,
+            codFixedCharge: codFixedCharge || 70,
+            codCommission: codCommission || 0,
+            codTotalCharge: codTotalCharge || 70,
+            isCodCommissionApplied: Boolean(isCodCommissionApplied),
+            codOrderValue: codOrderValue,
             paymentMethod:
               paymentMethod === "cash_on_delivery"
                 ? "Cash on Delivery (COD)"
@@ -316,6 +327,11 @@ export default function Checkout() {
         shipping: activeDeliveryCharge,
         codPayableNow: activeDeliveryCharge,
         codCollectionAmount: codCollectionAmount,
+        codFixedCharge: codFixedCharge || 70,
+        codCommission: codCommission || 0,
+        codTotalCharge: codTotalCharge || 70,
+        isCodCommissionApplied: Boolean(isCodCommissionApplied),
+        codOrderValue: codOrderValue,
         paymentMethod:
           paymentMethod === "cash_on_delivery"
             ? "Cash on Delivery"
@@ -1016,6 +1032,12 @@ export default function Checkout() {
                           <span className="text-muted small fw-normal">
                             Pay ₹{Number(activeDeliveryCharge).toLocaleString("en-IN")} delivery charge now via Razorpay &bull; Balance ₹{cartCustomerSellingTotal > 0 ? Number(cartCustomerSellingTotal).toLocaleString("en-IN") : "0"} will be collected in cash on delivery
                           </span>
+                          <div className="d-flex align-items-center gap-2 mt-1">
+                            <span className="badge bg-light text-dark border small" style={{ fontSize: "11px" }}>
+                              <i className="fa-solid fa-calculator text-primary me-1"></i>
+                              COD Fee: <strong>₹{Number(codTotalCharge || 70).toFixed(2)}</strong> (Fixed ₹{Number(codFixedCharge || 70).toFixed(2)}{isCodCommissionApplied ? ` + 1.60% Comm.: ₹${Number(codCommission).toFixed(2)}` : " | ₹0 comm. for ≤₹1,250"})
+                            </span>
+                          </div>
                         </label>
                       </div>
                     )}
@@ -1180,6 +1202,44 @@ export default function Checkout() {
                             <span className="badge bg-secondary-subtle text-secondary ms-2" style={{ fontSize: "10px" }}>Standard (₹{baseStandardDelivery})</span>
                           )}
                         </span>
+                      </div>
+
+                      {/* Cash on Delivery (COD) Charge Breakdown */}
+                      <div className="p-3 mb-3 rounded-3 border" style={{ backgroundColor: "#f8fafc", borderColor: "#e2e8f0" }}>
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <span className="fw-bold text-dark small d-flex align-items-center gap-1">
+                            <i className="fa-solid fa-calculator text-primary"></i>
+                            <span>COD Charge &amp; Commission</span>
+                          </span>
+                          <span className="badge bg-primary-subtle text-primary border border-primary-subtle" style={{ fontSize: "10px" }}>
+                            India Post Tariff
+                          </span>
+                        </div>
+                        <div className="d-flex justify-content-between text-muted small mb-1">
+                          <span>Fixed COD Charge:</span>
+                          <span className="fw-semibold text-dark">₹{Number(codFixedCharge || 70).toFixed(2)}</span>
+                        </div>
+                        <div className="d-flex justify-content-between text-muted small mb-1">
+                          <span>
+                            1.60% Commission:
+                            {isCodCommissionApplied ? (
+                              <span className="badge bg-danger-subtle text-danger border ms-1" style={{ fontSize: "9.5px" }}>
+                                On full value ₹{Number(codOrderValue).toLocaleString("en-IN", { minimumFractionDigits: 2 })} (&gt;₹1,250)
+                              </span>
+                            ) : (
+                              <span className="badge bg-secondary-subtle text-secondary ms-1" style={{ fontSize: "9.5px" }}>
+                                ₹0 for order ≤ ₹1,250
+                              </span>
+                            )}
+                          </span>
+                          <span className="fw-semibold text-dark">₹{Number(codCommission || 0).toFixed(2)}</span>
+                        </div>
+                        <div className="d-flex justify-content-between text-dark fw-bold small border-top pt-2 mt-1">
+                          <span>Total COD Charge:</span>
+                          <span className="text-primary fw-bold" style={{ fontSize: "13px" }}>
+                            ₹{Number(codTotalCharge || 70).toFixed(2)}
+                          </span>
+                        </div>
                       </div>
                       <div className="border-top border-dark pt-3 mb-2 d-flex justify-content-between align-items-center">
                         <div>

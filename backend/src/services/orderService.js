@@ -17,6 +17,35 @@ const generateOrderNumber = () => {
 };
 
 /**
+ * Calculate India Post COD Charge:
+ * - Orders <= ₹1,250 (125000 paise): Fixed COD charge of ₹70 (7000 paise)
+ * - Orders > ₹1,250: Fixed ₹70 (7000 paise) + 1.60% commission on the full order value
+ */
+const calculateCodChargePaise = (orderValuePaise) => {
+  const numericPaise = Math.max(0, Math.round(Number(orderValuePaise) || 0));
+  const fixedChargePaise = 7000; // ₹70.00
+  const thresholdPaise = 125000; // ₹1,250.00
+  if (numericPaise <= thresholdPaise) {
+    return {
+      orderValuePaise: numericPaise,
+      fixedChargePaise: 7000,
+      commissionPaise: 0,
+      totalCodChargePaise: 7000,
+      isCommissionApplied: false,
+    };
+  }
+  const commissionPaise = Math.round(numericPaise * 0.016);
+  const totalCodChargePaise = fixedChargePaise + commissionPaise;
+  return {
+    orderValuePaise: numericPaise,
+    fixedChargePaise: 7000,
+    commissionPaise,
+    totalCodChargePaise,
+    isCommissionApplied: true,
+  };
+};
+
+/**
  * Create a new order with atomic stock validation and deduction
  */
 const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, userObj, isFastDelivery = false, courierName = "" }) => {
@@ -147,9 +176,19 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
   let totalPaise = 0;
   let customerCollectionPaise = 0;
   let deliveryChargeStatus = "PENDING";
+  let codFixedChargePaise = 0;
+  let codCommissionPaise = 0;
+  let codTotalChargePaise = 0;
 
   if (normalizedPaymentMethod === "COD") {
-    // For COD: Reseller pays ONLY the delivery charge now.
+    // For COD: Calculate India Post COD Charge based on order value
+    const codOrderValuePaise = customerSellingTotalPaise > 0 ? customerSellingTotalPaise : wholesaleCostPaise;
+    const codCalc = calculateCodChargePaise(codOrderValuePaise);
+    codFixedChargePaise = codCalc.fixedChargePaise;
+    codCommissionPaise = codCalc.commissionPaise;
+    codTotalChargePaise = codCalc.totalCodChargePaise;
+
+    // Reseller pays the delivery charge online at checkout.
     // Wholesale product amount is collected from customer upon delivery.
     totalPaise = deliveryChargePaise;
     customerCollectionPaise = customerSellingTotalPaise;
@@ -188,6 +227,9 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
     expectedResellerProfitPaise,
     deliveryChargePaise,
     deliveryChargeStatus,
+    codFixedChargePaise,
+    codCommissionPaise,
+    codTotalChargePaise,
     customerCollectionPaise,
     codCollectedAmountPaise: 0,
     codCollectionStatus: normalizedPaymentMethod === "COD" ? "PENDING" : "NOT_APPLICABLE",
@@ -247,6 +289,9 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
       expectedResellerProfitPaise,
       deliveryChargePaise,
       deliveryChargeStatus,
+      codFixedChargePaise,
+      codCommissionPaise,
+      codTotalChargePaise,
       amountPayableToVexoraPaise: wholesaleCostPaise + deliveryChargePaise,
       codAmountPaise: customerSellingTotalPaise,
       collectedAmountPaise: 0,
@@ -458,4 +503,5 @@ const updateOrderStatus = async (orderId, { orderStatus, trackingNumber, courier
 module.exports = {
   createOrder,
   updateOrderStatus,
+  calculateCodChargePaise,
 };

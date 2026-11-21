@@ -235,6 +235,9 @@ export default function CodPending() {
                         <span className={`badge ${c.deliveryChargeStatus === "PAID" ? "bg-success-subtle text-success" : "bg-warning-subtle text-dark"}`} style={{ fontSize: "10px" }}>
                           {c.deliveryChargeStatus || "PENDING"}
                         </span>
+                        <div className="small text-muted mt-1" style={{ fontSize: "10px" }}>
+                          COD Fee: ₹{((c.codTotalChargePaise || 7000) / 100).toFixed(2)}
+                        </div>
                       </td>
                       <td>
                         <div className="fw-semibold">₹{collected} / ₹{codTarget}</div>

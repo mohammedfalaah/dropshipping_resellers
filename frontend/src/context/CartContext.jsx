@@ -4,6 +4,35 @@ import { settingsApi } from "../services/api";
 
 const CartContext = createContext();
 
+// COD charge calculation helper
+// - Orders <= ₹1,250: Fixed charge = ₹70
+// - Orders > ₹1,250: Fixed ₹70 + 1.60% commission on the full order value
+export const calculateCodCharge = (orderValue) => {
+  const numericVal = Number(orderValue) || 0;
+  const fixedCharge = 70;
+  if (numericVal <= 1250) {
+    return {
+      orderValue: numericVal,
+      fixedCharge: 70,
+      commissionPercent: 1.6,
+      commission: 0,
+      totalCodCharge: 70,
+      isCommissionApplied: false,
+    };
+  }
+  const rawCommission = numericVal * 0.016;
+  const commission = Number(rawCommission.toFixed(2));
+  const totalCodCharge = Number((fixedCharge + commission).toFixed(2));
+  return {
+    orderValue: numericVal,
+    fixedCharge: 70,
+    commissionPercent: 1.6,
+    commission,
+    totalCodCharge,
+    isCommissionApplied: true,
+  };
+};
+
 export const CartProvider = ({ children }) => {
   const { isAuthenticated } = useAuth();
 
@@ -262,9 +291,11 @@ export const CartProvider = ({ children }) => {
   const discountAmount = coupon.applied ? (cartSubtotal * coupon.discountPercent) / 100 : 0;
   const cartTotal = Math.max(0, cartSubtotal - discountAmount + (cart.length > 0 ? deliveryCharge : 0));
 
-  // COD Specific totals
-  const codPayableNow = deliveryCharge; // Reseller pays ONLY delivery charge at checkout for COD
+  // COD Specific totals & charge calculation
+  const codPayableNow = deliveryCharge; // Reseller pays delivery charge at checkout for COD
   const codCollectionAmount = cartCustomerSellingTotal; // End customer pays the product selling amount upon delivery
+  const codOrderValue = cartCustomerSellingTotal > 0 ? cartCustomerSellingTotal : cartWholesaleSubtotal;
+  const codCalculation = calculateCodCharge(codOrderValue);
 
   return (
     <CartContext.Provider
@@ -294,6 +325,13 @@ export const CartProvider = ({ children }) => {
         cartTotal,
         codPayableNow,
         codCollectionAmount,
+        codOrderValue,
+        codCalculation,
+        codFixedCharge: codCalculation.fixedCharge,
+        codCommission: codCalculation.commission,
+        codTotalCharge: codCalculation.totalCodCharge,
+        isCodCommissionApplied: codCalculation.isCommissionApplied,
+        calculateCodCharge,
       }}
     >
       {children}

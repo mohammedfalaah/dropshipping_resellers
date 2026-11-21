@@ -315,6 +315,24 @@ export default function Settings() {
                       </label>
                     </div>
                   </div>
+
+                  <div className="col-12 mt-2">
+                    <div className="p-3 rounded-3 border bg-light">
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <strong className="small text-dark d-flex align-items-center gap-1">
+                          <i className="fa-solid fa-calculator text-primary"></i>
+                          <span>Cash on Delivery (COD) Tariff Policy</span>
+                        </strong>
+                        <span className="badge bg-primary-subtle text-primary border border-primary-subtle" style={{ fontSize: "10px" }}>
+                          Automated Calculation
+                        </span>
+                      </div>
+                      <div className="small text-muted" style={{ fontSize: "12px", lineHeight: "1.5" }}>
+                        • <strong>Order value &le; ₹1,250:</strong> Fixed COD charge of <strong>₹70.00</strong> (0% commission).<br />
+                        • <strong>Order value &gt; ₹1,250:</strong> Fixed COD charge of <strong>₹70.00</strong> + <strong>1.60% commission</strong> on full order value (e.g. ₹1,499 &rarr; ₹93.98, ₹1,500 &rarr; ₹94.00, ₹2,000 &rarr; ₹102.00, ₹3,000 &rarr; ₹118.00).
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* India Post Department of Posts Customer Integration API */}
@@ -565,6 +583,10 @@ export default function Settings() {
             <div className="d-flex align-items-center justify-content-between py-2 border-bottom">
               <span className="small text-muted">Fast Delivery:</span>
               <span className="badge bg-danger-subtle text-danger">⚡ ₹{Number(fastDeliveryCharge || 0).toFixed(2)}</span>
+            </div>
+            <div className="d-flex align-items-center justify-content-between py-2 border-bottom">
+              <span className="small text-muted">COD Tariff:</span>
+              <span className="badge bg-secondary-subtle text-dark">₹70.00 + 1.6% (&gt;₹1,250)</span>
             </div>
             <div className="d-flex align-items-center justify-content-between py-2">
               <span className="small text-muted">Payment Gateway:</span>

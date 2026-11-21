@@ -1748,6 +1748,21 @@ export default function AccountDashboard() {
                                     <div><strong>Profit Settled:</strong> ₹{((selectedResellerOrder.settledProfitPaise || 0) / 100).toFixed(2)}</div>
                                   </div>
                                 </div>
+                                {Boolean(selectedResellerOrder.paymentMethod === "COD" || selectedResellerOrder.codTotalChargePaise) && (
+                                  <div className="mt-2 pt-2 border-top">
+                                    <strong>India Post COD Tariff:</strong>{" "}
+                                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle ms-1">
+                                      Total COD Fee: ₹{((selectedResellerOrder.codTotalChargePaise || 7000) / 100).toFixed(2)}
+                                    </span>
+                                    <span className="text-muted ms-2" style={{ fontSize: "11px" }}>
+                                      (Fixed: ₹{((selectedResellerOrder.codFixedChargePaise || 7000) / 100).toFixed(2)}
+                                      {selectedResellerOrder.codCommissionPaise > 0
+                                        ? ` + 1.60% Commission: ₹${(selectedResellerOrder.codCommissionPaise / 100).toFixed(2)}`
+                                        : " | ₹0 commission for order value ≤ ₹1,250"}
+                                      )
+                                    </span>
+                                  </div>
+                                )}
                                 {selectedResellerOrder.settlementReference && (
                                   <div className="mt-2 pt-2 border-top">
                                     <strong>Settlement Reference:</strong> {selectedResellerOrder.settlementReference}

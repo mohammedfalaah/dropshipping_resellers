@@ -50,6 +50,22 @@ const CodCollectionSchema = new mongoose.Schema(
       default: "PENDING",
       index: true,
     },
+    // COD Charge Breakdown (Fixed ₹70 + 1.60% Commission for order value > ₹1,250)
+    codFixedChargePaise: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    codCommissionPaise: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    codTotalChargePaise: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     amountPayableToVexoraPaise: {
       type: Number,
       default: 0,
@@ -179,6 +195,15 @@ CodCollectionSchema.virtual("deliveryChargeRupees").get(function () {
 });
 CodCollectionSchema.virtual("settledProfitRupees").get(function () {
   return Number(((this.settledProfitPaise || 0) / 100).toFixed(2));
+});
+CodCollectionSchema.virtual("codFixedChargeRupees").get(function () {
+  return Number(((this.codFixedChargePaise || 0) / 100).toFixed(2));
+});
+CodCollectionSchema.virtual("codCommissionRupees").get(function () {
+  return Number(((this.codCommissionPaise || 0) / 100).toFixed(2));
+});
+CodCollectionSchema.virtual("codTotalChargeRupees").get(function () {
+  return Number(((this.codTotalChargePaise || 0) / 100).toFixed(2));
 });
 
 module.exports = mongoose.model("CodCollection", CodCollectionSchema);

@@ -197,6 +197,22 @@ export default function OrderReceived() {
                         ₹{Number(currentOrder.codCollectionAmount || currentOrder.customerSellingTotal || currentOrder.total).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </strong>
                     </div>
+
+                    {/* COD Charge & Commission Breakdown */}
+                    <div className="p-2 rounded-2 mt-2 border small" style={{ backgroundColor: "#f8fafc" }}>
+                      <div className="d-flex justify-content-between text-muted mb-1">
+                        <span>Fixed COD Charge:</span>
+                        <strong className="text-dark">₹{Number(currentOrder.codFixedCharge ?? currentOrder.codFixedChargeRupees ?? 70).toFixed(2)}</strong>
+                      </div>
+                      <div className="d-flex justify-content-between text-muted mb-1">
+                        <span>1.60% Commission (Orders &gt; ₹1,250):</span>
+                        <strong className="text-dark">₹{Number(currentOrder.codCommission ?? currentOrder.codCommissionRupees ?? 0).toFixed(2)}</strong>
+                      </div>
+                      <div className="d-flex justify-content-between text-dark fw-bold border-top pt-1 mt-1">
+                        <span>Total COD Charge:</span>
+                        <strong className="text-primary">₹{Number(currentOrder.codTotalCharge ?? currentOrder.codTotalChargeRupees ?? 70).toFixed(2)}</strong>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="d-flex justify-content-between pt-3 border-top mt-2">
