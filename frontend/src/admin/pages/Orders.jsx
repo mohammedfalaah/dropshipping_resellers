@@ -19,6 +19,15 @@ export default function Orders() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
+  // 3-dots actions dropdown state
+  const [activeDropdownId, setActiveDropdownId] = useState(null);
+
+  useEffect(() => {
+    const handleGlobalClick = () => setActiveDropdownId(null);
+    window.addEventListener("click", handleGlobalClick);
+    return () => window.removeEventListener("click", handleGlobalClick);
+  }, []);
+
   // Status / Dispatch update modal
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
@@ -458,7 +467,7 @@ export default function Orders() {
             <p className="text-muted small">No orders match the selected filters.</p>
           </div>
         ) : (
-          <div className="table-responsive">
+          <div className="table-responsive" style={{ minHeight: "360px" }}>
             <table className="admin-table table-hover align-middle mb-0">
               <thead className="table-light">
                 <tr>
@@ -470,11 +479,12 @@ export default function Orders() {
                   <th style={{ minWidth: "120px" }}>Customer Total</th>
                   <th style={{ minWidth: "150px" }}>COD Collection State</th>
                   <th style={{ minWidth: "170px" }}>Delivery Progress & Courier</th>
-                  <th style={{ minWidth: "190px" }} className="text-end">Actions</th>
+                  <th style={{ minWidth: "80px", width: "80px" }} className="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {orders.map((o) => {
+                {orders.map((o, idx) => {
+                  const isNearBottom = idx >= orders.length - 2 && orders.length > 2;
                   const wholesalePaise =
                     o.wholesaleCostPaise ||
                     (o.items || []).reduce(
@@ -680,47 +690,102 @@ export default function Orders() {
                         </div>
                       </td>
 
-                      {/* Actions */}
+                      {/* Actions (3 Dots Dropdown Menu) */}
                       <td className="text-end">
-                        <div className="btn-group btn-group-sm">
-                          {/* Printable Shipping Label button */}
+                        <div className="dropdown position-relative d-inline-block" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
-                            className="btn btn-sm btn-outline-dark"
-                            title="Download / Print 4x6 Shipping Label with Barcode"
-                            onClick={() => handlePrintShippingLabel(o._id)}
-                          >
-                            <i className="fa-solid fa-barcode"></i> Label
-                          </button>
-                          {isCod && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-warning text-dark"
-                              title="Update COD Collection"
-                              onClick={() => handleOpenCodModal(o)}
-                            >
-                              <i className="fa-solid fa-money-bill-transfer"></i>
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-light border"
-                            title="Dispatch"
-                            onClick={() => handleOpenStatusModal(o)}
-                          >
-                            <i className="fa-solid fa-truck me-1"></i> Dispatch
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-light border"
-                            title="View Order Details"
-                            onClick={() => {
-                              setSelectedOrder(o);
-                              setShowDetailModal(true);
+                            className={`btn btn-sm btn-light border shadow-sm rounded-2 d-inline-flex align-items-center justify-content-center ${activeDropdownId === o._id ? "active bg-secondary-subtle" : ""}`}
+                            style={{ width: "32px", height: "32px" }}
+                            title="Actions"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveDropdownId(activeDropdownId === o._id ? null : o._id);
                             }}
                           >
-                            <i className="fa-regular fa-eye"></i>
+                            <i className="fa-solid fa-ellipsis-vertical text-secondary"></i>
                           </button>
+                          {activeDropdownId === o._id && (
+                            <div
+                              className="dropdown-menu dropdown-menu-end show shadow-lg border p-1"
+                              style={{
+                                position: "absolute",
+                                right: 0,
+                                ...(isNearBottom ? { bottom: "100%", marginBottom: "6px" } : { top: "100%", marginTop: "6px" }),
+                                zIndex: 1050,
+                                minWidth: "185px",
+                                borderRadius: "10px",
+                              }}
+                            >
+                              <button
+                                type="button"
+                                className="dropdown-item py-2 px-3 d-flex align-items-center gap-2 small fw-semibold text-primary rounded-2"
+                                onClick={() => {
+                                  setActiveDropdownId(null);
+                                  handleOpenStatusModal(o);
+                                }}
+                              >
+                                <i className="fa-solid fa-truck" style={{ width: "16px" }}></i>
+                                <span>Dispatch</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                className="dropdown-item py-2 px-3 d-flex align-items-center gap-2 small rounded-2 text-dark"
+                                onClick={() => {
+                                  setActiveDropdownId(null);
+                                  handlePrintShippingLabel(o._id);
+                                }}
+                              >
+                                <i className="fa-solid fa-barcode text-dark" style={{ width: "16px" }}></i>
+                                <span>Print Label</span>
+                              </button>
+
+                              {isCod && (
+                                <button
+                                  type="button"
+                                  className="dropdown-item py-2 px-3 d-flex align-items-center gap-2 small rounded-2 text-dark"
+                                  onClick={() => {
+                                    setActiveDropdownId(null);
+                                    handleOpenCodModal(o);
+                                  }}
+                                >
+                                  <i className="fa-solid fa-money-bill-transfer text-warning" style={{ width: "16px" }}></i>
+                                  <span>Update COD</span>
+                                </button>
+                              )}
+
+                              {o.trackingNumber && (
+                                <button
+                                  type="button"
+                                  className="dropdown-item py-2 px-3 d-flex align-items-center gap-2 small rounded-2 text-dark"
+                                  disabled={syncingOrderId === o._id}
+                                  onClick={() => {
+                                    setActiveDropdownId(null);
+                                    handleSyncOrderTracking(o._id);
+                                  }}
+                                >
+                                  <i className={`fa-solid fa-rotate text-info ${syncingOrderId === o._id ? "fa-spin" : ""}`} style={{ width: "16px" }}></i>
+                                  <span>Sync Tracking</span>
+                                </button>
+                              )}
+
+                              <div className="dropdown-divider my-1"></div>
+
+                              <button
+                                type="button"
+                                className="dropdown-item py-2 px-3 d-flex align-items-center gap-2 small rounded-2 text-dark"
+                                onClick={() => {
+                                  setActiveDropdownId(null);
+                                  setSelectedOrder(o);
+                                  setShowDetailModal(true);
+                                }}
+                              >
+                                <i className="fa-regular fa-eye text-secondary" style={{ width: "16px" }}></i>
+                                <span>View Details</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
