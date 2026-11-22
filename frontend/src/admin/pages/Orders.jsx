@@ -470,7 +470,7 @@ export default function Orders() {
                   <th style={{ minWidth: "120px" }}>Customer Total</th>
                   <th style={{ minWidth: "150px" }}>COD Collection State</th>
                   <th style={{ minWidth: "170px" }}>Delivery Progress & Courier</th>
-                  <th style={{ minWidth: "140px" }} className="text-end">Actions</th>
+                  <th style={{ minWidth: "190px" }} className="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -705,10 +705,10 @@ export default function Orders() {
                           <button
                             type="button"
                             className="btn btn-sm btn-light border"
-                            title="Update Dispatch / Courier"
+                            title="Dispatch"
                             onClick={() => handleOpenStatusModal(o)}
                           >
-                            <i className="fa-solid fa-truck"></i>
+                            <i className="fa-solid fa-truck me-1"></i> Dispatch
                           </button>
                           <button
                             type="button"
