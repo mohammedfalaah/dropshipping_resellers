@@ -28,6 +28,17 @@ const SettingSchema = new mongoose.Schema(
       default: 10000, // ₹100.00 in integer paise
       min: 0,
     },
+    // COD Charge Configuration: Fixed Fee (₹50) + Commission (1.60% on full COD Amount)
+    codFixedFeePaise: {
+      type: Number,
+      default: 5000, // ₹50.00 in integer paise
+      min: 0,
+    },
+    codCommissionRate: {
+      type: Number,
+      default: 1.6, // 1.60%
+      min: 0,
+    },
     defaultMoq: {
       type: Number,
       default: 1,
@@ -101,6 +112,14 @@ SettingSchema.virtual("deliveryChargeRupees").get(function () {
 
 SettingSchema.virtual("fastDeliveryChargeRupees").get(function () {
   return Number(((this.fastDeliveryChargePaise ?? 10000) / 100).toFixed(2));
+});
+
+SettingSchema.virtual("codFixedFeeRupees").get(function () {
+  return Number(((this.codFixedFeePaise ?? 5000) / 100).toFixed(2));
+});
+
+SettingSchema.virtual("codCommissionRatePercent").get(function () {
+  return Number((this.codCommissionRate ?? 1.6).toFixed(2));
 });
 
 module.exports = mongoose.model("Setting", SettingSchema);

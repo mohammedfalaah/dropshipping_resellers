@@ -50,7 +50,7 @@ const CodCollectionSchema = new mongoose.Schema(
       default: "PENDING",
       index: true,
     },
-    // COD Charge Breakdown (Fixed ₹70 + 1.60% Commission for order value > ₹1,250)
+    // COD Charge Breakdown (Fixed Fee ₹50 + 1.60% Commission on full COD amount)
     codFixedChargePaise: {
       type: Number,
       default: 0,

@@ -17,31 +17,26 @@ const generateOrderNumber = () => {
 };
 
 /**
- * Calculate India Post COD Charge:
- * - Orders <= ₹1,250 (125000 paise): Fixed COD charge of ₹70 (7000 paise)
- * - Orders > ₹1,250: Fixed ₹70 (7000 paise) + 1.60% commission on the full order value
+ * Calculate COD Charge:
+ * Formula: Total COD Charge = Fixed COD Fee + (COD Amount * Commission Rate)
+ * - Default Fixed COD Fee: ₹50 (5000 paise)
+ * - Default Commission Rate: 1.60% (0.016) calculated on full COD amount
+ * - Applies to all COD orders regardless of order value (no threshold)
  */
-const calculateCodChargePaise = (orderValuePaise) => {
-  const numericPaise = Math.max(0, Math.round(Number(orderValuePaise) || 0));
-  const fixedChargePaise = 7000; // ₹70.00
-  const thresholdPaise = 125000; // ₹1,250.00
-  if (numericPaise <= thresholdPaise) {
-    return {
-      orderValuePaise: numericPaise,
-      fixedChargePaise: 7000,
-      commissionPaise: 0,
-      totalCodChargePaise: 7000,
-      isCommissionApplied: false,
-    };
-  }
-  const commissionPaise = Math.round(numericPaise * 0.016);
-  const totalCodChargePaise = fixedChargePaise + commissionPaise;
+const calculateCodChargePaise = (codAmountPaise, fixedFeePaise = 5000, commissionRate = 1.6) => {
+  const numericAmountPaise = Math.max(0, Math.round(Number(codAmountPaise) || 0));
+  const numericFixedPaise = Math.max(0, Math.round(Number(fixedFeePaise) || 5000));
+  const numericRate = typeof commissionRate === "number" && !isNaN(commissionRate) && commissionRate >= 0 ? commissionRate : 1.6;
+
+  const commissionPaise = Math.round(numericAmountPaise * (numericRate / 100));
+  const totalCodChargePaise = numericFixedPaise + commissionPaise;
+
   return {
-    orderValuePaise: numericPaise,
-    fixedChargePaise: 7000,
+    codAmountPaise: numericAmountPaise,
+    fixedFeePaise: numericFixedPaise,
+    commissionRate: numericRate,
     commissionPaise,
     totalCodChargePaise,
-    isCommissionApplied: true,
   };
 };
 
@@ -181,10 +176,12 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
   let codTotalChargePaise = 0;
 
   if (normalizedPaymentMethod === "COD") {
-    // For COD: Calculate India Post COD Charge based on order value
+    // For COD: Calculate COD Charge = Fixed COD Fee + (COD Amount * 1.60%)
+    const codFixedFeePaise = await settingsService.getCodFixedFeePaise();
+    const codCommissionRate = await settingsService.getCodCommissionRate();
     const codOrderValuePaise = customerSellingTotalPaise > 0 ? customerSellingTotalPaise : wholesaleCostPaise;
-    const codCalc = calculateCodChargePaise(codOrderValuePaise);
-    codFixedChargePaise = codCalc.fixedChargePaise;
+    const codCalc = calculateCodChargePaise(codOrderValuePaise, codFixedFeePaise, codCommissionRate);
+    codFixedChargePaise = codCalc.fixedFeePaise;
     codCommissionPaise = codCalc.commissionPaise;
     codTotalChargePaise = codCalc.totalCodChargePaise;
 

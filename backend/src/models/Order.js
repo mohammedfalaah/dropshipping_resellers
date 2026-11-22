@@ -55,7 +55,7 @@ const OrderSchema = new mongoose.Schema(
       default: "PENDING",
       index: true,
     },
-    // COD Charge Breakdown (India Post COD Tariff: Fixed ₹70 + 1.60% Commission if order value > ₹1,250)
+    // COD Charge Breakdown (COD Tariff: Fixed Fee ₹50 + 1.60% Commission on full COD amount)
     codFixedChargePaise: { type: Number, default: 0, min: 0 },
     codCommissionPaise: { type: Number, default: 0, min: 0 },
     codTotalChargePaise: { type: Number, default: 0, min: 0 },

@@ -20,12 +20,14 @@ export default function Checkout() {
     cartTotal,
     codPayableNow,
     codCollectionAmount,
+    codAmount,
     codOrderValue,
     codCalculation,
-    codFixedCharge = 70,
+    codFixedFee = 50,
+    codFixedCharge = 50,
+    codCommissionRate = 1.6,
     codCommission = 0,
-    codTotalCharge = 70,
-    isCodCommissionApplied = false,
+    codTotalCharge = 50,
     updateCustomerSellingPrice,
     commitCustomerSellingPrice,
     clearCart,
@@ -258,11 +260,13 @@ export default function Checkout() {
             shipping: activeDeliveryCharge,
             codPayableNow: activeDeliveryCharge,
             codCollectionAmount: codCollectionAmount,
-            codFixedCharge: codFixedCharge || 70,
+            codFixedFee: codFixedFee || 50,
+            codFixedCharge: codFixedFee || 50,
+            codCommissionRate: codCommissionRate || 1.6,
             codCommission: codCommission || 0,
-            codTotalCharge: codTotalCharge || 70,
-            isCodCommissionApplied: Boolean(isCodCommissionApplied),
-            codOrderValue: codOrderValue,
+            codTotalCharge: codTotalCharge || 50,
+            codAmount: codAmount || codOrderValue || 0,
+            codOrderValue: codAmount || codOrderValue || 0,
             paymentMethod:
               paymentMethod === "cash_on_delivery"
                 ? "Cash on Delivery (COD)"
@@ -327,11 +331,13 @@ export default function Checkout() {
         shipping: activeDeliveryCharge,
         codPayableNow: activeDeliveryCharge,
         codCollectionAmount: codCollectionAmount,
-        codFixedCharge: codFixedCharge || 70,
+        codFixedFee: codFixedFee || 50,
+        codFixedCharge: codFixedFee || 50,
+        codCommissionRate: codCommissionRate || 1.6,
         codCommission: codCommission || 0,
-        codTotalCharge: codTotalCharge || 70,
-        isCodCommissionApplied: Boolean(isCodCommissionApplied),
-        codOrderValue: codOrderValue,
+        codTotalCharge: codTotalCharge || 50,
+        codAmount: codAmount || codOrderValue || 0,
+        codOrderValue: codAmount || codOrderValue || 0,
         paymentMethod:
           paymentMethod === "cash_on_delivery"
             ? "Cash on Delivery"
@@ -1035,7 +1041,7 @@ export default function Checkout() {
                           <div className="d-flex align-items-center gap-2 mt-1">
                             <span className="badge bg-light text-dark border small" style={{ fontSize: "11px" }}>
                               <i className="fa-solid fa-calculator text-primary me-1"></i>
-                              COD Fee: <strong>₹{Number(codTotalCharge || 70).toFixed(2)}</strong> (Fixed ₹{Number(codFixedCharge || 70).toFixed(2)}{isCodCommissionApplied ? ` + 1.60% Comm.: ₹${Number(codCommission).toFixed(2)}` : " | ₹0 comm. for ≤₹1,250"})
+                              COD Fee: <strong>₹{Number(codTotalCharge || 50).toFixed(2)}</strong> (Fixed ₹{Number(codFixedFee || 50).toFixed(2)} + {Number(codCommissionRate || 1.6).toFixed(2)}% Comm.: ₹{Number(codCommission || 0).toFixed(2)})
                             </span>
                           </div>
                         </label>
@@ -1212,32 +1218,23 @@ export default function Checkout() {
                             <span>COD Charge &amp; Commission</span>
                           </span>
                           <span className="badge bg-primary-subtle text-primary border border-primary-subtle" style={{ fontSize: "10px" }}>
-                            India Post Tariff
+                            Fixed ₹{Number(codFixedFee || 50).toFixed(2)} + {Number(codCommissionRate || 1.6).toFixed(2)}%
                           </span>
                         </div>
                         <div className="d-flex justify-content-between text-muted small mb-1">
-                          <span>Fixed COD Charge:</span>
-                          <span className="fw-semibold text-dark">₹{Number(codFixedCharge || 70).toFixed(2)}</span>
+                          <span>Fixed COD Fee:</span>
+                          <span className="fw-semibold text-dark">₹{Number(codFixedFee || 50).toFixed(2)}</span>
                         </div>
                         <div className="d-flex justify-content-between text-muted small mb-1">
                           <span>
-                            1.60% Commission:
-                            {isCodCommissionApplied ? (
-                              <span className="badge bg-danger-subtle text-danger border ms-1" style={{ fontSize: "9.5px" }}>
-                                On full value ₹{Number(codOrderValue).toLocaleString("en-IN", { minimumFractionDigits: 2 })} (&gt;₹1,250)
-                              </span>
-                            ) : (
-                              <span className="badge bg-secondary-subtle text-secondary ms-1" style={{ fontSize: "9.5px" }}>
-                                ₹0 for order ≤ ₹1,250
-                              </span>
-                            )}
+                            COD Commission ({Number(codCommissionRate || 1.6).toFixed(2)}% on ₹{Number(codAmount || codOrderValue || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}):
                           </span>
                           <span className="fw-semibold text-dark">₹{Number(codCommission || 0).toFixed(2)}</span>
                         </div>
                         <div className="d-flex justify-content-between text-dark fw-bold small border-top pt-2 mt-1">
                           <span>Total COD Charge:</span>
                           <span className="text-primary fw-bold" style={{ fontSize: "13px" }}>
-                            ₹{Number(codTotalCharge || 70).toFixed(2)}
+                            ₹{Number(codTotalCharge || 50).toFixed(2)}
                           </span>
                         </div>
                       </div>

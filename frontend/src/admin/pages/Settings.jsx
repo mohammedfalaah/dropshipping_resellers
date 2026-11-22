@@ -11,6 +11,8 @@ export default function Settings() {
   const [defaultMoq, setDefaultMoq] = useState("1");
   const [deliveryCharge, setDeliveryCharge] = useState("50");
   const [fastDeliveryCharge, setFastDeliveryCharge] = useState("100");
+  const [codFixedFee, setCodFixedFee] = useState("50");
+  const [codCommissionRate, setCodCommissionRate] = useState("1.60");
 
   // India Post DOP Wholesaler Credentials & Token Integration
   const [indiapostApiUrl, setIndiapostApiUrl] = useState("https://app.indiapost.gov.in/beextcustomer");
@@ -51,6 +53,18 @@ export default function Settings() {
             setFastDeliveryCharge(String(data.fastDeliveryChargeRupees));
           } else if (data.fastDeliveryChargePaise !== undefined) {
             setFastDeliveryCharge(String(data.fastDeliveryChargePaise / 100));
+          }
+          if (data.codFixedFeeRupees !== undefined) {
+            setCodFixedFee(String(data.codFixedFeeRupees));
+          } else if (data.codFixedFeePaise !== undefined) {
+            setCodFixedFee(String(data.codFixedFeePaise / 100));
+          } else if (data.codFixedFee !== undefined) {
+            setCodFixedFee(String(data.codFixedFee));
+          }
+          if (data.codCommissionRatePercent !== undefined) {
+            setCodCommissionRate(String(data.codCommissionRatePercent));
+          } else if (data.codCommissionRate !== undefined) {
+            setCodCommissionRate(String(data.codCommissionRate));
           }
           if (typeof data.autoApproveResellers === "boolean") {
             setAutoApprove(data.autoApproveResellers);
@@ -164,6 +178,16 @@ export default function Settings() {
       addToast("Please enter a valid non-negative fast delivery charge (₹).", "error");
       return;
     }
+    const parsedCodFixedFee = Number(codFixedFee);
+    if (isNaN(parsedCodFixedFee) || parsedCodFixedFee < 0) {
+      addToast("Please enter a valid non-negative fixed COD fee (₹).", "error");
+      return;
+    }
+    const parsedCodCommissionRate = Number(codCommissionRate);
+    if (isNaN(parsedCodCommissionRate) || parsedCodCommissionRate < 0) {
+      addToast("Please enter a valid non-negative COD commission rate (%).", "error");
+      return;
+    }
 
     try {
       setSaving(true);
@@ -173,6 +197,8 @@ export default function Settings() {
         defaultMoq: Number(defaultMoq) || 1,
         deliveryCharge: parsedCharge,
         fastDeliveryCharge: parsedFastCharge,
+        codFixedFee: parsedCodFixedFee,
+        codCommissionRate: parsedCodCommissionRate,
         autoApproveResellers: autoApprove,
         indiapostApiUrl,
         indiapostUsername,
@@ -181,7 +207,7 @@ export default function Settings() {
         indiapostRefreshToken,
         indiapostAutoSync,
       });
-      addToast(`Platform settings updated! Standard: ₹${parsedCharge.toFixed(2)}, Fast Delivery: ₹${parsedFastCharge.toFixed(2)}.`, "success");
+      addToast(`Platform settings updated! Standard: ₹${parsedCharge.toFixed(2)}, Fast: ₹${parsedFastCharge.toFixed(2)}, COD Fixed: ₹${parsedCodFixedFee.toFixed(2)}, COD Rate: ${parsedCodCommissionRate.toFixed(2)}%.`, "success");
       if (indiapostPassword && indiapostPassword !== "••••••••") {
         setHasIndiapostPassword(true);
         setIndiapostPassword("••••••••");
@@ -296,6 +322,44 @@ export default function Settings() {
                     <div className="small text-muted mt-1">Applied automatically when customer selects Fast Delivery / Priority Dispatch at checkout.</div>
                   </div>
                   <div className="col-sm-6">
+                    <label className="form-label small fw-semibold d-flex align-items-center gap-1">
+                      <span>Fixed COD Fee (₹)</span>
+                      <span className="badge bg-secondary-subtle text-secondary" style={{ fontSize: "10px" }}>Cash on Delivery</span>
+                    </label>
+                    <div className="input-group">
+                      <span className="input-group-text">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="form-control"
+                        value={codFixedFee}
+                        onChange={(e) => setCodFixedFee(e.target.value)}
+                      />
+                    </div>
+                    <div className="small text-muted mt-1">Base fixed fee applied to all Cash on Delivery orders (Default: ₹50).</div>
+                  </div>
+
+                  <div className="col-sm-6">
+                    <label className="form-label small fw-semibold d-flex align-items-center gap-1">
+                      <span>COD Commission Rate (%)</span>
+                      <span className="badge bg-primary-subtle text-primary" style={{ fontSize: "10px" }}>Full COD Amount</span>
+                    </label>
+                    <div className="input-group">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="form-control"
+                        value={codCommissionRate}
+                        onChange={(e) => setCodCommissionRate(e.target.value)}
+                      />
+                      <span className="input-group-text">%</span>
+                    </div>
+                    <div className="small text-muted mt-1">Commission percentage calculated on the full COD amount (Default: 1.60%).</div>
+                  </div>
+
+                  <div className="col-sm-6">
                     <label className="form-label small fw-semibold">Reseller Approval Policy</label>
                     <div className="form-check form-switch mt-2">
                       <input
@@ -328,8 +392,9 @@ export default function Settings() {
                         </span>
                       </div>
                       <div className="small text-muted" style={{ fontSize: "12px", lineHeight: "1.5" }}>
-                        • <strong>Order value &le; ₹1,250:</strong> Fixed COD charge of <strong>₹70.00</strong> (0% commission).<br />
-                        • <strong>Order value &gt; ₹1,250:</strong> Fixed COD charge of <strong>₹70.00</strong> + <strong>1.60% commission</strong> on full order value (e.g. ₹1,499 &rarr; ₹93.98, ₹1,500 &rarr; ₹94.00, ₹2,000 &rarr; ₹102.00, ₹3,000 &rarr; ₹118.00).
+                        • <strong>Formula:</strong> Total COD Charge = Fixed COD Fee + (COD Amount × Commission Rate)<br />
+                        • <strong>Applied to all COD orders:</strong> Commission is calculated on the <strong>full COD amount</strong> without any threshold.<br />
+                        • <strong>Configured Values:</strong> Fixed Fee: <strong>₹{Number(codFixedFee || 50).toFixed(2)}</strong> | Commission: <strong>{Number(codCommissionRate || 1.6).toFixed(2)}%</strong> (e.g. ₹500 &rarr; ₹58.00, ₹1,000 &rarr; ₹66.00, ₹1,199 &rarr; ₹69.18, ₹1,499 &rarr; ₹73.98, ₹2,000 &rarr; ₹82.00).
                       </div>
                     </div>
                   </div>
@@ -585,8 +650,12 @@ export default function Settings() {
               <span className="badge bg-danger-subtle text-danger">⚡ ₹{Number(fastDeliveryCharge || 0).toFixed(2)}</span>
             </div>
             <div className="d-flex align-items-center justify-content-between py-2 border-bottom">
-              <span className="small text-muted">COD Tariff:</span>
-              <span className="badge bg-secondary-subtle text-dark">₹70.00 + 1.6% (&gt;₹1,250)</span>
+              <span className="small text-muted">Fixed COD Fee:</span>
+              <span className="badge bg-secondary-subtle text-dark">₹{Number(codFixedFee || 50).toFixed(2)}</span>
+            </div>
+            <div className="d-flex align-items-center justify-content-between py-2 border-bottom">
+              <span className="small text-muted">COD Commission:</span>
+              <span className="badge bg-secondary-subtle text-dark">{Number(codCommissionRate || 1.6).toFixed(2)}% (Full Amount)</span>
             </div>
             <div className="d-flex align-items-center justify-content-between py-2">
               <span className="small text-muted">Payment Gateway:</span>

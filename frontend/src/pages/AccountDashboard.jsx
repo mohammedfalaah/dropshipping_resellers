@@ -1752,13 +1752,12 @@ export default function AccountDashboard() {
                                   <div className="mt-2 pt-2 border-top">
                                     <strong>India Post COD Tariff:</strong>{" "}
                                     <span className="badge bg-primary-subtle text-primary border border-primary-subtle ms-1">
-                                      Total COD Fee: ₹{((selectedResellerOrder.codTotalChargePaise || 7000) / 100).toFixed(2)}
+                                      Total COD Fee: ₹{((selectedResellerOrder.codTotalChargePaise || 5000) / 100).toFixed(2)}
                                     </span>
                                     <span className="text-muted ms-2" style={{ fontSize: "11px" }}>
-                                      (Fixed: ₹{((selectedResellerOrder.codFixedChargePaise || 7000) / 100).toFixed(2)}
-                                      {selectedResellerOrder.codCommissionPaise > 0
-                                        ? ` + 1.60% Commission: ₹${(selectedResellerOrder.codCommissionPaise / 100).toFixed(2)}`
-                                        : " | ₹0 commission for order value ≤ ₹1,250"}
+                                      (Fixed: ₹{((selectedResellerOrder.codFixedChargePaise || 5000) / 100).toFixed(2)}
+                                      {" + "}
+                                      Commission: ₹{((selectedResellerOrder.codCommissionPaise || 0) / 100).toFixed(2)}
                                       )
                                     </span>
                                   </div>

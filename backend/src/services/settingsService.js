@@ -50,6 +50,34 @@ const getFastDeliveryChargePaise = async () => {
 };
 
 /**
+ * Get current fixed COD fee in integer paise
+ * Fallback to default 5000 paise (₹50) if DB unavailable
+ */
+const getCodFixedFeePaise = async () => {
+  try {
+    const settings = await getSettings();
+    return typeof settings.codFixedFeePaise === "number" ? settings.codFixedFeePaise : 5000;
+  } catch (err) {
+    console.warn("[SettingsService] Falling back to default fixed COD fee (5000 paise):", err.message);
+    return 5000;
+  }
+};
+
+/**
+ * Get current COD commission rate (percentage number, e.g. 1.6)
+ * Fallback to default 1.6% if DB unavailable
+ */
+const getCodCommissionRate = async () => {
+  try {
+    const settings = await getSettings();
+    return typeof settings.codCommissionRate === "number" ? settings.codCommissionRate : 1.6;
+  } catch (err) {
+    console.warn("[SettingsService] Falling back to default COD commission rate (1.6%):", err.message);
+    return 1.6;
+  }
+};
+
+/**
  * Update platform settings (Admin only)
  */
 const updateSettings = async (data = {}, adminUser = null) => {
@@ -72,6 +100,22 @@ const updateSettings = async (data = {}, adminUser = null) => {
     }
   } else if (typeof data.fastDeliveryChargePaise === "number" && data.fastDeliveryChargePaise >= 0) {
     settings.fastDeliveryChargePaise = Math.round(data.fastDeliveryChargePaise);
+  }
+
+  if (data.codFixedFee !== undefined && data.codFixedFee !== null && data.codFixedFee !== "") {
+    const parsedFixed = Number(data.codFixedFee);
+    if (!isNaN(parsedFixed) && parsedFixed >= 0) {
+      settings.codFixedFeePaise = Math.round(parsedFixed * 100);
+    }
+  } else if (typeof data.codFixedFeePaise === "number" && data.codFixedFeePaise >= 0) {
+    settings.codFixedFeePaise = Math.round(data.codFixedFeePaise);
+  }
+
+  if (data.codCommissionRate !== undefined && data.codCommissionRate !== null && data.codCommissionRate !== "") {
+    const parsedRate = Number(data.codCommissionRate);
+    if (!isNaN(parsedRate) && parsedRate >= 0) {
+      settings.codCommissionRate = Number(parsedRate.toFixed(2));
+    }
   }
 
   if (typeof data.platformName === "string" && data.platformName.trim()) {
@@ -207,6 +251,8 @@ module.exports = {
   getSettings,
   getDeliveryChargePaise,
   getFastDeliveryChargePaise,
+  getCodFixedFeePaise,
+  getCodCommissionRate,
   updateSettings,
 };
 

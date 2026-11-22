@@ -201,16 +201,16 @@ export default function OrderReceived() {
                     {/* COD Charge & Commission Breakdown */}
                     <div className="p-2 rounded-2 mt-2 border small" style={{ backgroundColor: "#f8fafc" }}>
                       <div className="d-flex justify-content-between text-muted mb-1">
-                        <span>Fixed COD Charge:</span>
-                        <strong className="text-dark">₹{Number(currentOrder.codFixedCharge ?? currentOrder.codFixedChargeRupees ?? 70).toFixed(2)}</strong>
+                        <span>Fixed COD Fee:</span>
+                        <strong className="text-dark">₹{Number(currentOrder.codFixedCharge ?? currentOrder.codFixedFee ?? currentOrder.codFixedChargeRupees ?? 50).toFixed(2)}</strong>
                       </div>
                       <div className="d-flex justify-content-between text-muted mb-1">
-                        <span>1.60% Commission (Orders &gt; ₹1,250):</span>
+                        <span>COD Commission ({Number(currentOrder.codCommissionRate || 1.6).toFixed(2)}%):</span>
                         <strong className="text-dark">₹{Number(currentOrder.codCommission ?? currentOrder.codCommissionRupees ?? 0).toFixed(2)}</strong>
                       </div>
                       <div className="d-flex justify-content-between text-dark fw-bold border-top pt-1 mt-1">
                         <span>Total COD Charge:</span>
-                        <strong className="text-primary">₹{Number(currentOrder.codTotalCharge ?? currentOrder.codTotalChargeRupees ?? 70).toFixed(2)}</strong>
+                        <strong className="text-primary">₹{Number(currentOrder.codTotalCharge ?? currentOrder.codTotalChargeRupees ?? 50).toFixed(2)}</strong>
                       </div>
                     </div>
                   </div>

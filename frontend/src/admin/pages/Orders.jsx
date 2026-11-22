@@ -1252,18 +1252,18 @@ export default function Orders() {
                     <div className="mt-3 p-2 rounded-2 bg-light border small">
                       <div className="d-flex justify-content-between align-items-center mb-1">
                         <span className="fw-semibold text-dark">
-                          <i className="fa-solid fa-calculator text-primary me-1"></i> India Post COD Tariff Breakdown:
+                          <i className="fa-solid fa-calculator text-primary me-1"></i> COD Tariff Breakdown:
                         </span>
                         <span className="badge bg-primary text-white" style={{ fontSize: "10px" }}>
-                          Total COD Fee: ₹{((selectedOrder.codTotalChargePaise || 7000) / 100).toFixed(2)}
+                          Total COD Fee: ₹{((selectedOrder.codTotalChargePaise || 5000) / 100).toFixed(2)}
                         </span>
                       </div>
                       <div className="d-flex justify-content-between text-muted" style={{ fontSize: "11px" }}>
-                        <span>Fixed COD Charge:</span>
-                        <span>₹{((selectedOrder.codFixedChargePaise || 7000) / 100).toFixed(2)}</span>
+                        <span>Fixed COD Fee:</span>
+                        <span>₹{((selectedOrder.codFixedChargePaise || 5000) / 100).toFixed(2)}</span>
                       </div>
                       <div className="d-flex justify-content-between text-muted" style={{ fontSize: "11px" }}>
-                        <span>1.60% Commission (Orders &gt; ₹1,250):</span>
+                        <span>COD Commission ({Number(selectedOrder.codCommissionRate || 1.6).toFixed(2)}%):</span>
                         <span>₹{((selectedOrder.codCommissionPaise || 0) / 100).toFixed(2)}</span>
                       </div>
                     </div>

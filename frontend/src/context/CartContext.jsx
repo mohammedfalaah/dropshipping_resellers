@@ -4,32 +4,24 @@ import { settingsApi } from "../services/api";
 
 const CartContext = createContext();
 
-// COD charge calculation helper
-// - Orders <= ₹1,250: Fixed charge = ₹70
-// - Orders > ₹1,250: Fixed ₹70 + 1.60% commission on the full order value
-export const calculateCodCharge = (orderValue) => {
-  const numericVal = Number(orderValue) || 0;
-  const fixedCharge = 70;
-  if (numericVal <= 1250) {
-    return {
-      orderValue: numericVal,
-      fixedCharge: 70,
-      commissionPercent: 1.6,
-      commission: 0,
-      totalCodCharge: 70,
-      isCommissionApplied: false,
-    };
-  }
-  const rawCommission = numericVal * 0.016;
+// COD charge calculation helper:
+// Formula: Total COD Charge = Fixed COD Fee + (COD Amount * Commission Rate)
+// Default Fixed COD Fee = ₹50, Default Commission Rate = 1.60% on full COD Amount (no threshold)
+export const calculateCodCharge = (codAmount, fixedFee = 50, commissionRate = 1.6) => {
+  const numericAmount = Number(codAmount) || 0;
+  const numericFixed = typeof fixedFee === "number" && !isNaN(fixedFee) ? fixedFee : 50;
+  const numericRate = typeof commissionRate === "number" && !isNaN(commissionRate) ? commissionRate : 1.6;
+
+  const rawCommission = numericAmount * (numericRate / 100);
   const commission = Number(rawCommission.toFixed(2));
-  const totalCodCharge = Number((fixedCharge + commission).toFixed(2));
+  const totalCodCharge = Number((numericFixed + commission).toFixed(2));
+
   return {
-    orderValue: numericVal,
-    fixedCharge: 70,
-    commissionPercent: 1.6,
+    codAmount: numericAmount,
+    fixedFee: numericFixed,
+    commissionRate: numericRate,
     commission,
     totalCodCharge,
-    isCommissionApplied: true,
   };
 };
 
@@ -50,8 +42,10 @@ export const CartProvider = ({ children }) => {
   const [coupon, setCoupon] = useState({ code: "", discountPercent: 0, applied: false });
   const [adminDeliveryCharge, setAdminDeliveryCharge] = useState(50);
   const [adminFastDeliveryCharge, setAdminFastDeliveryCharge] = useState(100);
+  const [adminCodFixedFee, setAdminCodFixedFee] = useState(50);
+  const [adminCodCommissionRate, setAdminCodCommissionRate] = useState(1.6);
 
-  // Fetch configured delivery charges from platform settings
+  // Fetch configured delivery charges and COD settings from platform settings
   useEffect(() => {
     let isMounted = true;
     settingsApi
@@ -64,6 +58,12 @@ export const CartProvider = ({ children }) => {
           }
           if (typeof data?.fastDeliveryCharge === "number") {
             setAdminFastDeliveryCharge(data.fastDeliveryCharge);
+          }
+          if (typeof data?.codFixedFee === "number") {
+            setAdminCodFixedFee(data.codFixedFee);
+          }
+          if (typeof data?.codCommissionRate === "number") {
+            setAdminCodCommissionRate(data.codCommissionRate);
           }
         }
       })
@@ -294,8 +294,8 @@ export const CartProvider = ({ children }) => {
   // COD Specific totals & charge calculation
   const codPayableNow = deliveryCharge; // Reseller pays delivery charge at checkout for COD
   const codCollectionAmount = cartCustomerSellingTotal; // End customer pays the product selling amount upon delivery
-  const codOrderValue = cartCustomerSellingTotal > 0 ? cartCustomerSellingTotal : cartWholesaleSubtotal;
-  const codCalculation = calculateCodCharge(codOrderValue);
+  const codAmount = cartCustomerSellingTotal > 0 ? cartCustomerSellingTotal : cartWholesaleSubtotal;
+  const codCalculation = calculateCodCharge(codAmount, adminCodFixedFee, adminCodCommissionRate);
 
   return (
     <CartContext.Provider
@@ -321,16 +321,20 @@ export const CartProvider = ({ children }) => {
         fastDeliveryCharge,
         adminDeliveryCharge,
         adminFastDeliveryCharge,
+        adminCodFixedFee,
+        adminCodCommissionRate,
         shipping,
         cartTotal,
         codPayableNow,
         codCollectionAmount,
-        codOrderValue,
+        codAmount,
+        codOrderValue: codAmount,
         codCalculation,
-        codFixedCharge: codCalculation.fixedCharge,
+        codFixedFee: codCalculation.fixedFee,
+        codFixedCharge: codCalculation.fixedFee,
+        codCommissionRate: codCalculation.commissionRate,
         codCommission: codCalculation.commission,
         codTotalCharge: codCalculation.totalCodCharge,
-        isCodCommissionApplied: codCalculation.isCommissionApplied,
         calculateCodCharge,
       }}
     >

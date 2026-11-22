@@ -14,6 +14,9 @@ const getPublicSettings = async (req, res, next) => {
       deliveryCharge: Number((settings.deliveryChargePaise / 100).toFixed(2)),
       fastDeliveryChargePaise: settings.fastDeliveryChargePaise ?? 10000,
       fastDeliveryCharge: Number(((settings.fastDeliveryChargePaise ?? 10000) / 100).toFixed(2)),
+      codFixedFeePaise: settings.codFixedFeePaise ?? 5000,
+      codFixedFee: Number(((settings.codFixedFeePaise ?? 5000) / 100).toFixed(2)),
+      codCommissionRate: Number((settings.codCommissionRate ?? 1.6).toFixed(2)),
       platformName: settings.platformName,
       currency: settings.currency || "INR",
       defaultMoq: settings.defaultMoq || 1,
@@ -40,6 +43,8 @@ const getAdminSettings = async (req, res, next) => {
         ...settingsObj,
         deliveryChargeRupees: Number((settings.deliveryChargePaise / 100).toFixed(2)),
         fastDeliveryChargeRupees: Number(((settings.fastDeliveryChargePaise ?? 10000) / 100).toFixed(2)),
+        codFixedFeeRupees: Number(((settings.codFixedFeePaise ?? 5000) / 100).toFixed(2)),
+        codCommissionRatePercent: Number((settings.codCommissionRate ?? 1.6).toFixed(2)),
       },
     });
   } catch (err) {
@@ -62,6 +67,8 @@ const updateAdminSettings = async (req, res, next) => {
         ...updatedObj,
         deliveryChargeRupees: Number((updated.deliveryChargePaise / 100).toFixed(2)),
         fastDeliveryChargeRupees: Number(((updated.fastDeliveryChargePaise ?? 10000) / 100).toFixed(2)),
+        codFixedFeeRupees: Number(((updated.codFixedFeePaise ?? 5000) / 100).toFixed(2)),
+        codCommissionRatePercent: Number((updated.codCommissionRate ?? 1.6).toFixed(2)),
       },
     });
   } catch (err) {
