@@ -202,7 +202,7 @@ const verifyRazorpayPayment = async ({
   }
 
   // 2. Create Payment record for the exact amount paid online
-  const paidAmountPaise = isCodOrder ? order.deliveryChargePaise : order.totalPaise;
+  const paidAmountPaise = isCodOrder ? (order.codTotalChargePaise || order.totalPaise) : order.totalPaise;
   const paymentNumber = generatePaymentNumber();
   const payment = await Payment.create({
     paymentNumber,
@@ -215,7 +215,7 @@ const verifyRazorpayPayment = async ({
     razorpayOrderId,
     razorpayPaymentId,
     notes: isCodOrder
-      ? `Online payment via Razorpay for COD Delivery Charge (Order ${order.orderNumber})`
+      ? `Online payment via Razorpay for entire COD charge (Order ${order.orderNumber})`
       : `Online payment via Razorpay for order ${order.orderNumber}`,
     recordedBy: user._id,
   });

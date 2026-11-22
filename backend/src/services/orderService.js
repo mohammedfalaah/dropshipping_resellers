@@ -185,9 +185,9 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
     codCommissionPaise = codCalc.commissionPaise;
     codTotalChargePaise = codCalc.totalCodChargePaise;
 
-    // Reseller pays the delivery charge online at checkout.
+    // Reseller pays the entire COD charge (₹50 fixed fee + 1.60% commission) online via Razorpay upfront.
     // Wholesale product amount is collected from customer upon delivery.
-    totalPaise = deliveryChargePaise;
+    totalPaise = codTotalChargePaise;
     customerCollectionPaise = customerSellingTotalPaise;
   } else {
     // For Prepaid (Razorpay / Bank Transfer): Reseller pays wholesale cost + delivery charge now.
@@ -204,9 +204,9 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
     });
   }
 
-  // Initial order status: COD and others -> CONFIRMED, Razorpay -> PENDING until verified
-  const orderStatus = normalizedPaymentMethod === "RAZORPAY" ? "PENDING" : "CONFIRMED";
-  const paymentStatus = normalizedPaymentMethod === "COD" ? "PENDING" : "PENDING";
+  // Initial order status: COD and Razorpay -> PENDING until verified via Razorpay upfront payment
+  const orderStatus = (normalizedPaymentMethod === "RAZORPAY" || normalizedPaymentMethod === "COD") ? "PENDING" : "CONFIRMED";
+  const paymentStatus = "PENDING";
 
   // Generate automated India Post consignment tracking ID & shipping label barcode
   const shippingLabelService = require("./shippingLabelService");
@@ -300,23 +300,23 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
     });
   }
 
-  // 5. If Razorpay OR COD (pay delivery charge via Razorpay upfront)
+  // 5. If Razorpay OR COD (pay entire COD charge via Razorpay upfront)
   let razorpayOrderData = null;
   const isPrepaidRazorpay = normalizedPaymentMethod === "RAZORPAY";
-  const isCodWithDeliveryCharge = normalizedPaymentMethod === "COD" && deliveryChargePaise > 0;
+  const isCodWithCharge = normalizedPaymentMethod === "COD" && codTotalChargePaise > 0;
 
-  if (isPrepaidRazorpay || isCodWithDeliveryCharge) {
-    const chargePaise = isCodWithDeliveryCharge ? deliveryChargePaise : totalPaise;
+  if (isPrepaidRazorpay || isCodWithCharge) {
+    const chargePaise = isCodWithCharge ? codTotalChargePaise : totalPaise;
     try {
       if (razorpayInstance) {
         const rzpOrder = await razorpayInstance.orders.create({
-          amount: chargePaise, // in paise: delivery charge for COD, full total for prepaid
+          amount: chargePaise, // in paise: entire COD charge for COD, full total for prepaid
           currency: "INR",
           receipt: order.orderNumber,
           notes: {
             orderId: order._id.toString(),
             resellerId: resellerId.toString(),
-            chargeType: isCodWithDeliveryCharge ? "COD_DELIVERY_CHARGE" : "FULL_PREPAID",
+            chargeType: isCodWithCharge ? "COD_TOTAL_CHARGE" : "FULL_PREPAID",
           },
         });
         order.razorpay.orderId = rzpOrder.id;
@@ -326,7 +326,7 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
           amount: rzpOrder.amount,
           currency: rzpOrder.currency,
           keyId: RAZORPAY_KEY_ID,
-          isCodDeliveryCharge: isCodWithDeliveryCharge,
+          isCodCharge: isCodWithCharge,
         };
       } else {
         // Mock fallback for testing if API credentials aren't live
@@ -339,7 +339,7 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
           currency: "INR",
           keyId: RAZORPAY_KEY_ID,
           isSimulated: true,
-          isCodDeliveryCharge: isCodWithDeliveryCharge,
+          isCodCharge: isCodWithCharge,
         };
       }
     } catch (err) {
@@ -354,7 +354,7 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
         currency: "INR",
         keyId: RAZORPAY_KEY_ID,
         isSimulated: true,
-        isCodDeliveryCharge: isCodWithDeliveryCharge,
+        isCodCharge: isCodWithCharge,
       };
     }
   }
@@ -362,17 +362,17 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
   // 6. Record DEBIT in Ledger
   if (orderStatus === "CONFIRMED") {
     if (normalizedPaymentMethod === "COD") {
-      // For COD dropshipping: reseller is debited ONLY the delivery charge now.
+      // For COD dropshipping: reseller is debited the entire COD charge now.
       // The wholesale product cost is collected from the end customer on delivery.
       await ledgerService.recordEntry({
         resellerId,
         type: "DEBIT",
-        amountPaise: deliveryChargePaise,
+        amountPaise: codTotalChargePaise,
         referenceType: "ORDER",
         referenceId: order.orderNumber,
         orderId: order._id,
-        description: `COD Order Placed (Delivery Charge) - ${order.orderNumber}`,
-        reason: "COD Delivery charge debit",
+        description: `COD Order Placed (COD Charge) - ${order.orderNumber}`,
+        reason: "COD Charge debit",
         recordedById: resellerId,
       });
     } else {

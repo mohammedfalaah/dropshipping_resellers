@@ -9,7 +9,7 @@ const { paiseToRupees } = require("../utils/currency");
  */
 const createOrder = async (req, res, next) => {
   try {
-    const { items, shippingAddress, paymentMethod, isFastDelivery, fastDelivery, courierName, selectedCourier } = req.body;
+    const { items, shippingAddress, paymentMethod, isFastDelivery, fastDelivery, courierName, selectedCourier, razorpay, paymentDetails } = req.body;
 
     const result = await orderService.createOrder({
       resellerId: req.user._id,
@@ -19,6 +19,7 @@ const createOrder = async (req, res, next) => {
       userObj: req.user,
       isFastDelivery: Boolean(isFastDelivery || fastDelivery),
       courierName: courierName || selectedCourier,
+      razorpay: razorpay || paymentDetails || null,
     });
 
     return successResponse(

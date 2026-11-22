@@ -292,10 +292,10 @@ export const CartProvider = ({ children }) => {
   const cartTotal = Math.max(0, cartSubtotal - discountAmount + (cart.length > 0 ? deliveryCharge : 0));
 
   // COD Specific totals & charge calculation
-  const codPayableNow = deliveryCharge; // Reseller pays delivery charge at checkout for COD
-  const codCollectionAmount = cartCustomerSellingTotal; // End customer pays the product selling amount upon delivery
   const codAmount = cartCustomerSellingTotal > 0 ? cartCustomerSellingTotal : cartWholesaleSubtotal;
   const codCalculation = calculateCodCharge(codAmount, adminCodFixedFee, adminCodCommissionRate);
+  const codPayableNow = codCalculation.totalCodCharge; // Reseller pays entire COD charge (Fixed ₹50 + 1.60% Commission) upfront via Razorpay
+  const codCollectionAmount = cartCustomerSellingTotal; // End customer pays the product selling amount upon delivery
 
   return (
     <CartContext.Provider

@@ -183,9 +183,9 @@ export default function OrderReceived() {
                 {currentOrder.paymentMethod?.toLowerCase().includes("cod") || currentOrder.paymentMethod?.toLowerCase().includes("cash on delivery") ? (
                   <div className="mt-2 pt-2 border-top">
                     <div className="d-flex justify-content-between py-1 small">
-                      <span className="fw-semibold text-dark">Paid at Checkout (Delivery Charge only):</span>
+                      <span className="fw-semibold text-dark">Paid at Checkout (Entire COD Charge upfront):</span>
                       <strong className="text-success">
-                        ₹{Number(currentOrder.codPayableNow ?? currentOrder.deliveryCharge ?? 50).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        ₹{Number(currentOrder.codPayableNow ?? currentOrder.codTotalCharge ?? currentOrder.total).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </strong>
                     </div>
                     <div className="d-flex justify-content-between py-1 small bg-light p-2 rounded-2 mt-1 border">

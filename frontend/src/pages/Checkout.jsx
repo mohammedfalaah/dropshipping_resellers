@@ -251,14 +251,14 @@ export default function Checkout() {
             orderId: orderNumber,
             date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
             items: [...cart],
-            total: paymentMethod === "cash_on_delivery" ? activeDeliveryCharge : (cartWholesaleSubtotal + activeDeliveryCharge),
+            total: paymentMethod === "cash_on_delivery" ? (codTotalCharge || 50) : (cartWholesaleSubtotal + activeDeliveryCharge),
             subtotal: cartSubtotal,
             wholesaleCost: cartWholesaleSubtotal,
             customerSellingTotal: cartCustomerSellingTotal,
             expectedProfit: cartExpectedProfit,
             deliveryCharge: activeDeliveryCharge,
             shipping: activeDeliveryCharge,
-            codPayableNow: activeDeliveryCharge,
+            codPayableNow: codTotalCharge || 50,
             codCollectionAmount: codCollectionAmount,
             codFixedFee: codFixedFee || 50,
             codFixedCharge: codFixedFee || 50,
@@ -277,7 +277,7 @@ export default function Checkout() {
             isFastDelivery,
             courierName: isFastDelivery ? selectedCourier : "India Post (Business Parcel)",
             selectedCourier: isFastDelivery ? selectedCourier : "",
-            paymentStatus: paymentMethod === "razorpay" ? "PENDING" : "CONFIRMED",
+            paymentStatus: "PENDING",
           })
         );
 
@@ -295,11 +295,11 @@ export default function Checkout() {
         }
 
         if (paymentMethod === "cash_on_delivery") {
-          const codDeliveryPaise = Math.round(Number(activeDeliveryCharge || 0) * 100);
-          if (codDeliveryPaise > 0) {
+          const codTotalChargePaise = Math.round(Number(codTotalCharge || 50) * 100);
+          if (codTotalChargePaise > 0) {
             await handleRazorpayPayment({
               orderNumber,
-              amountPaise: codDeliveryPaise,
+              amountPaise: razorpayData?.amount || codTotalChargePaise,
               customerDetails: form,
               existingOrderId: razorpayData?.id,
               existingKeyId: razorpayData?.keyId,
@@ -322,14 +322,14 @@ export default function Checkout() {
         orderId: guestOrderNumber,
         date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
         items: [...cart],
-        total: paymentMethod === "cash_on_delivery" ? activeDeliveryCharge : (cartWholesaleSubtotal + activeDeliveryCharge),
+        total: paymentMethod === "cash_on_delivery" ? (codTotalCharge || 50) : (cartWholesaleSubtotal + activeDeliveryCharge),
         subtotal: cartSubtotal,
         wholesaleCost: cartWholesaleSubtotal,
         customerSellingTotal: cartCustomerSellingTotal,
         expectedProfit: cartExpectedProfit,
         deliveryCharge: activeDeliveryCharge,
         shipping: activeDeliveryCharge,
-        codPayableNow: activeDeliveryCharge,
+        codPayableNow: codTotalCharge || 50,
         codCollectionAmount: codCollectionAmount,
         codFixedFee: codFixedFee || 50,
         codFixedCharge: codFixedFee || 50,
@@ -363,11 +363,11 @@ export default function Checkout() {
       }
 
       if (paymentMethod === "cash_on_delivery") {
-        const codDeliveryPaise = Math.round(Number(activeDeliveryCharge || 0) * 100);
-        if (codDeliveryPaise > 0) {
+        const codTotalChargePaise = Math.round(Number(codTotalCharge || 50) * 100);
+        if (codTotalChargePaise > 0) {
           await handleRazorpayPayment({
             orderNumber: guestOrderNumber,
-            amountPaise: codDeliveryPaise,
+            amountPaise: codTotalChargePaise,
             customerDetails: form,
             isCod: true,
           });
@@ -431,7 +431,7 @@ export default function Checkout() {
               orderNumber,
               customerName: `${customerDetails.firstName} ${customerDetails.lastName}`.trim(),
               customerEmail: customerDetails.email,
-              type: isCod ? "COD_DELIVERY_CHARGE" : "FULL_PREPAID",
+              type: isCod ? "COD_TOTAL_CHARGE" : "FULL_PREPAID",
             },
           });
 
@@ -499,7 +499,7 @@ export default function Checkout() {
         currency: rzpCurrency,
         name: "SPARE PRO WHOLESALE",
         description: isCod
-          ? `Order ${orderNumber} - COD Delivery Charge (₹${(rzpAmount / 100).toFixed(2)})`
+          ? `Order ${orderNumber} - Entire COD Charge (₹${(rzpAmount / 100).toFixed(2)})`
           : `Order ${orderNumber} Payment`,
         image: "/images/logo.png",
         order_id: rzpOrderId,
@@ -533,7 +533,7 @@ export default function Checkout() {
             if (vData?.success || vData?.is_valid) {
               clearCart();
               if (isCod) {
-                addToast(`Delivery charge of ₹${(rzpAmount / 100).toFixed(2)} paid via Razorpay! COD Order ${orderNumber} confirmed.`, "success");
+                addToast(`Entire COD charge of ₹${(rzpAmount / 100).toFixed(2)} verified via Razorpay! COD Order ${orderNumber} confirmed.`, "success");
               } else {
                 addToast(`Payment of ₹${(rzpAmount / 100).toFixed(2)} verified successfully!`, "success");
               }
@@ -1030,13 +1030,13 @@ export default function Checkout() {
                             <span className="text-dark fw-bold d-flex align-items-center gap-2">
                               <span>Cash on Delivery (COD)</span>
                               <span className="badge bg-warning text-dark" style={{ fontSize: "11px" }}>
-                                Pay ₹{Number(activeDeliveryCharge).toLocaleString("en-IN")} Delivery Charge Online
+                                Pay ₹{Number(codTotalCharge || 50).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} COD Charge Online
                               </span>
                             </span>
                             <span className="badge bg-secondary-subtle text-secondary">Dropshipping Policy</span>
                           </div>
                           <span className="text-muted small fw-normal">
-                            Pay ₹{Number(activeDeliveryCharge).toLocaleString("en-IN")} delivery charge now via Razorpay &bull; Balance ₹{cartCustomerSellingTotal > 0 ? Number(cartCustomerSellingTotal).toLocaleString("en-IN") : "0"} will be collected in cash on delivery
+                            Pay ₹{Number(codTotalCharge || 50).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} COD charge now via Razorpay &bull; Balance ₹{cartCustomerSellingTotal > 0 ? Number(cartCustomerSellingTotal).toLocaleString("en-IN") : "0"} will be collected in cash on delivery
                           </span>
                           <div className="d-flex align-items-center gap-2 mt-1">
                             <span className="badge bg-light text-dark border small" style={{ fontSize: "11px" }}>
@@ -1241,10 +1241,10 @@ export default function Checkout() {
                       <div className="border-top border-dark pt-3 mb-2 d-flex justify-content-between align-items-center">
                         <div>
                           <strong className="text-dark d-block">Amount payable by reseller now</strong>
-                          <span className="text-muted" style={{ fontSize: "11px" }}>Delivery charge only</span>
+                          <span className="text-muted" style={{ fontSize: "11px" }}>Entire COD charge (Fixed fee + 1.60% commission)</span>
                         </div>
                         <span className="h4 fw-bold mb-0" style={{ color: "var(--accent-color, #2dd2b3)" }}>
-                          ₹{Number(activeDeliveryCharge).toLocaleString("en-IN")}
+                          ₹{Number(codTotalCharge || 50).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                         </span>
                       </div>
                       <div
@@ -1275,12 +1275,12 @@ export default function Checkout() {
                         ) : isFastDelivery ? (
                           <span><i className="fa-solid fa-lock me-1"></i> Online Payment Required for Fast Delivery</span>
                         ) : (
-                          `Confirm COD Order (Pay ₹${Number(activeDeliveryCharge).toLocaleString("en-IN")} Delivery Charge)`
+                          `Pay ₹${Number(codTotalCharge || 50).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} & Confirm COD Order`
                         )}
                       </button>
 
                       <p className="text-muted text-center mb-0" style={{ fontSize: "11px", lineHeight: "1.4" }}>
-                        The reseller pays ₹{activeDeliveryCharge} as the delivery charge at checkout. The product selling amount of ₹{cartCustomerSellingTotal > 0 ? Number(cartCustomerSellingTotal).toLocaleString("en-IN") : "0"} is collected from the customer on delivery through the COD process. Wholesale cost (₹{Number(cartWholesaleSubtotal).toLocaleString("en-IN")}) is NOT charged upfront.
+                        The reseller pays ₹{Number(codTotalCharge || 50).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} as the entire COD charge (Fixed ₹{Number(codFixedFee || 50).toFixed(2)} + {Number(codCommissionRate || 1.6).toFixed(2)}% commission) at checkout via Razorpay. The product selling amount of ₹{cartCustomerSellingTotal > 0 ? Number(cartCustomerSellingTotal).toLocaleString("en-IN") : "0"} is collected from the customer on delivery through the COD process. Wholesale cost (₹{Number(cartWholesaleSubtotal).toLocaleString("en-IN")}) is NOT charged upfront.
                       </p>
                     </div>
                   ) : (
