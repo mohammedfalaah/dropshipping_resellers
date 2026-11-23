@@ -112,7 +112,6 @@ export const CartProvider = ({ children }) => {
 
     const colorKey = selectedColor ? String(selectedColor).trim() : "";
     const sizeKey = selectedSize ? String(selectedSize).trim() : "";
-    const cartItemId = `${targetId}_${colorKey || "default"}_${sizeKey || "default"}`;
 
     // Look for matching variant in product.variants if present
     const matchedVariant = Array.isArray(product.variants)
@@ -126,16 +125,20 @@ export const CartProvider = ({ children }) => {
         )
       : null;
 
-    const variantSku = matchedVariant?.sku || product.sku || "";
-    const itemImage = selectedImage || matchedVariant?.image || product.image || product.mainImage || "/images/product-earbuds.jpg";
+    const resolvedColor = colorKey || matchedVariant?.color || (Array.isArray(product.colors) && product.colors[0]) || "";
+    const resolvedSize = sizeKey || matchedVariant?.size || (Array.isArray(product.sizes) && product.sizes[0]) || "";
+    const finalVariant = matchedVariant || (Array.isArray(product.variants) ? product.variants.find(v => resolvedColor && v.color && v.color.toLowerCase() === resolvedColor.toLowerCase()) : null);
+    const variantSku = finalVariant?.sku || matchedVariant?.sku || product.sku || "";
+    const itemImage = selectedImage || finalVariant?.image || matchedVariant?.image || product.image || product.mainImage || "/images/product-earbuds.jpg";
+    const cartItemId = `${targetId}_${resolvedColor || "default"}_${resolvedSize || "default"}`;
 
     setCart((prev) => {
       const existing = prev.find(
         (item) =>
           (item.cartItemId && item.cartItemId === cartItemId) ||
           ((item.id || item._id) === targetId &&
-            (item.selectedColor || "") === colorKey &&
-            (item.selectedSize || "") === sizeKey)
+            (item.selectedColor || item.color || "") === resolvedColor &&
+            (item.selectedSize || item.size || "") === resolvedSize)
       );
 
       if (existing) {
@@ -143,8 +146,8 @@ export const CartProvider = ({ children }) => {
           const isMatch =
             (item.cartItemId && item.cartItemId === cartItemId) ||
             ((item.id || item._id) === targetId &&
-              (item.selectedColor || "") === colorKey &&
-              (item.selectedSize || "") === sizeKey);
+              (item.selectedColor || item.color || "") === resolvedColor &&
+              (item.selectedSize || item.size || "") === resolvedSize);
           return isMatch
             ? {
                 ...item,
@@ -167,11 +170,12 @@ export const CartProvider = ({ children }) => {
           wholesalePrice,
           price: wholesalePrice,
           customerSellingPrice: initialSellingPrice,
-          selectedColor: colorKey,
-          selectedSize: sizeKey,
-          color: colorKey,
-          size: sizeKey,
-          variantSku,
+          selectedColor: resolvedColor,
+          selectedSize: resolvedSize,
+          color: resolvedColor,
+          size: resolvedSize,
+          sku: variantSku || product.sku,
+          variantSku: variantSku || product.sku,
           image: itemImage,
         },
       ];

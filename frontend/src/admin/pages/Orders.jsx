@@ -642,11 +642,17 @@ export default function Orders() {
                               <div className="small" style={{ maxWidth: "160px", lineHeight: "1.25" }}>
                                 <div className="fw-semibold text-dark text-truncate" title={o.items[0].name}>
                                   {o.items[0].name || "Product"}
+                                  {o.items[0].color && <span className="text-primary fw-bold ms-1">({o.items[0].color})</span>}
                                 </div>
-                                <div className="d-flex align-items-center gap-1 mt-0.5">
+                                <div className="d-flex align-items-center gap-1 mt-0.5 flex-wrap">
                                   <code className="text-secondary bg-light px-1 rounded" style={{ fontSize: "10px" }}>
-                                    {o.items[0].sku || "SKU-N/A"}
+                                    {o.items[0].variantSku || o.items[0].sku || "SKU-N/A"}
                                   </code>
+                                  {o.items[0].color && (
+                                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle" style={{ fontSize: "9px", padding: "1px 4px" }}>
+                                      {o.items[0].color}
+                                    </span>
+                                  )}
                                   <span className="badge bg-secondary-subtle text-dark" style={{ fontSize: "9.5px", padding: "1px 4px" }}>
                                     Qty: {o.items[0].quantity || 1}
                                   </span>
@@ -999,12 +1005,15 @@ export default function Orders() {
                                           )}
                                         </td>
                                         <td>
-                                          <div className="fw-semibold text-dark">{it.name || it.product?.name || "Product"}</div>
-                                          <div className="d-flex align-items-center gap-1.5 mt-0.5">
+                                          <div className="fw-semibold text-dark">
+                                            {it.name || it.product?.name || "Product"}
+                                            {it.color && <span className="text-primary fw-bold ms-1">({it.color})</span>}
+                                          </div>
+                                          <div className="d-flex align-items-center gap-1.5 mt-0.5 flex-wrap">
                                             <code className="text-secondary bg-white px-1.5 py-0.5 rounded border" style={{ fontSize: "10.5px" }}>
-                                              SKU: {it.sku || it.product?.sku || "SKU-N/A"}
+                                              SKU: {it.variantSku || it.sku || it.product?.sku || "SKU-N/A"}
                                             </code>
-                                            {it.color && <span className="badge bg-light text-dark border" style={{ fontSize: "9.5px" }}>Color: {it.color}</span>}
+                                            {it.color && <span className="badge bg-primary-subtle text-primary border border-primary-subtle" style={{ fontSize: "9.5px" }}>Color: {it.color}</span>}
                                             {it.size && <span className="badge bg-light text-dark border" style={{ fontSize: "9.5px" }}>Size: {it.size}</span>}
                                           </div>
                                         </td>
@@ -1549,13 +1558,16 @@ export default function Orders() {
                               )}
                             </td>
                             <td>
-                              <div className="fw-bold text-dark fs-6">{it.name || it.product?.name || "Product"}</div>
-                              <div className="d-flex align-items-center gap-2 mt-1">
+                              <div className="fw-bold text-dark fs-6">
+                                {it.name || it.product?.name || "Product"}
+                                {it.color && <span className="text-primary fw-bold ms-1">({it.color})</span>}
+                              </div>
+                              <div className="d-flex align-items-center gap-2 mt-1 flex-wrap">
                                 <code className="text-secondary bg-light px-2 py-0.5 rounded border" style={{ fontSize: "11px" }}>
-                                  SKU: {it.sku || it.product?.sku || "SKU-N/A"}
+                                  SKU: {it.variantSku || it.sku || it.product?.sku || "SKU-N/A"}
                                 </code>
                                 {it.color && (
-                                  <span className="badge bg-light text-dark border" style={{ fontSize: "10.5px" }}>
+                                  <span className="badge bg-primary-subtle text-primary border border-primary-subtle" style={{ fontSize: "10.5px" }}>
                                     Color: {it.color}
                                   </span>
                                 )}

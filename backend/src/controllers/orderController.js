@@ -84,7 +84,7 @@ const getOrderById = async (req, res, next) => {
   try {
     const order = await Order.findById(req.params.id)
       .populate("reseller", "name email phone businessInfo")
-      .populate("items.product", "name sku slug mainImage image images resellerPricePaise retailPricePaise");
+      .populate("items.product", "name sku slug mainImage image images colors sizes variants resellerPricePaise retailPricePaise");
 
     if (!order) {
       return errorResponse(res, "Order not found", "ORDER_NOT_FOUND", 404);
@@ -101,12 +101,49 @@ const getOrderById = async (req, res, next) => {
 
     const obj = order.toObject();
     obj.items = (obj.items || []).map((it) => {
+      // Resolve matching variant from product variants if available
+      let matchedVariant = null;
+      if (Array.isArray(it.product?.variants) && it.product.variants.length > 0) {
+        const itemVariantSku = (it.variantSku || "").toUpperCase().trim();
+        const itemSku = (it.sku || "").toUpperCase().trim();
+        const itemColor = (it.color || "").toLowerCase().trim();
+        const itemSize = (it.size || "").toLowerCase().trim();
+
+        if (itemVariantSku || itemSku) {
+          matchedVariant = it.product.variants.find(
+            (v) =>
+              (itemVariantSku && v.sku && v.sku.toUpperCase() === itemVariantSku) ||
+              (itemSku && v.sku && v.sku.toUpperCase() === itemSku)
+          );
+        }
+        if (!matchedVariant && itemColor && itemSize) {
+          matchedVariant = it.product.variants.find(
+            (v) =>
+              (v.color || "").toLowerCase().trim() === itemColor &&
+              (v.size || "").toLowerCase().trim() === itemSize
+          );
+        }
+        if (!matchedVariant && itemColor) {
+          matchedVariant = it.product.variants.find(
+            (v) => (v.color || "").toLowerCase().trim() === itemColor
+          );
+        }
+        if (!matchedVariant && itemSize) {
+          matchedVariant = it.product.variants.find(
+            (v) => (v.size || "").toLowerCase().trim() === itemSize
+          );
+        }
+      }
+
       const img =
-        it.image ||
-        it.product?.mainImage ||
-        it.product?.image ||
-        (Array.isArray(it.product?.images) && it.product.images[0]) ||
-        "";
+        (matchedVariant && matchedVariant.image)
+          ? matchedVariant.image
+          : (it.image || it.product?.mainImage || it.product?.image || (Array.isArray(it.product?.images) && it.product.images[0]) || "");
+
+      const finalSku = (matchedVariant && matchedVariant.sku) || it.variantSku || it.sku || it.product?.sku || "SKU-N/A";
+      const finalColor = it.color || matchedVariant?.color || "";
+      const finalSize = it.size || matchedVariant?.size || "";
+
       const wholesalePaise =
         it.wholesalePricePaise !== undefined && it.wholesalePricePaise !== null
           ? it.wholesalePricePaise
@@ -126,7 +163,10 @@ const getOrderById = async (req, res, next) => {
         ...it,
         image: img,
         name: it.name || it.product?.name || "Product",
-        sku: it.sku || it.product?.sku || "SKU-N/A",
+        sku: finalSku,
+        variantSku: finalSku,
+        color: finalColor,
+        size: finalSize,
         wholesalePricePaise: wholesalePaise,
         customerSellingPricePaise: customerPricePaise,
         resellerProfitPaise: profitPaise,
@@ -193,7 +233,7 @@ const getAllOrders = async (req, res, next) => {
     const [orders, total] = await Promise.all([
       Order.find(query)
         .populate("reseller", "name email phone businessInfo")
-        .populate("items.product", "name sku mainImage image images resellerPricePaise retailPricePaise")
+        .populate("items.product", "name sku mainImage image images colors sizes variants resellerPricePaise retailPricePaise")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit)),
@@ -204,12 +244,49 @@ const getAllOrders = async (req, res, next) => {
       const obj = o.toObject();
 
       obj.items = (obj.items || []).map((it) => {
+        // Resolve matching variant from product variants if available
+        let matchedVariant = null;
+        if (Array.isArray(it.product?.variants) && it.product.variants.length > 0) {
+          const itemVariantSku = (it.variantSku || "").toUpperCase().trim();
+          const itemSku = (it.sku || "").toUpperCase().trim();
+          const itemColor = (it.color || "").toLowerCase().trim();
+          const itemSize = (it.size || "").toLowerCase().trim();
+
+          if (itemVariantSku || itemSku) {
+            matchedVariant = it.product.variants.find(
+              (v) =>
+                (itemVariantSku && v.sku && v.sku.toUpperCase() === itemVariantSku) ||
+                (itemSku && v.sku && v.sku.toUpperCase() === itemSku)
+            );
+          }
+          if (!matchedVariant && itemColor && itemSize) {
+            matchedVariant = it.product.variants.find(
+              (v) =>
+                (v.color || "").toLowerCase().trim() === itemColor &&
+                (v.size || "").toLowerCase().trim() === itemSize
+            );
+          }
+          if (!matchedVariant && itemColor) {
+            matchedVariant = it.product.variants.find(
+              (v) => (v.color || "").toLowerCase().trim() === itemColor
+            );
+          }
+          if (!matchedVariant && itemSize) {
+            matchedVariant = it.product.variants.find(
+              (v) => (v.size || "").toLowerCase().trim() === itemSize
+            );
+          }
+        }
+
         const img =
-          it.image ||
-          it.product?.mainImage ||
-          it.product?.image ||
-          (Array.isArray(it.product?.images) && it.product.images[0]) ||
-          "";
+          (matchedVariant && matchedVariant.image)
+            ? matchedVariant.image
+            : (it.image || it.product?.mainImage || it.product?.image || (Array.isArray(it.product?.images) && it.product.images[0]) || "");
+
+        const finalSku = (matchedVariant && matchedVariant.sku) || it.variantSku || it.sku || it.product?.sku || "SKU-N/A";
+        const finalColor = it.color || matchedVariant?.color || "";
+        const finalSize = it.size || matchedVariant?.size || "";
+
         const wholesalePaise =
           it.wholesalePricePaise !== undefined && it.wholesalePricePaise !== null
             ? it.wholesalePricePaise
@@ -229,7 +306,10 @@ const getAllOrders = async (req, res, next) => {
           ...it,
           image: img,
           name: it.name || it.product?.name || "Product",
-          sku: it.sku || it.product?.sku || "SKU-N/A",
+          sku: finalSku,
+          variantSku: finalSku,
+          color: finalColor,
+          size: finalSize,
           wholesalePricePaise: wholesalePaise,
           customerSellingPricePaise: customerPricePaise,
           resellerProfitPaise: profitPaise,

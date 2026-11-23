@@ -172,14 +172,32 @@ export default function Checkout() {
           const wholesale = Number(item.wholesalePrice || item.price || 0);
           const sellingPrice = Number(item.customerSellingPrice);
 
+          const itemColor = (item.selectedColor || item.color || "").trim();
+          const itemSize = (item.selectedSize || item.size || "").trim();
+          const itemVariantSku = (item.variantSku || "").trim();
+
+          const matchedVariant = Array.isArray(matchedDb?.variants)
+            ? matchedDb.variants.find(
+                (v) =>
+                  (itemVariantSku && v.sku && v.sku.toUpperCase() === itemVariantSku.toUpperCase()) ||
+                  (itemColor && v.color && v.color.toLowerCase() === itemColor.toLowerCase())
+              )
+            : null;
+
+          const finalSku = itemVariantSku || matchedVariant?.sku || item.sku || matchedDb?.sku || "SKU-" + (item.id || "1");
+          const finalColor = itemColor || matchedVariant?.color || "";
+          const finalSize = itemSize || matchedVariant?.size || "";
+          const finalImage = item.image || matchedVariant?.image || matchedDb?.mainImage || "";
+
           return {
             productId: resolvedId ? String(resolvedId) : undefined,
             product: resolvedId ? String(resolvedId) : undefined,
-            sku: item.variantSku || item.sku || matchedDb?.sku || "SKU-" + (item.id || "1"),
-            variantSku: item.variantSku || "",
-            color: item.selectedColor || item.color || "",
-            size: item.selectedSize || item.size || "",
-            name: item.name || "Product",
+            sku: finalSku,
+            variantSku: finalSku,
+            color: finalColor,
+            size: finalSize,
+            image: finalImage,
+            name: item.name || matchedDb?.name || "Product",
             quantity: Number(item.quantity) || 1,
             pricePaise: Math.round(wholesale * 100),
             customerSellingPrice: sellingPrice,

@@ -31,6 +31,20 @@ export default function ProductCard({ product, onQuickView, className = "", isDr
       return;
     }
 
+    const hasOptions =
+      (Array.isArray(product.variants) && product.variants.length > 1) ||
+      (Array.isArray(product.colors) && product.colors.length > 1) ||
+      (Array.isArray(product.sizes) && product.sizes.length > 1);
+
+    if (hasOptions) {
+      if (onQuickView) {
+        onQuickView(product);
+        return;
+      }
+      navigate(`/product/${product.slug || product.id || product._id}`);
+      return;
+    }
+
     addToCart(product, 1);
     addToast(`Added ${product.name} to cart!`, "success");
   };

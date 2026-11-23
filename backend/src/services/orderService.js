@@ -141,14 +141,59 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
     customerSellingTotalPaise += itemCustomerSellingSubtotal;
     expectedResellerProfitPaise += itemProfit;
 
+    // Robust variant resolution: match selected variant from product.variants
+    const itemColor = (item.color || item.selectedColor || "").trim();
+    const itemSize = (item.size || item.selectedSize || "").trim();
+    const itemSku = (item.sku || "").trim();
+    const itemVariantSku = (item.variantSku || "").trim();
+
+    let matchedVariant = null;
+    if (Array.isArray(product.variants) && product.variants.length > 0) {
+      // 1. Match by variant SKU
+      if (itemVariantSku || itemSku) {
+        matchedVariant = product.variants.find(
+          (v) =>
+            (itemVariantSku && v.sku && v.sku.toUpperCase() === itemVariantSku.toUpperCase()) ||
+            (itemSku && v.sku && v.sku.toUpperCase() === itemSku.toUpperCase())
+        );
+      }
+      // 2. Match by color and size
+      if (!matchedVariant && itemColor && itemSize) {
+        matchedVariant = product.variants.find(
+          (v) =>
+            v.color && v.color.toLowerCase() === itemColor.toLowerCase() &&
+            v.size && v.size.toLowerCase() === itemSize.toLowerCase()
+        );
+      }
+      // 3. Match by color only
+      if (!matchedVariant && itemColor) {
+        matchedVariant = product.variants.find(
+          (v) => v.color && v.color.toLowerCase() === itemColor.toLowerCase()
+        );
+      }
+      // 4. Match by size only
+      if (!matchedVariant && itemSize) {
+        matchedVariant = product.variants.find(
+          (v) => v.size && v.size.toLowerCase() === itemSize.toLowerCase()
+        );
+      }
+    }
+
+    const finalColor = itemColor || matchedVariant?.color || "";
+    const finalSize = itemSize || matchedVariant?.size || "";
+    const finalSku = (matchedVariant && matchedVariant.sku) || itemVariantSku || itemSku || product.sku;
+    const finalImage = (matchedVariant && matchedVariant.image)
+      ? matchedVariant.image
+      : (item.image || product.mainImage || "");
+
     orderItems.push({
       product: product._id,
       name: product.name,
-      sku: item.variantSku || product.sku,
-      image: item.image || product.mainImage,
-      color: item.color || item.selectedColor || "",
-      size: item.size || item.selectedSize || "",
-      variantSku: item.variantSku || "",
+      sku: finalSku,
+      variantSku: finalSku,
+      image: finalImage,
+      color: finalColor,
+      size: finalSize,
       quantity: item.quantity,
       unitPricePaise: wholesalePricePaise,
       wholesalePricePaise: wholesalePricePaise,
