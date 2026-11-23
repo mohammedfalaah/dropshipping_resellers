@@ -431,7 +431,7 @@ const getTrackingInfo = async (trackingIdentifier, requestingUser = null, forceR
         estimatedDelivery: order.estimatedDeliveryDate
           ? new Date(order.estimatedDeliveryDate).toISOString().split("T")[0]
           : null,
-        officialTrackingUrl: "https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx",
+        officialTrackingUrl: courierMeta.portalUrl || "https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx",
         history: sortedHistory,
         order: {
           _id: order._id,
@@ -567,7 +567,7 @@ const getTrackingInfo = async (trackingIdentifier, requestingUser = null, forceR
           destination: liveData.destination || destination,
           history: sortedLiveHistory,
           estimatedDelivery: liveData.estimatedDelivery || null,
-          officialTrackingUrl: "https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx",
+          officialTrackingUrl: courierMeta.portalUrl || "https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx",
           order: order
             ? {
                 _id: order._id,
@@ -681,7 +681,7 @@ const getTrackingInfo = async (trackingIdentifier, requestingUser = null, forceR
     origin,
     destination,
     estimatedDelivery: estDate.toISOString().split("T")[0],
-    officialTrackingUrl: "https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx",
+    officialTrackingUrl: courierMeta.portalUrl || "https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx",
     history: sortedHistory,
     order: order
       ? {
