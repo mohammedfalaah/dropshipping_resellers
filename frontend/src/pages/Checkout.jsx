@@ -665,11 +665,11 @@ export default function Checkout() {
             <div className="row g-4">
               {/* Billing Information Form */}
               <div className="col-lg-7">
-                <div className="bg-white p-4 p-md-5 rounded-4 shadow-sm border mb-4">
+                <div className="bg-white p-4 p-md-5 rounded-4 shadow-sm border">
                   <h4 className="fw-bold mb-4">Billing & Shipping Details</h4>
 
                   <div className="row g-3">
-                    <div className="col-6 col-sm-6">
+                    <div className="col-12 col-sm-6">
                       <label className="form-label small fw-semibold">First Name *</label>
                       <input
                         type="text"
@@ -682,7 +682,7 @@ export default function Checkout() {
                       />
                     </div>
 
-                    <div className="col-6 col-sm-6">
+                    <div className="col-12 col-sm-6">
                       <label className="form-label small fw-semibold">Last Name *</label>
                       <input
                         type="text"
@@ -695,7 +695,7 @@ export default function Checkout() {
                       />
                     </div>
 
-                    <div className="col-sm-6">
+                    <div className="col-12 col-sm-6">
                       <label className="form-label small fw-semibold">Email Address (Optional)</label>
                       <input
                         type="email"
@@ -707,7 +707,7 @@ export default function Checkout() {
                       />
                     </div>
 
-                    <div className="col-sm-6">
+                    <div className="col-12 col-sm-6">
                       <label className="form-label small fw-semibold">Phone Number *</label>
                       <input
                         type="tel"
@@ -725,7 +725,7 @@ export default function Checkout() {
                       <input
                         type="text"
                         name="address"
-                        className="form-control mb-2"
+                        className="form-control"
                         placeholder="House / Flat / Building, Street name, Landmark"
                         value={form.address}
                         onChange={handleChange}
@@ -733,7 +733,7 @@ export default function Checkout() {
                       />
                     </div>
 
-                    <div className="col-12 col-sm-6">
+                    <div className="col-12 col-sm-5">
                       <label className="form-label small fw-semibold">Town / City *</label>
                       <input
                         type="text"
@@ -759,7 +759,7 @@ export default function Checkout() {
                       />
                     </div>
 
-                    <div className="col-6 col-sm-3">
+                    <div className="col-6 col-sm-4">
                       <label className="form-label small fw-semibold">PIN / Postal Code *</label>
                       <input
                         type="text"
@@ -925,146 +925,146 @@ export default function Checkout() {
                         )}
                       </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* Payment Methods */}
-                <div className="bg-white p-4 p-md-5 rounded-4 shadow-sm border">
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h4 className="fw-bold mb-0">Payment Method</h4>
-                    {isFastDelivery && (
-                      <span className="badge bg-danger-subtle text-danger border border-danger-subtle">
-                        <i className="fa-solid fa-lock me-1"></i> Online Payment Only
-                      </span>
-                    )}
-                  </div>
-
-                  {isFastDelivery && (
-                    <div className="alert alert-warning py-2 px-3 rounded-3 mb-3 d-flex align-items-center gap-2" style={{ fontSize: "12px" }}>
-                      <i className="fa-solid fa-triangle-exclamation text-warning fs-6"></i>
-                      <div>
-                        <strong>Fast Delivery Selected:</strong> Cash on Delivery (COD) is disabled for priority express orders. Please complete checkout with <strong>Online Payment</strong>.
+                    {/* Payment Methods Section in Same Form */}
+                    <div className="col-12 mt-4 pt-4 border-top">
+                      <div className="d-flex justify-content-between align-items-center mb-3">
+                        <h4 className="fw-bold mb-0">Payment Method</h4>
+                        {isFastDelivery && (
+                          <span className="badge bg-danger-subtle text-danger border border-danger-subtle">
+                            <i className="fa-solid fa-lock me-1"></i> Online Payment Only
+                          </span>
+                        )}
                       </div>
-                    </div>
-                  )}
 
-                  <div className="mb-3">
-                    {/* Razorpay Standard Checkout */}
-                    <div
-                      className={`form-check p-3 border rounded-3 mb-3 cursor-pointer ${
-                        paymentMethod === "razorpay" ? "border-primary bg-primary-subtle bg-opacity-10" : ""
-                      }`}
-                      style={{ transition: "all 0.2s ease" }}
-                      onClick={() => handleSelectPaymentMethod("razorpay")}
-                    >
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        name="paymentRadio"
-                        id="paymentRazorpay"
-                        checked={paymentMethod === "razorpay"}
-                        onChange={() => handleSelectPaymentMethod("razorpay")}
-                      />
-                      <label
-                        className="form-check-label fw-semibold ms-2 d-flex flex-column gap-1 w-100"
-                        htmlFor="paymentRazorpay"
-                        style={{ cursor: "pointer" }}
-                      >
-                        <div className="d-flex justify-content-between align-items-center">
-                          <span className="text-dark fw-bold d-flex align-items-center gap-2">
-                            <span>Razorpay Standard Checkout</span>
-                            <span className="badge bg-primary text-white" style={{ fontSize: "11px" }}>
-                              Official
-                            </span>
-                          </span>
-                          <span className="badge bg-success-subtle text-success">
-                            <i className="fa-solid fa-bolt me-1"></i> Instant Verification
-                          </span>
+                      {isFastDelivery && (
+                        <div className="alert alert-warning py-2 px-3 rounded-3 mb-3 d-flex align-items-center gap-2" style={{ fontSize: "12px" }}>
+                          <i className="fa-solid fa-triangle-exclamation text-warning fs-6"></i>
+                          <div>
+                            <strong>Fast Delivery Selected:</strong> Cash on Delivery (COD) is disabled for priority express orders. Please complete checkout with <strong>Online Payment</strong>.
+                          </div>
                         </div>
-                        <span className="text-muted small fw-normal">
-                          Instant UPI (GPay, PhonePe, Paytm, QR), Debit &amp; Credit Cards (Visa, Mastercard, RuPay), NetBanking &amp; Wallets
-                        </span>
-                      </label>
-                    </div>
+                      )}
 
-                    {/* Cash On Delivery */}
-                    {isFastDelivery ? (
-                      <div
-                        className="form-check p-3 border rounded-3 mb-2 bg-light text-muted opacity-75"
-                        style={{ cursor: "not-allowed", borderStyle: "dashed" }}
-                        onClick={() => addToast("Fast Delivery orders require online payment. Cash on Delivery is disabled.", "warning")}
-                      >
-                        <input
-                          className="form-check-input"
-                          type="radio"
-                          name="paymentRadio"
-                          id="paymentCodDisabled"
-                          disabled
-                          checked={false}
-                        />
-                        <label
-                          className="form-check-label ms-2 d-flex flex-column gap-1 w-100"
-                          htmlFor="paymentCodDisabled"
-                          style={{ cursor: "not-allowed" }}
+                      <div className="mb-0">
+                        {/* Razorpay Standard Checkout */}
+                        <div
+                          className={`form-check p-3 border rounded-3 mb-3 cursor-pointer ${
+                            paymentMethod === "razorpay" ? "border-primary bg-primary-subtle bg-opacity-10" : ""
+                          }`}
+                          style={{ transition: "all 0.2s ease" }}
+                          onClick={() => handleSelectPaymentMethod("razorpay")}
                         >
-                          <div className="d-flex justify-content-between align-items-center">
-                            <span className="text-muted fw-bold d-flex align-items-center gap-2">
-                              <span className="text-decoration-line-through">Cash on Delivery (COD)</span>
-                              <span className="badge bg-secondary text-white" style={{ fontSize: "10px" }}>
-                                Disabled
+                          <input
+                            className="form-check-input"
+                            type="radio"
+                            name="paymentRadio"
+                            id="paymentRazorpay"
+                            checked={paymentMethod === "razorpay"}
+                            onChange={() => handleSelectPaymentMethod("razorpay")}
+                          />
+                          <label
+                            className="form-check-label fw-semibold ms-2 d-flex flex-column gap-1 w-100"
+                            htmlFor="paymentRazorpay"
+                            style={{ cursor: "pointer" }}
+                          >
+                            <div className="d-flex justify-content-between align-items-center">
+                              <span className="text-dark fw-bold d-flex align-items-center gap-2">
+                                <span>Razorpay Standard Checkout</span>
+                                <span className="badge bg-primary text-white" style={{ fontSize: "11px" }}>
+                                  Official
+                                </span>
                               </span>
-                            </span>
-                            <span className="badge bg-danger-subtle text-danger border border-danger-subtle" style={{ fontSize: "10px" }}>
-                              <i className="fa-solid fa-ban me-1"></i> Not Available for Fast Delivery
-                            </span>
-                          </div>
-                          <span className="text-danger small mt-1" style={{ fontSize: "11px" }}>
-                            <i className="fa-solid fa-circle-exclamation me-1"></i> Fast Delivery orders require prepaid online payment. Turn off Fast Delivery to use COD.
-                          </span>
-                        </label>
-                      </div>
-                    ) : (
-                      <div
-                        className={`form-check p-3 border rounded-3 mb-2 cursor-pointer ${
-                          paymentMethod === "cash_on_delivery" ? "border-primary bg-primary-subtle bg-opacity-10" : ""
-                        }`}
-                        style={{ transition: "all 0.2s ease" }}
-                        onClick={() => handleSelectPaymentMethod("cash_on_delivery")}
-                      >
-                        <input
-                          className="form-check-input"
-                          type="radio"
-                          name="paymentRadio"
-                          id="paymentCod"
-                          checked={paymentMethod === "cash_on_delivery"}
-                          onChange={() => handleSelectPaymentMethod("cash_on_delivery")}
-                        />
-                        <label
-                          className="form-check-label fw-semibold ms-2 d-flex flex-column gap-1 w-100"
-                          htmlFor="paymentCod"
-                          style={{ cursor: "pointer" }}
-                        >
-                          <div className="d-flex justify-content-between align-items-center">
-                            <span className="text-dark fw-bold d-flex align-items-center gap-2">
-                              <span>Cash on Delivery (COD)</span>
-                              <span className="badge bg-warning text-dark" style={{ fontSize: "11px" }}>
-                                Pay ₹{Number(codTotalCharge || 50).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} COD Charge Online
+                              <span className="badge bg-success-subtle text-success">
+                                <i className="fa-solid fa-bolt me-1"></i> Instant Verification
                               </span>
+                            </div>
+                            <span className="text-muted small fw-normal">
+                              Instant UPI (GPay, PhonePe, Paytm, QR), Debit &amp; Credit Cards (Visa, Mastercard, RuPay), NetBanking &amp; Wallets
                             </span>
-                            <span className="badge bg-secondary-subtle text-secondary">Dropshipping Policy</span>
+                          </label>
+                        </div>
+
+                        {/* Cash On Delivery */}
+                        {isFastDelivery ? (
+                          <div
+                            className="form-check p-3 border rounded-3 mb-0 bg-light text-muted opacity-75"
+                            style={{ cursor: "not-allowed", borderStyle: "dashed" }}
+                            onClick={() => addToast("Fast Delivery orders require online payment. Cash on Delivery is disabled.", "warning")}
+                          >
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              name="paymentRadio"
+                              id="paymentCodDisabled"
+                              disabled
+                              checked={false}
+                            />
+                            <label
+                              className="form-check-label ms-2 d-flex flex-column gap-1 w-100"
+                              htmlFor="paymentCodDisabled"
+                              style={{ cursor: "not-allowed" }}
+                            >
+                              <div className="d-flex justify-content-between align-items-center">
+                                <span className="text-muted fw-bold d-flex align-items-center gap-2">
+                                  <span className="text-decoration-line-through">Cash on Delivery (COD)</span>
+                                  <span className="badge bg-secondary text-white" style={{ fontSize: "10px" }}>
+                                    Disabled
+                                  </span>
+                                </span>
+                                <span className="badge bg-danger-subtle text-danger border border-danger-subtle" style={{ fontSize: "10px" }}>
+                                  <i className="fa-solid fa-ban me-1"></i> Not Available for Fast Delivery
+                                </span>
+                              </div>
+                              <span className="text-danger small mt-1" style={{ fontSize: "11px" }}>
+                                <i className="fa-solid fa-circle-exclamation me-1"></i> Fast Delivery orders require prepaid online payment. Turn off Fast Delivery to use COD.
+                              </span>
+                            </label>
                           </div>
-                          <span className="text-muted small fw-normal">
-                            Pay ₹{Number(codTotalCharge || 50).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} COD charge now via Razorpay &bull; Balance ₹{cartCustomerSellingTotal > 0 ? Number(cartCustomerSellingTotal).toLocaleString("en-IN") : "0"} will be collected in cash on delivery
-                          </span>
-                          <div className="d-flex align-items-center gap-2 mt-1">
-                            <span className="badge bg-light text-dark border small" style={{ fontSize: "11px" }}>
-                              <i className="fa-solid fa-calculator text-primary me-1"></i>
-                              COD Fee: <strong>₹{Number(codTotalCharge || 50).toFixed(2)}</strong> (Fixed ₹{Number(codFixedFee || 50).toFixed(2)} + {Number(codCommissionRate || 1.6).toFixed(2)}% Comm.: ₹{Number(codCommission || 0).toFixed(2)})
-                            </span>
+                        ) : (
+                          <div
+                            className={`form-check p-3 border rounded-3 mb-0 cursor-pointer ${
+                              paymentMethod === "cash_on_delivery" ? "border-primary bg-primary-subtle bg-opacity-10" : ""
+                            }`}
+                            style={{ transition: "all 0.2s ease" }}
+                            onClick={() => handleSelectPaymentMethod("cash_on_delivery")}
+                          >
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              name="paymentRadio"
+                              id="paymentCod"
+                              checked={paymentMethod === "cash_on_delivery"}
+                              onChange={() => handleSelectPaymentMethod("cash_on_delivery")}
+                            />
+                            <label
+                              className="form-check-label fw-semibold ms-2 d-flex flex-column gap-1 w-100"
+                              htmlFor="paymentCod"
+                              style={{ cursor: "pointer" }}
+                            >
+                              <div className="d-flex justify-content-between align-items-center">
+                                <span className="text-dark fw-bold d-flex align-items-center gap-2">
+                                  <span>Cash on Delivery (COD)</span>
+                                  <span className="badge bg-warning text-dark" style={{ fontSize: "11px" }}>
+                                    Pay ₹{Number(codTotalCharge || 50).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} COD Charge Online
+                                  </span>
+                                </span>
+                                <span className="badge bg-secondary-subtle text-secondary">Dropshipping Policy</span>
+                              </div>
+                              <span className="text-muted small fw-normal">
+                                Pay ₹{Number(codTotalCharge || 50).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} COD charge now via Razorpay &bull; Balance ₹{cartCustomerSellingTotal > 0 ? Number(cartCustomerSellingTotal).toLocaleString("en-IN") : "0"} will be collected in cash on delivery
+                              </span>
+                              <div className="d-flex align-items-center gap-2 mt-1">
+                                <span className="badge bg-light text-dark border small" style={{ fontSize: "11px" }}>
+                                  <i className="fa-solid fa-calculator text-primary me-1"></i>
+                                  COD Fee: <strong>₹{Number(codTotalCharge || 50).toFixed(2)}</strong> (Fixed ₹{Number(codFixedFee || 50).toFixed(2)} + {Number(codCommissionRate || 1.6).toFixed(2)}% Comm.: ₹{Number(codCommission || 0).toFixed(2)})
+                                </span>
+                              </div>
+                            </label>
                           </div>
-                        </label>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
               </div>
