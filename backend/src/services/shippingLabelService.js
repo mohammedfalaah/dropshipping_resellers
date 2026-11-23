@@ -78,16 +78,25 @@ const generateBarcodeSvg = (rawText, options = {}) => {
 };
 
 /**
- * Generate unique India Post compliant UPU S10 tracking barcode
- * Format: 2 alpha prefix (e.g. SP/LP), 9 digits, ending in IN (e.g. SP924286105IN)
+ * Generate unique courier-compliant tracking barcode / consignment number
+ * India Post: UPU S10 format (e.g. SP924286105IN)
+ * DTDC: e.g. D924286105
+ * Professional Courier: e.g. TPC924286105
  */
-const generateConsignmentNumber = (orderIdentifier) => {
+const generateConsignmentNumber = (orderIdentifier, courierName = "") => {
   const digitsOnly = String(orderIdentifier || "").replace(/\D/g, "");
   let seed = digitsOnly;
   while (seed.length < 9) {
     seed = seed + Math.floor(100 + Math.random() * 900).toString();
   }
   const nineDigits = seed.substring(0, 9);
+  const courier = String(courierName || "").toLowerCase();
+  if (courier.includes("dtdc")) {
+    return `D${nineDigits}`;
+  }
+  if (courier.includes("professional")) {
+    return `TPC${nineDigits}`;
+  }
   return `SP${nineDigits}IN`;
 };
 
@@ -102,22 +111,23 @@ const getOrCreateShippingLabel = async (orderId) => {
 
   let trackingNumber = order.trackingNumber;
   if (!trackingNumber) {
-    trackingNumber = generateConsignmentNumber(order.orderNumber);
+    trackingNumber = generateConsignmentNumber(order.orderNumber, order.courierName);
     order.trackingNumber = trackingNumber;
-    order.courierName = order.courierName || "India Post (Business Parcel)";
+    order.courierName = order.courierName || (order.isFastDelivery ? "Professional Courier" : "India Post (Business Parcel)");
     if (!order.deliveryStatus || order.deliveryStatus === "PENDING") {
       order.deliveryStatus = "BOOKED";
     }
   }
 
-  // Check if external India Post API is configured
+  // Check if external India Post API is configured and courier is India Post
+  const isIndiaPost = !order.courierName || /india\s*post/i.test(order.courierName);
   const indiaPostApiUrl = process.env.INDIAPOST_API_URL || "https://test.cept.gov.in/beextcustomer";
   const indiaPostToken = process.env.INDIAPOST_BEARER_TOKEN;
 
   let externalBarcode = null;
   let externalBase64 = null;
 
-  if (indiaPostToken) {
+  if (isIndiaPost && indiaPostToken) {
     try {
       // First attempt official India Post domestic address label endpoint
       const domesticPayload = {
@@ -186,25 +196,36 @@ const getOrCreateShippingLabel = async (orderId) => {
   const barcodeText = externalBarcode || trackingNumber;
   const barcodeMeta = generateBarcodeSvg(barcodeText);
 
+  const isDtdc = /dtdc/i.test(order.courierName);
+  const isProfessional = /professional/i.test(order.courierName);
+  const labelServiceType = isDtdc
+    ? "DTDC_EXPRESS"
+    : isProfessional
+    ? "PROFESSIONAL_COURIER"
+    : order.isFastDelivery
+    ? "EXPRESS_PARCEL"
+    : "BUSINESS_PARCEL";
+
   if (!order.shippingLabel || !order.shippingLabel.barcode) {
     order.shippingLabel = {
       barcode: barcodeText,
       base64Image: externalBase64 ? `data:image/png;base64,${externalBase64}` : barcodeMeta.dataUri,
       generatedAt: new Date(),
-      serviceType: "BUSINESS_PARCEL",
+      serviceType: labelServiceType,
     };
   }
 
   // Ensure initial tracking history exists
   if (!order.trackingHistory || order.trackingHistory.length === 0) {
+    const courierLabel = isDtdc ? "DTDC Express" : isProfessional ? "Professional Courier" : (order.courierName || "India Post (Business Parcel)");
     order.trackingHistory = [
       {
         timestamp: new Date(),
         location: "Spare pro Logistics Hub, Tirur, Kerala - 676107",
         status: "Consignment Manifest Generated",
         details: order.isFastDelivery
-          ? `Article ${barcodeText} booked under Fast Delivery (Priority Dispatch) Business Parcel Logistics at Tirur Booking Office (PIN 676107). Ready for expedited dispatch.`
-          : `Article ${barcodeText} booked under Business Parcel Logistics at Tirur Booking Office (PIN 676107). Ready for dispatch.`,
+          ? `Article ${barcodeText} booked under Fast Delivery (${courierLabel}) Priority Dispatch at Tirur Logistics Hub (PIN 676107). Ready for expedited courier handover.`
+          : `Article ${barcodeText} booked under ${courierLabel} Logistics at Tirur Booking Office (PIN 676107). Ready for dispatch.`,
       },
     ];
   }
@@ -216,7 +237,7 @@ const getOrCreateShippingLabel = async (orderId) => {
     barcode: barcodeText,
     barcodeSvg: barcodeMeta.svg,
     barcodeDataUri: barcodeMeta.dataUri,
-    serviceType: "BUSINESS_PARCEL",
+    serviceType: labelServiceType,
   };
 };
 
@@ -251,12 +272,56 @@ const generateLabelHtml = (order, barcodeMeta) => {
   const totalItems = (order.items || []).reduce((sum, item) => sum + (item.quantity || 1), 0);
   const itemsSummary = (order.items || []).map((i) => `${i.name || i.sku || "Product"} (x${i.quantity})`).join(", ");
 
+  // Dynamic courier branding logic based on selected courier partner
+  const courierRaw = String(order.courierName || order.selectedCourier || "").trim();
+  let courierType = "INDIAPOST";
+  let courierBrandName = "INDIA POST";
+  let courierTitle = "DEPARTMENT OF POSTS";
+  let courierSubtitle = "COMMERCIAL LOGISTICS & PARCEL NETWORK";
+  let courierService = order.isFastDelivery ? "SPEED POST / AIR PARCEL" : "BUSINESS PARCEL";
+  let courierEmblemBg = "#dc2626"; // India Post red
+  let trackingLabel = "India Post Article No.";
+  let courierDisplayName = "India Post (Business Parcel)";
+  let portalDomain = "indiapost.gov.in";
+
+  if (/dtdc/i.test(courierRaw)) {
+    courierType = "DTDC";
+    courierBrandName = "DTDC";
+    courierTitle = "DTDC EXPRESS LIMITED";
+    courierSubtitle = "EXPRESS LOGISTICS & PRIORITY AIR NETWORK";
+    courierService = "DTDC EXPRESS / PRIORITY";
+    courierEmblemBg = "#004890"; // DTDC Blue
+    trackingLabel = "DTDC Consignment No.";
+    courierDisplayName = "DTDC";
+    portalDomain = "dtdc.in";
+  } else if (/professional/i.test(courierRaw)) {
+    courierType = "PROFESSIONAL";
+    courierBrandName = "PROFESSIONAL COURIER";
+    courierTitle = "THE PROFESSIONAL COURIERS";
+    courierSubtitle = "DOMESTIC CARGO & EXPRESS SERVICES";
+    courierService = "TPC PRIORITY DOMESTIC";
+    courierEmblemBg = "#b91c1c"; // TPC Red
+    trackingLabel = "TPC Consignment No.";
+    courierDisplayName = "Professional Courier";
+    portalDomain = "tpcindia.com";
+  } else if (courierRaw && !/india\s*post/i.test(courierRaw)) {
+    courierType = "COURIER";
+    courierBrandName = courierRaw.toUpperCase();
+    courierTitle = courierRaw.toUpperCase();
+    courierSubtitle = "EXPRESS LOGISTICS & CARGO NETWORK";
+    courierService = `${courierRaw.toUpperCase()} EXPRESS`;
+    courierEmblemBg = "#0f172a";
+    trackingLabel = `${courierRaw} Consignment No.`;
+    courierDisplayName = courierRaw;
+    portalDomain = "thesparepro.com/account";
+  }
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Shipping Label - ${order.orderNumber} - ${barcode}</title>
+  <title>${courierDisplayName} Shipping Label - ${order.orderNumber} - ${barcode}</title>
   <style>
     @page {
       size: 100mm 150mm; /* Standard 4x6" thermal label */
@@ -322,7 +387,7 @@ const generateLabelHtml = (order, barcodeMeta) => {
       gap: 8px;
     }
     .emblem-box {
-      background: #dc2626;
+      background: ${courierEmblemBg};
       color: #fff;
       font-weight: 900;
       font-size: 11px;
@@ -499,7 +564,7 @@ const generateLabelHtml = (order, barcodeMeta) => {
 <body>
   <div class="toolbar">
     <div>
-      <strong>Shipping Label: ${order.orderNumber}</strong> (${barcode})
+      <strong>${courierDisplayName} Shipping Label: ${order.orderNumber}</strong> (${barcode})
     </div>
     <button onclick="window.print()">
       <span style="margin-right:4px;">🖨️</span> Print Label / Download PDF
@@ -510,25 +575,31 @@ const generateLabelHtml = (order, barcodeMeta) => {
     <!-- Header -->
     <div class="label-header">
       <div class="emblem-title">
-        <div class="emblem-box">INDIA POST</div>
+        <div class="emblem-box">${courierBrandName}</div>
         <div class="dept-title">
-          DEPARTMENT OF POSTS<br />
-          <span style="font-size:9px;font-weight:700;color:#64748b;">COMMERCIAL LOGISTICS</span>
+          ${courierTitle}<br />
+          <span style="font-size:9px;font-weight:700;color:#64748b;">${courierSubtitle}</span>
         </div>
       </div>
       <div style="display:flex; flex-direction:column; align-items:flex-end; gap:3px;">
-        <div class="service-badge">
-          BUSINESS PARCEL
+        <div class="service-badge" style="background:${courierType === 'DTDC' ? '#004890' : courierType === 'PROFESSIONAL' ? '#991b1b' : '#000'};">
+          ${courierService}
         </div>
         ${order.isFastDelivery ? `
         <div style="background:#dc2626; color:#ffffff; font-size:9.5px; font-weight:900; padding:2px 6px; border-radius:3px; letter-spacing:0.5px; text-align:right; border:1px solid #991b1b; white-space:nowrap;">
-          ⚡ FAST DELIVERY
-        </div>` : ""}
+          ⚡ FAST DELIVERY (${courierType === 'DTDC' ? 'DTDC' : courierType === 'PROFESSIONAL' ? 'PROFESSIONAL COURIER' : 'PRIORITY'})
+        </div>` : `
+        <div style="background:#f1f5f9; color:#334155; font-size:9px; font-weight:700; padding:2px 6px; border-radius:3px; text-align:right; border:1px solid #cbd5e1; white-space:nowrap;">
+          COURIER: ${courierDisplayName}
+        </div>`}
       </div>
     </div>
 
     <!-- Barcode Section -->
     <div class="barcode-section">
+      <div style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px; color:#475569;">
+        ${trackingLabel}
+      </div>
       <div class="barcode-svg">
         ${barcodeSvg}
       </div>
@@ -537,12 +608,18 @@ const generateLabelHtml = (order, barcodeMeta) => {
 
     <!-- Routing Details -->
     <div class="routing-row">
+      <div class="routing-cell" style="flex:1.2;">
+        <div class="routing-label">COURIER PARTNER</div>
+        <div class="routing-val" style="color:${courierType === 'DTDC' ? '#004890' : courierType === 'PROFESSIONAL' ? '#b91c1c' : '#0f172a'};font-size:12px;">
+          ${courierDisplayName}
+        </div>
+      </div>
       <div class="routing-cell">
         <div class="routing-label">DEST PINCODE</div>
         <div class="routing-val">${recipient.postalCode || "—"}</div>
       </div>
       <div class="routing-cell">
-        <div class="routing-label">DEST OFFICE / CITY</div>
+        <div class="routing-label">DEST CITY / STATE</div>
         <div class="routing-val">${String(recipient.city || "").toUpperCase()}</div>
       </div>
       <div class="routing-cell">
@@ -610,8 +687,8 @@ const generateLabelHtml = (order, barcodeMeta) => {
 
     <!-- Footer -->
     <div class="footer-section">
-      <div>Platform: <strong>thesparepro.com</strong></div>
-      <div>Track at: <strong>thesparepro.com/account</strong> or <strong>indiapost.gov.in</strong></div>
+      <div>Platform: <strong>thesparepro.com</strong> | Carrier: <strong>${courierDisplayName}</strong></div>
+      <div>Track at: <strong>thesparepro.com/account</strong> or <strong>${portalDomain}</strong></div>
     </div>
   </div>
 

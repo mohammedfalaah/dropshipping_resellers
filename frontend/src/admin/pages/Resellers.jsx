@@ -842,9 +842,10 @@ export default function Resellers() {
                       onChange={(e) => setCourierNameInput(e.target.value)}
                     >
                       <option value="India Post (Business Parcel)">India Post (Business Parcel)</option>
+                      <option value="Professional Courier">Professional Courier</option>
+                      <option value="DTDC">DTDC</option>
                       <option value="Delhivery Logistics">Delhivery Logistics</option>
                       <option value="Blue Dart Express">Blue Dart Express</option>
-                      <option value="DTDC Courier">DTDC Courier</option>
                       <option value="XpressBees Logistics">XpressBees Logistics</option>
                       <option value="Shadowfax Logistics">Shadowfax Logistics</option>
                       <option value="Standard Courier">Standard Courier</option>

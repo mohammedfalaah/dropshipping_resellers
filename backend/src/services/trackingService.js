@@ -11,6 +11,23 @@ const detectCourier = (trackingNumber, preferredCourier = "") => {
   const cleanNumber = (trackingNumber || "").trim().toUpperCase();
   const courier = (preferredCourier || "").toLowerCase();
 
+  // If order explicitly specifies Professional Courier or DTDC, prioritize it
+  if (courier.includes("professional") || cleanNumber.startsWith("TPC") || cleanNumber.startsWith("PC")) {
+    return {
+      name: "Professional Courier",
+      code: "PROFESSIONAL",
+      portalUrl: "https://www.tpcindia.com/tracking.aspx",
+    };
+  }
+
+  if (courier.includes("dtdc") || (cleanNumber.startsWith("D") && !cleanNumber.endsWith("IN"))) {
+    return {
+      name: "DTDC",
+      code: "DTDC",
+      portalUrl: "https://www.dtdc.in/tracking/shipment-tracking.asp",
+    };
+  }
+
   // India Post consignments follow UPU S10 format (2 letters, 9 digits, IN)
   // e.g. RM019388105IN, EM123456789IN, SP866991875IN
   if (
@@ -40,14 +57,6 @@ const detectCourier = (trackingNumber, preferredCourier = "") => {
       name: "Blue Dart Express",
       code: "BLUEDART",
       portalUrl: `https://www.bluedart.com/tracking?track=${cleanNumber}`,
-    };
-  }
-
-  if (courier.includes("dtdc")) {
-    return {
-      name: "DTDC Courier",
-      code: "DTDC",
-      portalUrl: "https://www.dtdc.in/tracking/shipment-tracking.asp",
     };
   }
 

@@ -958,9 +958,10 @@ export default function Orders() {
                         onChange={(e) => setCodCourierName(e.target.value)}
                       >
                         <option value="India Post (Business Parcel)">India Post (Business Parcel)</option>
+                        <option value="Professional Courier">Professional Courier</option>
+                        <option value="DTDC">DTDC</option>
                         <option value="Delhivery Logistics">Delhivery Logistics</option>
                         <option value="Blue Dart Express">Blue Dart Express</option>
-                        <option value="DTDC Courier">DTDC Courier</option>
                         <option value="XpressBees Logistics">XpressBees Logistics</option>
                         <option value="Shadowfax Logistics">Shadowfax Logistics</option>
                       </select>
@@ -1039,9 +1040,10 @@ export default function Orders() {
                       onChange={(e) => setCourierName(e.target.value)}
                     >
                       <option value="India Post (Business Parcel)">India Post (Business Parcel)</option>
+                      <option value="Professional Courier">Professional Courier</option>
+                      <option value="DTDC">DTDC</option>
                       <option value="Delhivery Logistics">Delhivery Logistics</option>
                       <option value="Blue Dart Express">Blue Dart Express</option>
-                      <option value="DTDC Courier">DTDC Courier</option>
                       <option value="XpressBees Logistics">XpressBees Logistics</option>
                       <option value="Shadowfax Logistics">Shadowfax Logistics</option>
                       <option value="Standard Courier">Standard Courier</option>
@@ -1365,7 +1367,13 @@ export default function Orders() {
                     <i className="fa-solid fa-truck-fast"></i>
                   </div>
                   <div>
-                    <h5 className="modal-title fw-bold text-dark mb-0">India Post DOP Tracking</h5>
+                    <h5 className="modal-title fw-bold text-dark mb-0">
+                      {trackingData?.courierName?.includes("DTDC")
+                        ? "DTDC Express Tracking"
+                        : trackingData?.courierName?.includes("Professional")
+                        ? "The Professional Couriers Tracking"
+                        : "India Post DOP Tracking"}
+                    </h5>
                     <span className="text-muted small">
                       {trackingData?.courierName || "India Post (Business Parcel)"} •{" "}
                       <span className="font-monospace fw-semibold">{trackingData?.trackingNumber}</span>

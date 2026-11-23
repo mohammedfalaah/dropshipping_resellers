@@ -63,15 +63,13 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
   }
 
   let assignedCourier = "India Post (Business Parcel)";
-  if (fastDeliveryEnabled) {
-    const cleanCourier = String(courierName || "").trim();
-    if (/professional/i.test(cleanCourier)) {
-      assignedCourier = "Professional Courier";
-    } else if (/dtdc/i.test(cleanCourier)) {
-      assignedCourier = "DTDC";
-    } else {
-      assignedCourier = cleanCourier;
-    }
+  const cleanCourier = String(courierName || "").trim();
+  if (/professional/i.test(cleanCourier)) {
+    assignedCourier = "Professional Courier";
+  } else if (/dtdc/i.test(cleanCourier)) {
+    assignedCourier = "DTDC";
+  } else if (cleanCourier) {
+    assignedCourier = cleanCourier;
   }
   if (!items || items.length === 0) {
     throw new Error("Order must contain at least one item");
@@ -208,9 +206,9 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
   const orderStatus = (normalizedPaymentMethod === "RAZORPAY" || normalizedPaymentMethod === "COD") ? "PENDING" : "CONFIRMED";
   const paymentStatus = "PENDING";
 
-  // Generate automated India Post consignment tracking ID & shipping label barcode
+  // Generate automated courier consignment tracking ID & shipping label barcode
   const shippingLabelService = require("./shippingLabelService");
-  const consignmentBarcode = shippingLabelService.generateConsignmentNumber(orderNumber);
+  const consignmentBarcode = shippingLabelService.generateConsignmentNumber(orderNumber, assignedCourier);
   const barcodeMeta = shippingLabelService.generateBarcodeSvg(consignmentBarcode);
 
   // 3. Create Order document
@@ -249,7 +247,13 @@ const createOrder = async ({ resellerId, items, shippingAddress, paymentMethod, 
       barcode: consignmentBarcode,
       base64Image: barcodeMeta.dataUri,
       generatedAt: new Date(),
-      serviceType: fastDeliveryEnabled ? "EXPRESS_PARCEL" : "BUSINESS_PARCEL",
+      serviceType: /dtdc/i.test(assignedCourier)
+        ? "DTDC_EXPRESS"
+        : /professional/i.test(assignedCourier)
+        ? "PROFESSIONAL_COURIER"
+        : fastDeliveryEnabled
+        ? "EXPRESS_PARCEL"
+        : "BUSINESS_PARCEL",
     },
     trackingHistory: [
       {
