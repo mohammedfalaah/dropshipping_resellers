@@ -1950,3 +1950,38 @@ html, body, #root, .site-wrapper {
   border-color: #cbd5e1;
   color: #0f172a;
 }
+
+/* Footer Vexora Technologies Credit */
+.footer-powered-by {
+  display: inline-flex;
+  align-items: center;
+}
+
+.footer-powered-by p {
+  margin: 0;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.65);
+  letter-spacing: 0.2px;
+}
+
+.footer-powered-by a {
+  color: rgba(255, 255, 255, 0.95);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(255, 255, 255, 0.35);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.footer-powered-by a:hover {
+  color: #2dd2b3;
+  text-decoration-color: #2dd2b3;
+}
+
+@media (max-width: 767px) {
+  .footer-copyright-box {
+    flex-direction: column !important;
+    gap: 8px !important;
+    text-align: center;
+  }
+}

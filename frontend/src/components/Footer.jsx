@@ -145,7 +145,18 @@ export default function Footer() {
                     <p>Copyright © {new Date().getFullYear()} SPARE PRO. All Rights Reserved.</p>
                   </div>
 
-                 
+                  <div className="footer-powered-by">
+                    <p>
+                      Powered by{" "}
+                      <a
+                        href="https://www.vexoratechnologies.in/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Vexora Technologies
+                      </a>
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
