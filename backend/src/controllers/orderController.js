@@ -84,7 +84,7 @@ const getOrderById = async (req, res, next) => {
   try {
     const order = await Order.findById(req.params.id)
       .populate("reseller", "name email phone businessInfo")
-      .populate("items.product", "name sku slug mainImage");
+      .populate("items.product", "name sku slug mainImage image images resellerPricePaise retailPricePaise");
 
     if (!order) {
       return errorResponse(res, "Order not found", "ORDER_NOT_FOUND", 404);
@@ -99,7 +99,48 @@ const getOrderById = async (req, res, next) => {
       return errorResponse(res, "Access denied to this order.", "FORBIDDEN", 403);
     }
 
-    return successResponse(res, "Order details retrieved.", { order });
+    const obj = order.toObject();
+    obj.items = (obj.items || []).map((it) => {
+      const img =
+        it.image ||
+        it.product?.mainImage ||
+        it.product?.image ||
+        (Array.isArray(it.product?.images) && it.product.images[0]) ||
+        "";
+      const wholesalePaise =
+        it.wholesalePricePaise !== undefined && it.wholesalePricePaise !== null
+          ? it.wholesalePricePaise
+          : it.unitPricePaise !== undefined && it.unitPricePaise !== null
+          ? it.unitPricePaise
+          : it.product?.resellerPricePaise || 0;
+      const customerPricePaise =
+        it.customerSellingPricePaise !== undefined && it.customerSellingPricePaise !== null
+          ? it.customerSellingPricePaise
+          : wholesalePaise;
+      const profitPaise =
+        it.resellerProfitPaise !== undefined && it.resellerProfitPaise !== null
+          ? it.resellerProfitPaise
+          : (customerPricePaise - wholesalePaise) * (it.quantity || 1);
+
+      return {
+        ...it,
+        image: img,
+        name: it.name || it.product?.name || "Product",
+        sku: it.sku || it.product?.sku || "SKU-N/A",
+        wholesalePricePaise: wholesalePaise,
+        customerSellingPricePaise: customerPricePaise,
+        resellerProfitPaise: profitPaise,
+        wholesalePriceRupees: paiseToRupees(wholesalePaise),
+        customerSellingPriceRupees: paiseToRupees(customerPricePaise),
+        resellerProfitRupees: paiseToRupees(profitPaise),
+        subtotalRupees: paiseToRupees(it.subtotalPaise || wholesalePaise * (it.quantity || 1)),
+        customerSellingSubtotalRupees: paiseToRupees(
+          it.customerSellingSubtotalPaise || customerPricePaise * (it.quantity || 1)
+        ),
+      };
+    });
+
+    return successResponse(res, "Order details retrieved.", { order: obj });
   } catch (err) {
     next(err);
   }
@@ -152,6 +193,7 @@ const getAllOrders = async (req, res, next) => {
     const [orders, total] = await Promise.all([
       Order.find(query)
         .populate("reseller", "name email phone businessInfo")
+        .populate("items.product", "name sku mainImage image images resellerPricePaise retailPricePaise")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit)),
@@ -160,6 +202,47 @@ const getAllOrders = async (req, res, next) => {
 
     const formattedOrders = orders.map((o) => {
       const obj = o.toObject();
+
+      obj.items = (obj.items || []).map((it) => {
+        const img =
+          it.image ||
+          it.product?.mainImage ||
+          it.product?.image ||
+          (Array.isArray(it.product?.images) && it.product.images[0]) ||
+          "";
+        const wholesalePaise =
+          it.wholesalePricePaise !== undefined && it.wholesalePricePaise !== null
+            ? it.wholesalePricePaise
+            : it.unitPricePaise !== undefined && it.unitPricePaise !== null
+            ? it.unitPricePaise
+            : it.product?.resellerPricePaise || 0;
+        const customerPricePaise =
+          it.customerSellingPricePaise !== undefined && it.customerSellingPricePaise !== null
+            ? it.customerSellingPricePaise
+            : wholesalePaise;
+        const profitPaise =
+          it.resellerProfitPaise !== undefined && it.resellerProfitPaise !== null
+            ? it.resellerProfitPaise
+            : (customerPricePaise - wholesalePaise) * (it.quantity || 1);
+
+        return {
+          ...it,
+          image: img,
+          name: it.name || it.product?.name || "Product",
+          sku: it.sku || it.product?.sku || "SKU-N/A",
+          wholesalePricePaise: wholesalePaise,
+          customerSellingPricePaise: customerPricePaise,
+          resellerProfitPaise: profitPaise,
+          wholesalePriceRupees: paiseToRupees(wholesalePaise),
+          customerSellingPriceRupees: paiseToRupees(customerPricePaise),
+          resellerProfitRupees: paiseToRupees(profitPaise),
+          subtotalRupees: paiseToRupees(it.subtotalPaise || wholesalePaise * (it.quantity || 1)),
+          customerSellingSubtotalRupees: paiseToRupees(
+            it.customerSellingSubtotalPaise || customerPricePaise * (it.quantity || 1)
+          ),
+        };
+      });
+
       const wholesaleCostPaise =
         obj.wholesaleCostPaise ||
         (obj.items || []).reduce(

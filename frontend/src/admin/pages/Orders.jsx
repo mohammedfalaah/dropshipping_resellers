@@ -15,9 +15,42 @@ export default function Orders() {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, pages: 1 });
 
-  // Detail Modal
+  // Detail Modal & Products Modal
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [loadingDetailOrder, setLoadingDetailOrder] = useState(false);
+
+  // Expandable row state for inline products inspection
+  const [expandedOrderIds, setExpandedOrderIds] = useState(new Set());
+  const toggleExpandOrder = (orderId) => {
+    setExpandedOrderIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(orderId)) next.delete(orderId);
+      else next.add(orderId);
+      return next;
+    });
+  };
+
+  // Dedicated Shipping Mode & Courier Partner Modal
+  const [courierModalOrder, setCourierModalOrder] = useState(null);
+
+  // Open complete Products / Order Details modal
+  const handleOpenProductsModal = async (o) => {
+    setSelectedOrder(o);
+    setShowDetailModal(true);
+    setLoadingDetailOrder(true);
+    try {
+      const res = await ordersApi.getById(o._id);
+      const freshOrder = res.data?.order || res.data?.data?.order || res.data;
+      if (freshOrder && freshOrder._id) {
+        setSelectedOrder(freshOrder);
+      }
+    } catch (e) {
+      console.warn("Using order row data for products modal:", e.message);
+    } finally {
+      setLoadingDetailOrder(false);
+    }
+  };
 
   // 3-dots actions dropdown state
   const [activeDropdownId, setActiveDropdownId] = useState(null);
@@ -471,14 +504,15 @@ export default function Orders() {
             <table className="admin-table table-hover align-middle mb-0">
               <thead className="table-light">
                 <tr>
-                  <th style={{ minWidth: "130px" }}>Order #</th>
+                  <th style={{ minWidth: "140px" }}>Order #</th>
                   <th style={{ minWidth: "160px" }}>Reseller & Customer</th>
+                  <th style={{ minWidth: "220px" }}>Products Purchased</th>
                   <th style={{ minWidth: "130px" }}>Payment & Del. Chg</th>
-                  <th style={{ minWidth: "140px" }}>Company Amount</th>
-                  <th style={{ minWidth: "130px" }}>Reseller Profit</th>
+                  <th style={{ minWidth: "130px" }}>Company Amount</th>
+                  <th style={{ minWidth: "120px" }}>Reseller Profit</th>
                   <th style={{ minWidth: "120px" }}>Customer Total</th>
                   <th style={{ minWidth: "150px" }}>COD Collection State</th>
-                  <th style={{ minWidth: "170px" }}>Delivery Progress & Courier</th>
+                  <th style={{ minWidth: "180px" }}>Delivery Progress & Courier</th>
                   <th style={{ minWidth: "80px", width: "80px" }} className="text-end">Actions</th>
                 </tr>
               </thead>
@@ -521,29 +555,53 @@ export default function Orders() {
                   else if (deliveryStage === "DELIVERED") progressPercent = 100;
                   else if (deliveryStage === "CANCELLED" || deliveryStage === "FAILED") progressPercent = 100;
 
+                  const totalItemsCount = (o.items || []).reduce((sum, item) => sum + (item.quantity || 1), 0);
+                  const isExpanded = expandedOrderIds.has(o._id);
+
                   return (
-                    <tr key={o._id}>
-                      {/* Order # and Date */}
-                      <td>
-                        <strong className="text-dark d-block">{o.orderNumber}</strong>
-                        <span className="text-muted small" style={{ fontSize: "11px" }}>
-                          {new Date(o.createdAt).toLocaleDateString("en-IN", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </span>
-                        {o.isFastDelivery && (
-                          <div className="mt-1">
-                            <span
-                              className="badge bg-danger text-white d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1"
-                              style={{ fontSize: "10px", fontWeight: "700", letterSpacing: "0.4px" }}
+                    <React.Fragment key={o._id}>
+                      <tr className={isExpanded ? "table-active" : ""}>
+                        {/* Order # and Date with Expand Toggle */}
+                        <td>
+                          <div className="d-flex align-items-center gap-1.5">
+                            <button
+                              type="button"
+                              className="btn btn-xs btn-light border p-0 d-inline-flex align-items-center justify-content-center flex-shrink-0"
+                              style={{ width: "22px", height: "22px" }}
+                              title={isExpanded ? "Collapse products" : "Expand products"}
+                              onClick={() => toggleExpandOrder(o._id)}
                             >
-                              <i className="fa-solid fa-bolt"></i> FAST DELIVERY
-                            </span>
+                              <i className={`fa-solid ${isExpanded ? "fa-chevron-down text-primary" : "fa-chevron-right text-muted"}`} style={{ fontSize: "10px" }}></i>
+                            </button>
+                            <div>
+                              <strong
+                                className="text-dark d-block cursor-pointer hover-text-primary"
+                                role="button"
+                                title="Click to view complete order details"
+                                onClick={() => handleOpenProductsModal(o)}
+                              >
+                                {o.orderNumber}
+                              </strong>
+                              <span className="text-muted small" style={{ fontSize: "11px" }}>
+                                {new Date(o.createdAt).toLocaleDateString("en-IN", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })}
+                              </span>
+                            </div>
                           </div>
-                        )}
-                      </td>
+                          {o.isFastDelivery && (
+                            <div className="mt-1">
+                              <span
+                                className="badge bg-danger text-white d-inline-flex align-items-center gap-1 shadow-sm px-2 py-0.5"
+                                style={{ fontSize: "9.5px", fontWeight: "700", letterSpacing: "0.3px" }}
+                              >
+                                <i className="fa-solid fa-bolt"></i> FAST DELIVERY
+                              </span>
+                            </div>
+                          )}
+                        </td>
 
                       {/* Reseller & Customer */}
                       <td>
@@ -551,6 +609,62 @@ export default function Orders() {
                         <div className="small text-muted text-truncate" style={{ maxWidth: "180px", fontSize: "11px" }}>
                           To: {o.shippingAddress?.firstName || o.shippingAddress?.fullName} ({o.shippingAddress?.city || "India"})
                         </div>
+                      </td>
+
+                      {/* Products Purchased Column (Image, Name, SKU, Qty) */}
+                      <td>
+                        {(!o.items || o.items.length === 0) ? (
+                          <span className="text-muted small fst-italic">No items</span>
+                        ) : (
+                          <div
+                            className="p-1 rounded-2 cursor-pointer hover-bg-light"
+                            role="button"
+                            title="Click to view all purchased products"
+                            onClick={() => handleOpenProductsModal(o)}
+                          >
+                            <div className="d-flex align-items-center gap-2">
+                              {o.items[0].image ? (
+                                <img
+                                  src={o.items[0].image}
+                                  alt={o.items[0].name}
+                                  className="rounded border object-fit-cover flex-shrink-0"
+                                  style={{ width: "36px", height: "36px" }}
+                                  onError={(e) => { e.target.style.display = "none"; }}
+                                />
+                              ) : (
+                                <div
+                                  className="rounded border bg-light d-flex align-items-center justify-content-center text-muted flex-shrink-0"
+                                  style={{ width: "36px", height: "36px" }}
+                                >
+                                  <i className="fa-solid fa-box"></i>
+                                </div>
+                              )}
+                              <div className="small" style={{ maxWidth: "160px", lineHeight: "1.25" }}>
+                                <div className="fw-semibold text-dark text-truncate" title={o.items[0].name}>
+                                  {o.items[0].name || "Product"}
+                                </div>
+                                <div className="d-flex align-items-center gap-1 mt-0.5">
+                                  <code className="text-secondary bg-light px-1 rounded" style={{ fontSize: "10px" }}>
+                                    {o.items[0].sku || "SKU-N/A"}
+                                  </code>
+                                  <span className="badge bg-secondary-subtle text-dark" style={{ fontSize: "9.5px", padding: "1px 4px" }}>
+                                    Qty: {o.items[0].quantity || 1}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            {o.items.length > 1 && (
+                              <div className="mt-1 d-flex align-items-center gap-1">
+                                <span
+                                  className="badge bg-primary-subtle text-primary border border-primary-subtle"
+                                  style={{ fontSize: "9.5px", padding: "1px 5px" }}
+                                >
+                                  +{o.items.length - 1} more products ({totalItemsCount} total)
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </td>
 
                       {/* Payment Method & Delivery Charge */}
@@ -636,7 +750,7 @@ export default function Orders() {
                         )}
                       </td>
 
-                      {/* Delivery Progress & Courier Tracking */}
+                      {/* Delivery Progress & Courier Tracking with Clickable Shipping Mode */}
                       <td>
                         <div className="d-flex align-items-center gap-1 mb-1 flex-wrap">
                           <span
@@ -659,8 +773,32 @@ export default function Orders() {
                             </span>
                           )}
                         </div>
+
+                        {/* Clickable Courier Badge */}
+                        <div className="mb-1">
+                          <button
+                            type="button"
+                            className={`btn btn-xs p-1 px-2 border rounded-pill d-inline-flex align-items-center gap-1 shadow-sm ${
+                              /dtdc/i.test(o.courierName)
+                                ? "btn-outline-primary bg-primary-subtle text-primary fw-bold"
+                                : /professional/i.test(o.courierName)
+                                ? "btn-outline-danger bg-danger-subtle text-danger fw-bold"
+                                : "btn-outline-secondary bg-light text-dark fw-semibold"
+                            }`}
+                            style={{ fontSize: "10px", lineHeight: "1.2" }}
+                            title="Click to view courier partner & shipping mode details"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCourierModalOrder(o);
+                            }}
+                          >
+                            <i className={`fa-solid ${/dtdc/i.test(o.courierName) ? "fa-truck-fast text-primary" : /professional/i.test(o.courierName) ? "fa-plane-departure text-danger" : "fa-envelope text-secondary"}`}></i>
+                            <span>{o.courierName || "India Post (Business Parcel)"}</span>
+                            <i className="fa-solid fa-circle-info ms-0.5 opacity-75" style={{ fontSize: "8.5px" }}></i>
+                          </button>
+                        </div>
+
                         <div className="small text-truncate" style={{ maxWidth: "200px", fontSize: "11px" }}>
-                          <span className="text-muted">{o.courierName || "India Post"}: </span>
                           {o.trackingNumber ? (
                             <span className="d-inline-flex align-items-center gap-1">
                               <code className="text-primary fw-bold">{o.trackingNumber}</code>
@@ -668,7 +806,7 @@ export default function Orders() {
                                 type="button"
                                 className="btn btn-xs btn-outline-danger p-0 px-1 border-0"
                                 style={{ fontSize: "11px", lineHeight: "1" }}
-                                title="View India Post Tracking Checkpoints"
+                                title="View Tracking Checkpoints"
                                 onClick={() => handleViewTracking(o.trackingNumber, o)}
                               >
                                 <i className="fa-solid fa-location-crosshairs"></i>
@@ -713,7 +851,7 @@ export default function Orders() {
                                 right: 0,
                                 ...(isNearBottom ? { bottom: "100%", marginBottom: "6px" } : { top: "100%", marginTop: "6px" }),
                                 zIndex: 1050,
-                                minWidth: "185px",
+                                minWidth: "215px",
                                 borderRadius: "10px",
                               }}
                             >
@@ -722,10 +860,24 @@ export default function Orders() {
                                 className="dropdown-item py-2 px-3 d-flex align-items-center gap-2 small fw-semibold text-primary rounded-2"
                                 onClick={() => {
                                   setActiveDropdownId(null);
+                                  handleOpenProductsModal(o);
+                                }}
+                              >
+                                <i className="fa-solid fa-box-open" style={{ width: "16px" }}></i>
+                                <span>View Products / Order Details</span>
+                              </button>
+
+                              <div className="dropdown-divider my-1"></div>
+
+                              <button
+                                type="button"
+                                className="dropdown-item py-2 px-3 d-flex align-items-center gap-2 small rounded-2 text-dark"
+                                onClick={() => {
+                                  setActiveDropdownId(null);
                                   handleOpenStatusModal(o);
                                 }}
                               >
-                                <i className="fa-solid fa-truck" style={{ width: "16px" }}></i>
+                                <i className="fa-solid fa-truck text-secondary" style={{ width: "16px" }}></i>
                                 <span>Dispatch</span>
                               </button>
 
@@ -770,25 +922,108 @@ export default function Orders() {
                                 </button>
                               )}
 
-                              <div className="dropdown-divider my-1"></div>
-
                               <button
                                 type="button"
                                 className="dropdown-item py-2 px-3 d-flex align-items-center gap-2 small rounded-2 text-dark"
                                 onClick={() => {
                                   setActiveDropdownId(null);
-                                  setSelectedOrder(o);
-                                  setShowDetailModal(true);
+                                  setCourierModalOrder(o);
                                 }}
                               >
-                                <i className="fa-regular fa-eye text-secondary" style={{ width: "16px" }}></i>
-                                <span>View Details</span>
+                                <i className="fa-solid fa-plane-departure text-danger" style={{ width: "16px" }}></i>
+                                <span>Shipping Mode Info</span>
                               </button>
                             </div>
                           )}
                         </div>
                       </td>
                     </tr>
+
+                    {/* Expandable Inline Row for Products */}
+                    {isExpanded && (
+                      <tr className="bg-light-subtle">
+                        <td colSpan={10} className="p-3 border-bottom bg-light">
+                          <div className="card border shadow-sm rounded-3 overflow-hidden">
+                            <div className="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
+                              <div className="d-flex align-items-center gap-2">
+                                <span className="badge bg-primary text-white">
+                                  <i className="fa-solid fa-boxes-stacked me-1"></i> Products in Order
+                                </span>
+                                <span className="small text-muted fw-semibold">
+                                  {o.orderNumber} ({o.items?.length || 0} unique items, {totalItemsCount} total units)
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                className="btn btn-xs btn-outline-primary rounded-pill px-2.5 py-1 fw-semibold"
+                                onClick={() => handleOpenProductsModal(o)}
+                              >
+                                <i className="fa-regular fa-window-maximize me-1"></i> Open Full Order Modal
+                              </button>
+                            </div>
+
+                            <div className="table-responsive">
+                              <table className="table table-sm align-middle mb-0" style={{ fontSize: "12px" }}>
+                                <thead className="table-light">
+                                  <tr>
+                                    <th style={{ width: "48px" }}></th>
+                                    <th>Product Name & SKU</th>
+                                    <th style={{ width: "60px" }}>Qty</th>
+                                    <th>Company Wholesale</th>
+                                    <th>Customer Selling Price</th>
+                                    <th>Reseller Margin</th>
+                                    <th className="text-end">Item Subtotal</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {(o.items || []).map((it, itemIdx) => {
+                                    const wholesale = it.wholesalePricePaise || it.unitPricePaise || 0;
+                                    const customerPrice = it.customerSellingPricePaise || wholesale;
+                                    const profit = it.resellerProfitPaise !== undefined ? it.resellerProfitPaise : (customerPrice - wholesale) * (it.quantity || 1);
+                                    const itemImg = it.image || it.product?.mainImage || it.product?.image || "";
+                                    return (
+                                      <tr key={itemIdx}>
+                                        <td>
+                                          {itemImg ? (
+                                            <img
+                                              src={itemImg}
+                                              alt={it.name || "Product"}
+                                              className="rounded border object-fit-cover shadow-sm"
+                                              style={{ width: "36px", height: "36px" }}
+                                              onError={(e) => { e.target.style.display = 'none'; }}
+                                            />
+                                          ) : (
+                                            <div className="rounded border bg-light d-flex align-items-center justify-content-center text-muted" style={{ width: "36px", height: "36px" }}>
+                                              <i className="fa-solid fa-box"></i>
+                                            </div>
+                                          )}
+                                        </td>
+                                        <td>
+                                          <div className="fw-semibold text-dark">{it.name || it.product?.name || "Product"}</div>
+                                          <div className="d-flex align-items-center gap-1.5 mt-0.5">
+                                            <code className="text-secondary bg-white px-1.5 py-0.5 rounded border" style={{ fontSize: "10.5px" }}>
+                                              SKU: {it.sku || it.product?.sku || "SKU-N/A"}
+                                            </code>
+                                            {it.color && <span className="badge bg-light text-dark border" style={{ fontSize: "9.5px" }}>Color: {it.color}</span>}
+                                            {it.size && <span className="badge bg-light text-dark border" style={{ fontSize: "9.5px" }}>Size: {it.size}</span>}
+                                          </div>
+                                        </td>
+                                        <td><span className="badge bg-dark rounded-pill px-2">{it.quantity || 1}</span></td>
+                                        <td className="text-muted font-monospace">₹{(wholesale / 100).toFixed(2)}</td>
+                                        <td className="fw-semibold text-dark font-monospace">₹{(customerPrice / 100).toFixed(2)}</td>
+                                        <td className="text-success fw-bold font-monospace">+₹{(profit / 100).toFixed(2)}</td>
+                                        <td className="text-end fw-bold font-monospace">₹{((customerPrice * (it.quantity || 1)) / 100).toFixed(2)}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                   );
                 })}
               </tbody>
@@ -1134,30 +1369,72 @@ export default function Orders() {
                   </div>
                 )}
 
-                {/* Shipping & Reseller Info */}
+                {/* Shipping, Reseller & Logistics Partner (3 Cards) */}
                 <div className="row g-3 mb-4">
-                  <div className="col-sm-6">
-                    <span className="text-muted small d-block">Dropshipper / Reseller</span>
-                    <strong className="text-dark">{selectedOrder.reseller?.name || "Direct Reseller"}</strong>
-                    <div className="small text-muted">{selectedOrder.reseller?.email}</div>
-                    <div className="small text-muted">{selectedOrder.reseller?.phone}</div>
+                  <div className="col-md-4">
+                    <div className="p-3 rounded-3 bg-light border h-100">
+                      <span className="text-muted small d-block fw-semibold text-uppercase" style={{ fontSize: "11px" }}>
+                        <i className="fa-solid fa-user-tie me-1 text-primary"></i> Reseller
+                      </span>
+                      <strong className="text-dark fs-6 d-block mt-1">{selectedOrder.reseller?.name || "Direct Reseller"}</strong>
+                      {selectedOrder.reseller?.businessInfo?.businessName && (
+                        <div className="small fw-semibold text-secondary">{selectedOrder.reseller.businessInfo.businessName}</div>
+                      )}
+                      <div className="small text-muted mt-1">{selectedOrder.reseller?.email}</div>
+                      <div className="small text-muted">{selectedOrder.reseller?.phone}</div>
+                    </div>
                   </div>
-                  <div className="col-sm-6">
-                    <span className="text-muted small d-block">Recipient Shipping Address</span>
-                    <div className="fw-semibold small">
-                      {selectedOrder.shippingAddress?.firstName || selectedOrder.shippingAddress?.fullName}{" "}
-                      {selectedOrder.shippingAddress?.lastName || ""}
+
+                  <div className="col-md-4">
+                    <div className="p-3 rounded-3 bg-light border h-100">
+                      <span className="text-muted small d-block fw-semibold text-uppercase" style={{ fontSize: "11px" }}>
+                        <i className="fa-solid fa-location-dot me-1 text-danger"></i> Customer Delivery Address
+                      </span>
+                      <div className="fw-semibold small mt-1">
+                        {selectedOrder.shippingAddress?.firstName || selectedOrder.shippingAddress?.fullName}{" "}
+                        {selectedOrder.shippingAddress?.lastName || ""}
+                      </div>
+                      <div className="small text-muted mt-1">
+                        {selectedOrder.shippingAddress?.address || selectedOrder.shippingAddress?.addressLine1},{" "}
+                        {selectedOrder.shippingAddress?.city}, {selectedOrder.shippingAddress?.state} -{" "}
+                        <strong className="text-dark">{selectedOrder.shippingAddress?.postalCode}</strong>
+                      </div>
+                      <div className="small text-muted mt-1">📞 {selectedOrder.shippingAddress?.phone}</div>
                     </div>
-                    <div className="small text-muted">
-                      {selectedOrder.shippingAddress?.address || selectedOrder.shippingAddress?.addressLine1},{" "}
-                      {selectedOrder.shippingAddress?.city}, {selectedOrder.shippingAddress?.state} -{" "}
-                      {selectedOrder.shippingAddress?.postalCode}
+                  </div>
+
+                  <div className="col-md-4">
+                    <div className="p-3 rounded-3 bg-light border h-100">
+                      <div className="d-flex justify-content-between align-items-center">
+                        <span className="text-muted small fw-semibold text-uppercase" style={{ fontSize: "11px" }}>
+                          <i className="fa-solid fa-truck-fast me-1 text-primary"></i> Shipping Mode
+                        </span>
+                        {selectedOrder.isFastDelivery ? (
+                          <span className="badge bg-danger text-white" style={{ fontSize: "10px" }}>⚡ Fast Delivery</span>
+                        ) : (
+                          <span className="badge bg-secondary-subtle text-dark border" style={{ fontSize: "10px" }}>Standard</span>
+                        )}
+                      </div>
+                      <strong className="d-block mt-1 fs-6 text-dark">
+                        {selectedOrder.courierName || "India Post (Business Parcel)"}
+                      </strong>
+                      <div className="small text-muted mt-1">
+                        AWB: <code className="text-primary fw-bold">{selectedOrder.trackingNumber || "Not assigned"}</code>
+                      </div>
+                      <div className="mt-2">
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-outline-primary rounded-pill px-2.5 py-1 fw-semibold"
+                          onClick={() => setCourierModalOrder(selectedOrder)}
+                        >
+                          <i className="fa-solid fa-circle-info me-1"></i> View Courier Details
+                        </button>
+                      </div>
                     </div>
-                    <div className="small text-muted">Ph: {selectedOrder.shippingAddress?.phone}</div>
                   </div>
                 </div>
 
-                {/* India Post DOP Live Tracking Banner */}
+                {/* India Post / Carrier Live Tracking Banner */}
                 <div className="p-3 bg-light rounded-3 border mb-4">
                   <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                     <div>
@@ -1221,43 +1498,91 @@ export default function Orders() {
                   </div>
                 </div>
 
-                {/* Items Snapshot */}
-                <h6 className="fw-bold border-bottom pb-2">Order Items Snapshot</h6>
+                {/* Complete Products Purchased Table */}
+                <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                  <h6 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                    <i className="fa-solid fa-boxes-stacked text-primary"></i>
+                    <span>Purchased Products ({selectedOrder.items?.length || 0} items)</span>
+                  </h6>
+                  <span className="badge bg-light text-muted border">
+                    Total Units: {(selectedOrder.items || []).reduce((sum, item) => sum + (item.quantity || 1), 0)}
+                  </span>
+                </div>
+
                 <div className="table-responsive mb-4">
-                  <table className="admin-table">
-                    <thead>
+                  <table className="admin-table align-middle">
+                    <thead className="table-light">
                       <tr>
-                        <th>Item</th>
-                        <th>Qty</th>
+                        <th style={{ width: "60px" }}>Image</th>
+                        <th>Product Name & SKU</th>
+                        <th style={{ width: "80px" }}>Qty</th>
                         <th>Company Wholesale</th>
                         <th>Customer Price</th>
                         <th>Reseller Profit</th>
-                        <th>Subtotal</th>
+                        <th className="text-end">Item Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       {selectedOrder.items?.map((it, idx) => {
                         const wholesale = it.wholesalePricePaise || it.unitPricePaise || it.pricePaise || 0;
                         const customerPrice = it.customerSellingPricePaise || wholesale;
-                        const profit = it.resellerProfitPaise || (customerPrice - wholesale) * (it.quantity || 1);
+                        const profit = it.resellerProfitPaise !== undefined ? it.resellerProfitPaise : (customerPrice - wholesale) * (it.quantity || 1);
+                        const itemImg = it.image || it.product?.mainImage || it.product?.image || "";
                         return (
                           <tr key={idx}>
-                            <td className="fw-semibold">
-                              {it.name || it.product?.name || "Product"}
-                              {(it.color || it.size) && (
-                                <div className="d-flex flex-wrap gap-1 mt-1">
-                                  {it.color && <span className="badge bg-light text-dark border" style={{ fontSize: "10px" }}>{it.color}</span>}
-                                  {it.size && <span className="badge bg-light text-dark border" style={{ fontSize: "10px" }}>Size: {it.size}</span>}
+                            <td>
+                              {itemImg ? (
+                                <img
+                                  src={itemImg}
+                                  alt={it.name || "Product"}
+                                  className="rounded-3 border object-fit-cover shadow-sm"
+                                  style={{ width: "48px", height: "48px" }}
+                                  onError={(e) => { e.target.style.display = 'none'; }}
+                                />
+                              ) : (
+                                <div
+                                  className="rounded-3 border bg-light d-flex align-items-center justify-content-center text-muted"
+                                  style={{ width: "48px", height: "48px" }}
+                                >
+                                  <i className="fa-solid fa-box fa-lg"></i>
                                 </div>
                               )}
                             </td>
-                            <td>{it.quantity}</td>
-                            <td>₹{(wholesale / 100).toFixed(2)}</td>
-                            <td>₹{(customerPrice / 100).toFixed(2)}</td>
-                            <td className="text-success fw-semibold">
+                            <td>
+                              <div className="fw-bold text-dark fs-6">{it.name || it.product?.name || "Product"}</div>
+                              <div className="d-flex align-items-center gap-2 mt-1">
+                                <code className="text-secondary bg-light px-2 py-0.5 rounded border" style={{ fontSize: "11px" }}>
+                                  SKU: {it.sku || it.product?.sku || "SKU-N/A"}
+                                </code>
+                                {it.color && (
+                                  <span className="badge bg-light text-dark border" style={{ fontSize: "10.5px" }}>
+                                    Color: {it.color}
+                                  </span>
+                                )}
+                                {it.size && (
+                                  <span className="badge bg-light text-dark border" style={{ fontSize: "10.5px" }}>
+                                    Size: {it.size}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td>
+                              <span className="badge bg-dark rounded-pill px-3 py-1.5 fs-6">
+                                {it.quantity || 1}
+                              </span>
+                            </td>
+                            <td className="font-monospace text-muted">
+                              ₹{(wholesale / 100).toFixed(2)}
+                            </td>
+                            <td className="font-monospace fw-semibold text-dark">
+                              ₹{(customerPrice / 100).toFixed(2)}
+                            </td>
+                            <td className="font-monospace text-success fw-bold">
                               +₹{(profit / 100).toFixed(2)}
                             </td>
-                            <td className="fw-bold">₹{((customerPrice * it.quantity) / 100).toFixed(2)}</td>
+                            <td className="font-monospace text-end fw-bold text-dark">
+                              ₹{((customerPrice * (it.quantity || 1)) / 100).toFixed(2)}
+                            </td>
                           </tr>
                         );
                       })}
@@ -1564,6 +1889,178 @@ export default function Orders() {
                     setShowTrackingModal(false);
                     setTrackingData(null);
                   }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reseller Shipping Mode & Courier Partner Modal */}
+      {courierModalOrder && (
+        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.55)" }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+              <div className="modal-header border-bottom bg-light px-4 py-3 d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center gap-2">
+                  <div
+                    className="rounded-circle d-flex align-items-center justify-content-center text-white"
+                    style={{
+                      width: "38px",
+                      height: "38px",
+                      backgroundColor:
+                        courierModalOrder.courierPartner === "DTDC"
+                          ? "#0d6efd"
+                          : courierModalOrder.courierPartner === "Professional Courier"
+                          ? "#dc3545"
+                          : "#198754",
+                    }}
+                  >
+                    <i className="fa-solid fa-truck-fast"></i>
+                  </div>
+                  <div>
+                    <h5 className="modal-title fw-bold text-dark mb-0">Reseller Shipping Mode & Courier</h5>
+                    <span className="small text-muted font-monospace">{courierModalOrder.orderNumber}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setCourierModalOrder(null)}
+                ></button>
+              </div>
+
+              <div className="modal-body px-4 py-4">
+                {/* Courier Partner Banner */}
+                <div
+                  className="p-3 rounded-4 border mb-3 d-flex align-items-center justify-content-between"
+                  style={{
+                    backgroundColor:
+                      courierModalOrder.courierPartner === "DTDC"
+                        ? "#eff6ff"
+                        : courierModalOrder.courierPartner === "Professional Courier"
+                        ? "#fef2f2"
+                        : "#f8fafc",
+                    borderColor:
+                      courierModalOrder.courierPartner === "DTDC"
+                        ? "#bfdbfe"
+                        : courierModalOrder.courierPartner === "Professional Courier"
+                        ? "#fecaca"
+                        : "#e2e8f0",
+                  }}
+                >
+                  <div className="d-flex align-items-center gap-3">
+                    <span
+                      className={`badge fs-6 px-3 py-2 ${
+                        courierModalOrder.courierPartner === "DTDC"
+                          ? "bg-primary text-white"
+                          : courierModalOrder.courierPartner === "Professional Courier"
+                          ? "bg-danger text-white"
+                          : "bg-secondary text-white"
+                      }`}
+                    >
+                      <i className="fa-solid fa-truck-moving me-1"></i>
+                      {courierModalOrder.courierPartner === "DTDC"
+                        ? "DTDC Express"
+                        : courierModalOrder.courierPartner === "Professional Courier"
+                        ? "Professional Courier"
+                        : courierModalOrder.courierPartner || "India Post (Standard)"}
+                    </span>
+                    <div>
+                      <div className="fw-bold text-dark">
+                        {courierModalOrder.courierPartner === "DTDC"
+                          ? "DTDC Express Logistics"
+                          : courierModalOrder.courierPartner === "Professional Courier"
+                          ? "The Professional Couriers"
+                          : "India Post Speed Post"}
+                      </div>
+                      <div className="small text-muted">
+                        {courierModalOrder.isFastDelivery
+                          ? "⚡ Fast Delivery / Priority Air Dispatch"
+                          : "Standard Logistics Dispatch"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Logistics Key Details Grid */}
+                <div className="row g-2 mb-3">
+                  <div className="col-6">
+                    <div className="p-3 rounded-3 bg-light border">
+                      <div className="small text-muted mb-1">Delivery Speed</div>
+                      {courierModalOrder.isFastDelivery ? (
+                        <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                          <i className="fa-solid fa-bolt me-1"></i> Fast Delivery
+                        </span>
+                      ) : (
+                        <span className="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1">
+                          Standard Delivery
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="col-6">
+                    <div className="p-3 rounded-3 bg-light border">
+                      <div className="small text-muted mb-1">Shipping Fee</div>
+                      <span className="fw-bold text-dark font-monospace">
+                        ₹{((courierModalOrder.deliveryChargePaise || 0) / 100).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tracking & AWB details */}
+                <div className="p-3 rounded-3 bg-light border mb-3">
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <span className="small text-muted">AWB / Consignment Tracking:</span>
+                    <span className="badge bg-white text-dark border">
+                      {courierModalOrder.dispatchStatus || "Pending"}
+                    </span>
+                  </div>
+                  <div className="font-monospace fw-bold fs-6 text-dark">
+                    {courierModalOrder.trackingNumber || (
+                      <span className="text-muted fst-italic">Not assigned yet (pending dispatch)</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Customer Delivery Destination */}
+                <div className="p-3 rounded-3 bg-light border">
+                  <div className="small text-muted mb-1">Destination Address:</div>
+                  <div className="fw-semibold text-dark">
+                    {courierModalOrder.shippingAddress?.fullName || courierModalOrder.shippingAddress?.name || "Customer"}
+                  </div>
+                  <div className="small text-secondary">
+                    {courierModalOrder.shippingAddress?.street || courierModalOrder.shippingAddress?.addressLine1},{" "}
+                    {courierModalOrder.shippingAddress?.city}, {courierModalOrder.shippingAddress?.state} -{" "}
+                    <strong>{courierModalOrder.shippingAddress?.pincode || courierModalOrder.shippingAddress?.postalCode}</strong>
+                  </div>
+                  {(courierModalOrder.shippingAddress?.phone || courierModalOrder.reseller?.phone) && (
+                    <div className="small text-muted mt-1">
+                      <i className="fa-solid fa-phone me-1"></i>
+                      {courierModalOrder.shippingAddress?.phone || courierModalOrder.reseller?.phone}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="modal-footer border-top bg-light px-4 py-3 d-flex justify-content-between">
+                <button
+                  type="button"
+                  className="btn btn-outline-dark rounded-pill px-3"
+                  onClick={() => {
+                    handlePrintShippingLabel(courierModalOrder._id);
+                    setCourierModalOrder(null);
+                  }}
+                >
+                  <i className="fa-solid fa-barcode me-1"></i> Print Shipping Label
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary rounded-pill px-4"
+                  onClick={() => setCourierModalOrder(null)}
                 >
                   Close
                 </button>
