@@ -108,7 +108,7 @@ export default function Checkout() {
       !form.state.trim() ||
       !form.zip.trim()
     ) {
-      addToast("Please fill in all required customer billing and shipping fields.", "error");
+      addToast("Please fill in all required customer shipping details.", "error");
       return;
     }
 
@@ -663,10 +663,10 @@ export default function Checkout() {
 
           <form onSubmit={handlePlaceOrder}>
             <div className="row g-4">
-              {/* Billing Information Form */}
+              {/* Shipping Details Form */}
               <div className="col-lg-7">
                 <div className="bg-white p-4 p-md-5 rounded-4 shadow-sm border">
-                  <h4 className="fw-bold mb-4">Billing & Shipping Details</h4>
+                  <h4 className="fw-bold mb-4">Shipping Details</h4>
 
                   <div className="row g-3">
                     <div className="col-12 col-sm-6">
