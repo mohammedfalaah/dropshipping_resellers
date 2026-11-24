@@ -5,6 +5,7 @@ import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
 import { ordersApi, productsApi, paymentsApi } from "../services/api";
+import { parseWhatsAppAddress } from "../utils/addressParser";
 
 export default function Checkout() {
   const {
@@ -94,6 +95,67 @@ export default function Checkout() {
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  // Smart WhatsApp Customer Details Paste State & Handlers
+  const [smartPasteText, setSmartPasteText] = useState("");
+  const [parseFeedback, setParseFeedback] = useState(null);
+
+  const executeAddressParse = (rawText, showToastNotification = false) => {
+    if (!rawText || !rawText.trim()) return;
+    const parsed = parseWhatsAppAddress(rawText);
+
+    setForm((prev) => ({
+      ...prev,
+      firstName: parsed.firstName || prev.firstName,
+      lastName: parsed.lastName || prev.lastName,
+      email: parsed.email || prev.email,
+      phone: parsed.phone || prev.phone,
+      address: parsed.address || prev.address,
+      city: parsed.city || prev.city,
+      state: parsed.state || prev.state,
+      zip: parsed.zip || prev.zip,
+      notes: parsed.notes ? (prev.notes ? `${prev.notes} | ${parsed.notes}` : parsed.notes) : prev.notes,
+    }));
+
+    setParseFeedback({
+      detectedFields: parsed.detectedFields,
+      warnings: parsed.warnings,
+    });
+
+    if (showToastNotification) {
+      if (parsed.warnings.length === 0) {
+        addToast("All customer shipping details auto-filled successfully!", "success");
+      } else if (parsed.detectedFields.length > 0) {
+        addToast(`Auto-filled ${parsed.detectedFields.length} fields. Please check: ${parsed.warnings.join(", ")}.`, "info");
+      } else {
+        addToast("Could not recognize address format. Please fill fields manually.", "warning");
+      }
+    }
+  };
+
+  const handlePasteChange = (e) => {
+    const val = e.target.value;
+    setSmartPasteText(val);
+    if (val.trim().length >= 10) {
+      executeAddressParse(val, false);
+    } else if (!val.trim()) {
+      setParseFeedback(null);
+    }
+  };
+
+  const handleClearPaste = () => {
+    setSmartPasteText("");
+    setParseFeedback(null);
+    addToast("Paste box cleared.", "info");
+  };
+
+  const handleManualFillClick = () => {
+    if (!smartPasteText.trim()) {
+      addToast("Please paste customer details into the box first.", "warning");
+      return;
+    }
+    executeAddressParse(smartPasteText, true);
   };
 
   const handlePlaceOrder = async (e) => {
@@ -666,7 +728,87 @@ export default function Checkout() {
               {/* Shipping Details Form */}
               <div className="col-lg-7">
                 <div className="bg-white p-4 p-md-5 rounded-4 shadow-sm border">
-                  <h4 className="fw-bold mb-4">Shipping Details</h4>
+                  <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <h4 className="fw-bold mb-0">Shipping Details</h4>
+                    <span className="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1 py-1 px-2" style={{ fontSize: "11.5px" }}>
+                      <i className="fa-brands fa-whatsapp text-success fs-6"></i>
+                      <span>WhatsApp Smart Paste</span>
+                    </span>
+                  </div>
+
+                  {/* Smart Customer Details Paste Section */}
+                  <div className="p-3 mb-4 rounded-3 border bg-light bg-opacity-50" style={{ borderColor: "#d1fae5" }}>
+                    <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                      <label htmlFor="smartPasteInput" className="form-label small fw-bold mb-0 d-flex align-items-center gap-2 text-dark">
+                        <i className="fa-brands fa-whatsapp text-success fs-5"></i>
+                        <span>Paste Customer Details</span>
+                        <span className="badge bg-white text-muted border fw-normal" style={{ fontSize: "11px" }}>
+                          Auto-fills below
+                        </span>
+                      </label>
+                      <div className="d-flex align-items-center gap-2">
+                        {smartPasteText && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-secondary py-1 px-2 rounded-2"
+                            style={{ fontSize: "11px" }}
+                            onClick={handleClearPaste}
+                            title="Clear paste box"
+                          >
+                            <i className="fa-solid fa-xmark me-1"></i>Clear
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-success py-1 px-3 rounded-2 fw-semibold shadow-sm text-white"
+                          style={{ fontSize: "12px" }}
+                          onClick={handleManualFillClick}
+                          disabled={!smartPasteText.trim()}
+                        >
+                          <i className="fa-solid fa-wand-magic-sparkles me-1"></i>Fill Details
+                        </button>
+                      </div>
+                    </div>
+
+                    <textarea
+                      id="smartPasteInput"
+                      className="form-control bg-white shadow-none"
+                      rows="3"
+                      placeholder="Paste complete customer message from WhatsApp here... (e.g. Name, Phone, Address, City, State, PIN). Fields below will be filled automatically!"
+                      value={smartPasteText}
+                      onChange={handlePasteChange}
+                      style={{ fontSize: "13px", resize: "vertical" }}
+                    ></textarea>
+
+                    {/* Feedback Badges & Warnings */}
+                    {parseFeedback && (
+                      <div className="mt-2 pt-2 border-top d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div className="d-flex flex-wrap align-items-center gap-1">
+                          {parseFeedback.detectedFields.map((field) => (
+                            <span
+                              key={field}
+                              className="badge bg-success-subtle text-success border border-success-subtle py-1 px-2"
+                              style={{ fontSize: "10.5px" }}
+                            >
+                              <i className="fa-solid fa-check me-1"></i>
+                              {field}
+                            </span>
+                          ))}
+                        </div>
+                        {parseFeedback.warnings.length > 0 ? (
+                          <span className="text-warning-emphasis small fw-medium d-flex align-items-center gap-1" style={{ fontSize: "11.5px" }}>
+                            <i className="fa-solid fa-triangle-exclamation text-warning"></i>
+                            <span>Please review: {parseFeedback.warnings.join(", ")}</span>
+                          </span>
+                        ) : (
+                          <span className="text-success small fw-semibold d-flex align-items-center gap-1" style={{ fontSize: "11.5px" }}>
+                            <i className="fa-solid fa-circle-check"></i>
+                            <span>All required shipping fields filled!</span>
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                   <div className="row g-3">
                     <div className="col-12 col-sm-6">
