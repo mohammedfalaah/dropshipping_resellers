@@ -122,12 +122,6 @@ export default function QuickViewModal({ product, onClose }) {
   const isFavorited = isInWishlist(product.id || product._id);
 
   const handleAddToCart = () => {
-    if (!isAuthenticated) {
-      addToast("Please log in as a reseller to add products to your cart.", "info");
-      if (onClose) onClose();
-      navigate("/login", { state: { from: location } });
-      return;
-    }
     if (availableColors.length > 0 && !selectedColor) {
       addToast("Please select a color before adding to cart.", "error");
       return;
@@ -443,8 +437,8 @@ export default function QuickViewModal({ product, onClose }) {
                       className="btn btn-dark flex-grow-1 rounded-pill py-2 px-4 fw-semibold d-flex align-items-center justify-content-center gap-2"
                       onClick={handleAddToCart}
                     >
-                      <i className={`fa-solid ${isAuthenticated ? "fa-bag-shopping" : "fa-lock"} me-1`}></i>
-                      <span>{isAuthenticated ? "Add to Cart" : "Login to Add to Cart"}</span>
+                      <i className="fa-solid fa-bag-shopping me-1"></i>
+                      <span>Add to Cart</span>
                     </button>
 
                     <button

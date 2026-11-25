@@ -15,11 +15,6 @@ export default function Wishlist() {
   const location = useLocation();
 
   const handleMoveToCart = (product) => {
-    if (!isAuthenticated) {
-      addToast("Please log in as a reseller to add products to your cart.", "info");
-      navigate("/login", { state: { from: location } });
-      return;
-    }
     addToCart(product, 1);
     removeFromWishlist(product.id || product._id);
     addToast(`Moved ${product.name} to cart!`, "success");
@@ -119,8 +114,8 @@ export default function Wishlist() {
                     style={{ fontSize: "13px" }}
                     onClick={() => handleMoveToCart(item)}
                   >
-                    <i className={`fa-solid ${isAuthenticated ? "fa-cart-plus" : "fa-lock"}`}></i>
-                    <span>{isAuthenticated ? "Move to Cart" : "Login to Add"}</span>
+                    <i className="fa-solid fa-cart-plus me-1"></i>
+                    <span>Move to Cart</span>
                   </button>
                 </div>
               ))}
@@ -178,7 +173,7 @@ export default function Wishlist() {
                           className="btn btn-dark btn-sm rounded-pill px-3 me-2 fw-semibold"
                           onClick={() => handleMoveToCart(item)}
                         >
-                          <i className={`fa-solid ${isAuthenticated ? "fa-cart-plus" : "fa-lock"} me-1`}></i> {isAuthenticated ? "Add to Cart" : "Login to Add"}
+                          <i className="fa-solid fa-cart-plus me-1"></i> Add to Cart
                         </button>
                         <button
                           type="button"

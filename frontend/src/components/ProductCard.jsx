@@ -25,12 +25,6 @@ export default function ProductCard({ product, onQuickView, className = "", isDr
     e.stopPropagation();
     if (isDragging) return;
 
-    if (!isAuthenticated) {
-      addToast("Please log in as a reseller to add products to your cart.", "info");
-      navigate("/login", { state: { from: location } });
-      return;
-    }
-
     const hasOptions =
       (Array.isArray(product.variants) && product.variants.length > 1) ||
       (Array.isArray(product.colors) && product.colors.length > 1) ||
@@ -150,7 +144,7 @@ export default function ProductCard({ product, onQuickView, className = "", isDr
                 type="button"
                 className="border-0 bg-transparent p-0"
                 onClick={handleAddToCart}
-                title={isAuthenticated ? "Add to Cart" : "Login as Reseller to Add to Cart"}
+                title="Add to Cart"
                 style={{ cursor: "pointer" }}
               >
                 <img src="/images/icon-cart-white.svg" alt="Add to Cart" />

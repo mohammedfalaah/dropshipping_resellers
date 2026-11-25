@@ -28,21 +28,6 @@ export default function Shop() {
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
-  // Protect Reseller Shop: Must be logged in to view catalog
-  if (authLoading) {
-    return (
-      <div className="d-flex justify-content-center align-items-center py-5" style={{ minHeight: "60vh" }}>
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Checking authorization...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
   const filteredProducts = useMemo(() => {
     let result = [...products];
 

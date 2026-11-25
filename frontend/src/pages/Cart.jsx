@@ -51,7 +51,7 @@ export default function Cart() {
 
   const handleProceedToCheckout = () => {
     if (!isAuthenticated) {
-      addToast("Please log in as a reseller to checkout.", "info");
+      addToast("Please log in to complete your purchase and place your order.", "info");
       navigate("/login", { state: { from: { pathname: "/checkout" } } });
       return;
     }

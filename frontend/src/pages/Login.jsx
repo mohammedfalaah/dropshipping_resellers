@@ -117,7 +117,7 @@ export default function Login() {
             {location.state?.from && (
               <div className="alert alert-warning border d-flex align-items-center mb-4 py-2 px-3 rounded-3" style={{ fontSize: "13px" }}>
                 <i className="fa-solid fa-lock me-2 text-warning fs-6"></i>
-                <span>Reseller login required to access wholesale pricing and products.</span>
+                <span>Please sign in or register to complete your purchase and place your order.</span>
               </div>
             )}
 

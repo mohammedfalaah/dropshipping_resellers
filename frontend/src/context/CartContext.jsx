@@ -76,33 +76,15 @@ export const CartProvider = ({ children }) => {
     };
   }, []);
 
-  // Ensure cart is cleared if user is not authenticated
   useEffect(() => {
-    if (!isAuthenticated) {
-      setCart([]);
-      try {
-        localStorage.removeItem("sparepro_cart");
-        localStorage.removeItem("lumixa_cart");
-      } catch (e) {
-        // ignore
-      }
+    try {
+      localStorage.setItem("sparepro_cart", JSON.stringify(cart));
+    } catch (e) {
+      console.error("Failed to save cart to localStorage", e);
     }
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      try {
-        localStorage.setItem("sparepro_cart", JSON.stringify(cart));
-      } catch (e) {
-        console.error("Failed to save cart to localStorage", e);
-      }
-    }
-  }, [cart, isAuthenticated]);
+  }, [cart]);
 
   const addToCart = (product, quantity = 1, customSellingPrice = null, selectedColor = "", selectedSize = "", selectedImage = "") => {
-    if (!isAuthenticated) {
-      return false;
-    }
     const targetId = product.id || product._id;
     const wholesalePrice = Number(product.price ?? product.resellerPrice ?? 0);
     const initialSellingPrice =

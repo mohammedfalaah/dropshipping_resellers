@@ -26,19 +26,6 @@ export default function ProductDetails() {
     }
   }, [product]);
 
-  if (authLoading) {
-    return (
-      <div className="d-flex justify-content-center align-items-center py-5" style={{ minHeight: "60vh" }}>
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Checking authorization...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
   const [activeTab, setActiveTab] = useState("desc");
   const [reviewsList, setReviewsList] = useState([
     {
@@ -195,12 +182,6 @@ export default function ProductDetails() {
     .slice(0, 4);
 
   const handleAddToCart = () => {
-    if (!isAuthenticated) {
-      addToast("Please log in as a reseller to add products to your cart.", "info");
-      navigate("/login", { state: { from: location } });
-      return;
-    }
-
     if (availableColors.length > 0 && !selectedColor) {
       addToast("Please select your preferred color before adding to cart.", "error");
       return;
@@ -656,8 +637,8 @@ export default function ProductDetails() {
                     className="btn btn-dark rounded-pill py-3 px-5 fw-semibold flex-grow-1 d-flex align-items-center justify-content-center gap-2"
                     onClick={handleAddToCart}
                   >
-                    <i className={`fa-solid ${isAuthenticated ? "fa-bag-shopping" : "fa-lock"} me-1`}></i>
-                    <span>{isAuthenticated ? "Add to Cart" : "Login to Add to Cart"}</span>
+                    <i className="fa-solid fa-bag-shopping me-1"></i>
+                    <span>Add to Cart</span>
                   </button>
 
                   <button

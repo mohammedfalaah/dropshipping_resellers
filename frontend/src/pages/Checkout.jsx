@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import Breadcrumb from "../components/Breadcrumb";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
@@ -189,6 +189,12 @@ export default function Checkout() {
     if (underpricedItem) {
       const wholesale = Number(underpricedItem.wholesalePrice || underpricedItem.price || 0);
       addToast(`Customer selling price for "${underpricedItem.name}" must be at least ₹${wholesale}.`, "error");
+      return;
+    }
+
+    if (!isAuthenticated) {
+      addToast("Please log in to complete your purchase and place your order.", "warning");
+      navigate("/login", { state: { from: { pathname: "/checkout" } } });
       return;
     }
 
@@ -674,6 +680,10 @@ export default function Checkout() {
       setSubmitting(false);
     }
   };
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: { pathname: "/checkout" } }} replace />;
+  }
 
   if (cart.length === 0) {
     return (
