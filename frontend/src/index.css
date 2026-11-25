@@ -83,20 +83,20 @@ header.main-header.header-sticky-active {
   min-height: 90px;
 }
 
-/* Transparent Header Bar with Curved Cornering (Resting state over dark hero) */
+/* Floating Dark Header Capsule over Light Banner (Resting state) */
 header.main-header .header-sticky {
   position: relative;
-  background: rgba(15, 15, 20, 0.32) !important;
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  background: rgba(15, 23, 42, 0.94) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
   border-radius: 24px 24px 32px 32px !important;
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16) !important;
   transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 1000;
 }
 
-/* Sticky Glassmorphism Header Bar (When Scrolled) */
+/* Sticky Header Bar (When Scrolled) */
 header.main-header .header-sticky.active {
   position: fixed;
   top: 16px;
@@ -105,12 +105,12 @@ header.main-header .header-sticky.active {
   width: calc(100% - 40px);
   max-width: 1400px;
   margin: 0 auto;
-  background: rgba(18, 18, 22, 0.92) !important;
+  background: rgba(15, 23, 42, 0.96) !important;
   backdrop-filter: blur(24px) saturate(190%);
   -webkit-backdrop-filter: blur(24px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
   border-radius: 24px !important;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.15) !important;
   animation: slideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 1000;
 }
@@ -173,34 +173,34 @@ header.main-header .header-sticky.active {
   color: #ffffff !important;
 }
 
-/* Seamless Hero Section - Solid black to blend flawlessly with 77b798f7-9f87-48a6-896d-48c0551d1b12.png */
-.hero {
-  background-color: #000000 !important;
-  background-image: none !important;
-  padding-top: 195px !important;
-  min-height: 800px;
+/* ========================================================
+   LIGHT THEME HERO BANNER SECTION (Fast Loading, Responsive)
+   ======================================================== */
+.hero,
+.hero.hero-light-banner {
+  background-color: #f8fafc !important;
+  background-image: url('/images/hero-light-banner.jpg') !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  padding-top: 185px !important;
+  padding-bottom: 90px !important;
+  min-height: 700px;
   position: relative;
   overflow: hidden;
+  border-bottom: 1px solid #e2e8f0;
 }
 
-.hero::before {
+.hero::before,
+.hero.hero-light-banner::before {
   content: '' !important;
   position: absolute !important;
   inset: 0 !important;
-  background-image: url('/images/dark-section-bg-image.jpg') !important;
-  background-repeat: no-repeat !important;
-  background-size: 100% auto !important;
-  background-position: bottom center !important;
+  background: radial-gradient(ellipse at 50% 40%, rgba(255, 255, 255, 0.72) 0%, rgba(248, 250, 252, 0.88) 75%, rgba(241, 245, 249, 0.95) 100%) !important;
   width: 100% !important;
   height: 100% !important;
   z-index: 0 !important;
-}
-
-@media (max-width: 991px) {
-  .hero::before {
-    background-size: cover !important;
-    background-position: center bottom !important;
-  }
+  pointer-events: none;
 }
 
 .hero .container {
@@ -208,23 +208,187 @@ header.main-header .header-sticky.active {
   z-index: 1;
 }
 
+.hero-content {
+  max-width: 920px;
+  text-align: center;
+  margin: 0 auto;
+}
+
+/* Hero Sub-heading Pill & Badge */
 .hero-sub-heading {
-  margin-bottom: 18px;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+  border-radius: 50px;
+  padding: 6px 18px 6px 8px;
+  margin-bottom: 22px;
+}
+
+.hero-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 50px;
+}
+
+.pulse-indicator {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #10b981;
+  display: inline-block;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: pulseDot 2s infinite;
+}
+
+@keyframes pulseDot {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
 }
 
 .hero-sub-heading p {
   display: inline-block;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 500;
-  letter-spacing: 0.3px;
-  color: rgba(255, 255, 255, 0.9) !important;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  padding: 6px 20px;
+  color: #475569 !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Hero Typography (Light Theme) */
+.hero-content .section-title h1,
+.hero-headline {
+  font-size: 56px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.03em !important;
+  line-height: 1.15 !important;
+  color: #0f172a !important;
+  margin-bottom: 18px;
+  text-shadow: none !important;
+}
+
+.text-gradient-accent {
+  background: linear-gradient(135deg, #0f172a 0%, #FA7EAA 70%, #f43f5e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+}
+
+.hero-lead-text {
+  font-size: 17px;
+  line-height: 1.6;
+  color: #475569;
+  max-width: 720px;
+  margin: 0 auto 34px auto;
+  font-weight: 450;
+}
+
+/* Hero CTA Buttons */
+.hero-content-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 0 !important;
+  margin-bottom: 38px;
+}
+
+.btn-hero-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 34px;
+  background: #0f172a;
+  color: #ffffff !important;
+  font-size: 15.5px;
+  font-weight: 600;
   border-radius: 50px;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  margin: 0;
+  border: 1px solid #0f172a;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+}
+
+.btn-hero-primary:hover {
+  background: #1e293b;
+  color: #ffffff !important;
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.25);
+}
+
+.btn-hero-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 32px;
+  background: #ffffff;
+  color: #0f172a !important;
+  font-size: 15.5px;
+  font-weight: 600;
+  border-radius: 50px;
+  border: 1.5px solid #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+}
+
+.btn-hero-secondary:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+/* Reseller Trust Bar */
+.hero-trust-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #e2e8f0;
+  border-radius: 50px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.hero-trust-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
 }
 
 .page-header {
@@ -1447,25 +1611,78 @@ html, body, #root, .site-wrapper {
     padding: 2px 6px !important;
   }
 
-  /* Responsive Hero section */
-  .hero-content .section-title h1 {
-    font-size: 28px !important;
-    line-height: 1.25 !important;
+  /* Responsive Hero section (Mobile Tuning) */
+  .hero,
+  .hero.hero-light-banner {
+    padding-top: 135px !important;
+    padding-bottom: 45px !important;
+    min-height: auto !important;
+    background-position: center top !important;
+  }
+
+  .hero-content .section-title h1,
+  .hero-headline {
+    font-size: 32px !important;
+    line-height: 1.2 !important;
+    letter-spacing: -0.02em !important;
+    margin-bottom: 14px !important;
+  }
+
+  .hero-sub-heading {
+    border-radius: 24px !important;
+    padding: 6px 12px !important;
+    margin-bottom: 16px !important;
+    max-width: 100%;
   }
 
   .hero-sub-heading p {
-    font-size: 13px !important;
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+  }
+
+  .hero-pill-badge {
+    font-size: 10px !important;
+    padding: 3px 8px !important;
+  }
+
+  .hero-lead-text {
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+    margin-bottom: 22px !important;
+    padding: 0 4px;
   }
 
   .hero-content-btn {
     flex-direction: column !important;
     gap: 10px !important;
     width: 100%;
+    margin-bottom: 24px !important;
   }
 
+  .btn-hero-primary,
+  .btn-hero-secondary,
   .hero-content-btn .btn-default {
     width: 100% !important;
     text-align: center;
+    padding: 13px 20px !important;
+    font-size: 14.5px !important;
+    justify-content: center;
+  }
+
+  .hero-trust-bar {
+    border-radius: 16px !important;
+    padding: 12px 14px !important;
+    gap: 10px 8px !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    text-align: left;
+    width: 100%;
+  }
+
+  .hero-trust-item {
+    font-size: 11.5px !important;
+    white-space: normal !important;
+    gap: 6px !important;
   }
 
   /* Responsive Breadcrumb */

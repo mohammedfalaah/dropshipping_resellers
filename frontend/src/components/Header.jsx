@@ -95,7 +95,7 @@ export default function Header() {
               <div className="container position-relative">
                 {/* Logo */}
                 <Link className="navbar-brand" to="/">
-                  <img src="/images/Chrome SPARE PRO Logo.png" alt="SPARE PRO" height="42" />
+                  <img src="/images/Chrome SPARE PRO Logo.png" alt="SPARE PRO" height="42" width="113" decoding="async" />
                 </Link>
 
               {/* Desktop Menu */}

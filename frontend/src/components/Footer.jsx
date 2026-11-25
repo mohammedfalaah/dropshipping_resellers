@@ -77,7 +77,7 @@ export default function Footer() {
               <div className="about-footer pe-xl-4">
                 <div className="footer-logo mb-3">
                   <Link to="/">
-                    <img src="/images/Chrome SPARE PRO Logo.png" alt="SPARE PRO" height="42" />
+                    <img src="/images/Chrome SPARE PRO Logo.png" alt="SPARE PRO" height="42" width="113" loading="lazy" decoding="async" />
                   </Link>
                 </div>
 

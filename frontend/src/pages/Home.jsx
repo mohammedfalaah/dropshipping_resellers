@@ -51,29 +51,59 @@ export default function Home() {
 
   return (
     <>
-      {/* Hero Section */}
-      <div className="hero dark-section parallaxie">
+      {/* Hero Section - Light Theme Banner */}
+      <div className="hero hero-light-banner">
         <div className="container">
           <div className="row">
             <div className="col-lg-12">
               <div className="hero-content">
                 <div className="hero-sub-heading wow fadeInUp">
+                  <span className="hero-pill-badge">
+                    <span className="pulse-indicator"></span>
+                    Direct B2B Sourcing
+                  </span>
                   <p>Shop popular products selected by demand and sales performance.</p>
                 </div>
 
                 <div className="section-title">
-                  <h1 className="text-anime-style-3">Wholesale Prices. Better Margins. </h1>
+                  <h1 className="hero-headline text-anime-style-3">
+                    Wholesale Prices. <span className="text-gradient-accent">Better Margins.</span>
+                  </h1>
                 </div>
 
-               
+                <p className="hero-lead-text wow fadeInUp" data-wow-delay="0.2s">
+                  Direct factory wholesale pricing on high-demand gadgets, luxury timepieces, and streetwear fashion. Start reselling across WhatsApp, Instagram, or your own store with fast dispatch and zero inventory risk.
+                </p>
 
-                <div className="hero-content-btn wow fadeInUp" data-wow-delay="0.4s">
-                  <Link to="/shop" className="btn-default">
+                <div className="hero-content-btn wow fadeInUp" data-wow-delay="0.3s">
+                  <Link to="/shop" className="btn-hero-primary">
                     <span>Explore Products</span>
+                    <i className="fa-solid fa-arrow-right ms-2"></i>
                   </Link>
-                  <Link to="/shop" className="btn-default btn-border">
+                  <Link to="/shop" className="btn-hero-secondary">
+                    <i className="fa-solid fa-arrow-trend-up me-2"></i>
                     <span>Start Reselling</span>
                   </Link>
+                </div>
+
+                {/* Reseller Trust & Feature Pills */}
+                <div className="hero-trust-bar wow fadeInUp" data-wow-delay="0.4s">
+                  <div className="hero-trust-item">
+                    <i className="fa-solid fa-circle-check text-success"></i>
+                    <span>Tier-1 Factory Pricing</span>
+                  </div>
+                  <div className="hero-trust-item">
+                    <i className="fa-solid fa-truck-fast" style={{ color: "var(--accent-color, #FA7EAA)" }}></i>
+                    <span>Fast Pan-India Dispatch</span>
+                  </div>
+                  <div className="hero-trust-item">
+                    <i className="fa-solid fa-chart-line text-primary"></i>
+                    <span>High Reseller Margins</span>
+                  </div>
+                  <div className="hero-trust-item">
+                    <i className="fa-solid fa-box-archive text-dark"></i>
+                    <span>DTDC Courier Tracking</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -87,7 +117,7 @@ export default function Home() {
           <div className="scrolling-content">
             {[...tickerItems, ...tickerItems].map((item, idx) => (
               <span key={`ticker-a-${idx}`}>
-                <img src={item.img} alt="" loading="lazy" decoding="async" />
+                <img src={item.img} alt="" width="28" height="28" loading="lazy" decoding="async" style={{ objectFit: 'cover', borderRadius: '50%' }} />
                 {item.text}
               </span>
             ))}
@@ -96,7 +126,7 @@ export default function Home() {
           <div className="scrolling-content" aria-hidden="true">
             {[...tickerItems, ...tickerItems].map((item, idx) => (
               <span key={`ticker-b-${idx}`}>
-                <img src={item.img} alt="" loading="lazy" decoding="async" />
+                <img src={item.img} alt="" width="28" height="28" loading="lazy" decoding="async" style={{ objectFit: 'cover', borderRadius: '50%' }} />
                 {item.text}
               </span>
             ))}
@@ -297,7 +327,7 @@ export default function Home() {
                 {/* Side Image */}
                 <div className="limited-offer-image">
                   <figure className="image-anime">
-                    <img src="/images/lifestyle-display.png" alt="Limited Wholesale Offer" />
+                    <img src="/images/lifestyle-display.png" alt="Limited Wholesale Offer" loading="lazy" decoding="async" width="550" height="400" style={{ maxWidth: "100%", height: "auto" }} />
                   </figure>
                 </div>
               </div>
