@@ -568,10 +568,17 @@ const getShippingLabel = async (req, res, next) => {
 
     // If query format is html / view is print / download is 1, return the standalone printable HTML
     if (req.query.format === "html" || req.query.view === "print" || req.query.download === "1") {
-      const html = shippingLabelService.generateLabelHtml(labelData.order, {
-        barcode: labelData.barcode,
-        svg: labelData.barcodeSvg,
-      });
+      const html = shippingLabelService.generateLabelHtml(
+        labelData.order,
+        {
+          barcode: labelData.barcode,
+          svg: labelData.barcodeSvg,
+        },
+        {
+          fastDelivery: req.query.fastDelivery === "true" || req.query.fastDelivery === "1",
+          courier: req.query.courier,
+        }
+      );
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       return res.send(html);
     }

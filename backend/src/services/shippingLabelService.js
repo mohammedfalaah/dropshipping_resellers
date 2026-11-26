@@ -242,9 +242,322 @@ const getOrCreateShippingLabel = async (orderId) => {
 };
 
 /**
- * Generate a printable, 4x6 inch thermal shipping label HTML document
+ * Generate a clean, simple shipping address label containing ONLY:
+ * - Customer's Name
+ * - Phone Number
+ * - Complete Delivery Address
+ * (Used for Fast Delivery orders with DTDC or Professional Courier)
+ * Does NOT display consignment number, tracking ID, barcode, or courier booking details.
  */
-const generateLabelHtml = (order, barcodeMeta) => {
+const generateSimpleAddressLabelHtml = (order) => {
+  const recipient = order.shippingAddress || {};
+  const recipientName =
+    [recipient.firstName, recipient.lastName].filter(Boolean).join(" ") ||
+    recipient.fullName ||
+    recipient.name ||
+    "Customer";
+
+  const phone = recipient.phone || recipient.phoneNumber || recipient.mobile || "";
+
+  // Complete delivery street address
+  const streetParts = [
+    recipient.address || recipient.addressLine1,
+    recipient.addressLine2,
+    recipient.street,
+  ].filter(Boolean);
+  const streetAddress = [...new Set(streetParts)].join(", ");
+
+  const city = recipient.city || "";
+  const state = recipient.state || "";
+  const pincode = recipient.postalCode || recipient.pincode || recipient.zip || "";
+  const notes = (recipient.notes || "").trim();
+
+  // Combine city and state
+  const cityState = [city, state].filter(Boolean).join(", ");
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shipping Label - ${recipientName}</title>
+  <style>
+    @page {
+      size: 100mm 150mm; /* Standard 4x6" thermal label */
+      margin: 5mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #f1f5f9;
+      color: #000000;
+    }
+    .toolbar {
+      max-width: 440px;
+      margin: 0 auto 14px auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #0f172a;
+      padding: 10px 16px;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 13px;
+    }
+    .toolbar button {
+      background: #dc2626;
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+    .toolbar button:hover {
+      background: #b91c1c;
+    }
+    .label-card {
+      width: 100mm;
+      max-width: 100%;
+      min-height: 140mm;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 3px solid #000000;
+      padding: 24px 20px;
+      position: relative;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      display: flex;
+      flex-direction: column;
+    }
+    .label-header {
+      border-bottom: 2.5px solid #000000;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .deliver-to-tag {
+      background: #000000;
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      padding: 5px 14px;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+    .delivery-type-tag {
+      font-size: 11px;
+      font-weight: 800;
+      color: #000000;
+      border: 1.5px solid #000000;
+      padding: 4px 10px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .customer-details {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      flex: 1;
+    }
+    .section-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .group-label {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #475569;
+    }
+    .customer-name {
+      font-size: 22px;
+      font-weight: 900;
+      color: #000000;
+      line-height: 1.25;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      word-break: break-word;
+    }
+    .phone-box {
+      border: 2px solid #000000;
+      background: #f8fafc;
+      padding: 10px 14px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      width: fit-content;
+      max-width: 100%;
+    }
+    .phone-icon {
+      font-size: 18px;
+      line-height: 1;
+    }
+    .phone-val {
+      font-size: 18px;
+      font-weight: 900;
+      color: #000000;
+      letter-spacing: 0.8px;
+    }
+    .address-box {
+      border: 1.5px solid #000000;
+      padding: 14px;
+      border-radius: 4px;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .address-line {
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.45;
+      color: #000000;
+      white-space: pre-line;
+      word-break: break-word;
+    }
+    .city-state-line {
+      font-size: 16px;
+      font-weight: 800;
+      color: #000000;
+      text-transform: uppercase;
+    }
+    .pincode-highlight {
+      margin-top: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 19px;
+      font-weight: 900;
+      color: #000000;
+      letter-spacing: 2px;
+      padding: 5px 12px;
+      background: #f1f5f9;
+      border: 2px solid #000000;
+      border-radius: 4px;
+      width: fit-content;
+    }
+    .notes-box {
+      margin-top: 4px;
+      padding: 6px 10px;
+      background: #fffbeb;
+      border: 1px dashed #d97706;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #92400e;
+      font-weight: 600;
+      line-height: 1.35;
+    }
+    @media print {
+      body {
+        background: #ffffff;
+        padding: 0;
+      }
+      .toolbar {
+        display: none !important;
+      }
+      .label-card {
+        border: 2.5px solid #000000;
+        box-shadow: none;
+        width: 100%;
+        min-height: auto;
+        padding: 18px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <div>
+      <strong>Shipping Address Label:</strong> ${recipientName}
+    </div>
+    <button onclick="window.print()">
+      <span>🖨️</span> Print Label
+    </button>
+  </div>
+
+  <div class="label-card">
+    <div class="label-header">
+      <div class="deliver-to-tag">DELIVER TO</div>
+      <div class="delivery-type-tag">CUSTOMER ADDRESS</div>
+    </div>
+
+    <div class="customer-details">
+      <!-- 1. Customer Name -->
+      <div class="section-group">
+        <div class="group-label">Customer Name</div>
+        <div class="customer-name">${recipientName}</div>
+      </div>
+
+      <!-- 2. Phone Number -->
+      <div class="section-group">
+        <div class="group-label">Phone Number</div>
+        <div class="phone-box">
+          <span class="phone-icon">📞</span>
+          <span class="phone-val">${phone || "Not Provided"}</span>
+        </div>
+      </div>
+
+      <!-- 3. Complete Delivery Address -->
+      <div class="section-group">
+        <div class="group-label">Complete Delivery Address</div>
+        <div class="address-box">
+          ${streetAddress ? `<div class="address-line">${streetAddress}</div>` : ""}
+          ${cityState ? `<div class="city-state-line">${cityState}</div>` : ""}
+          <div class="pincode-highlight">
+            PIN CODE: ${pincode || "—"}
+          </div>
+          ${notes ? `<div class="notes-box"><strong>Delivery Instructions / Landmark:</strong> ${notes}</div>` : ""}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    if (new URLSearchParams(window.location.search).get("autoPrint") === "1") {
+      window.onload = function() {
+        window.print();
+      };
+    }
+  </script>
+</body>
+</html>`;
+};
+
+/**
+ * Generate a printable shipping label HTML document
+ * - If order has Fast Delivery AND courier is DTDC or Professional Courier:
+ *   returns a simple shipping label containing ONLY customer name, phone number, and complete delivery address.
+ * - Otherwise: returns standard comprehensive postal/courier manifest label.
+ */
+const generateLabelHtml = (order, barcodeMeta, options = {}) => {
+  const isFastDelivery = Boolean(order.isFastDelivery || options.fastDelivery);
+  const courierRaw = String(options.courier || order.courierName || order.selectedCourier || "").trim();
+  const isDtdc = /dtdc/i.test(courierRaw);
+  const isProfessional = /professional/i.test(courierRaw);
+
+  // Requirement: Fast Delivery + DTDC / Professional Courier -> Simple address-only label
+  if (isFastDelivery && (isDtdc || isProfessional)) {
+    return generateSimpleAddressLabelHtml(order);
+  }
+
   const barcode = order.trackingNumber || barcodeMeta.barcode;
   const barcodeSvg = barcodeMeta.svg;
   const isCod = String(order.paymentMethod || "").toUpperCase() === "COD";
@@ -273,7 +586,6 @@ const generateLabelHtml = (order, barcodeMeta) => {
   const itemsSummary = (order.items || []).map((i) => `${i.name || i.sku || "Product"} (x${i.quantity})`).join(", ");
 
   // Dynamic courier branding logic based on selected courier partner
-  const courierRaw = String(order.courierName || order.selectedCourier || "").trim();
   let courierType = "INDIAPOST";
   let courierBrandName = "INDIA POST";
   let courierTitle = "DEPARTMENT OF POSTS";
@@ -709,5 +1021,6 @@ module.exports = {
   generateConsignmentNumber,
   getOrCreateShippingLabel,
   generateLabelHtml,
+  generateSimpleAddressLabelHtml,
 };
 

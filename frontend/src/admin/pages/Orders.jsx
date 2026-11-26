@@ -231,10 +231,22 @@ export default function Orders() {
   };
 
   // Open / Download 4x6" Printable Shipping Label
-  const handlePrintShippingLabel = (orderId) => {
+  const handlePrintShippingLabel = (orderId, orderObj = null) => {
+    const o =
+      orderObj ||
+      orders.find((item) => item._id === orderId) ||
+      (selectedOrder?._id === orderId ? selectedOrder : null) ||
+      (courierModalOrder?._id === orderId ? courierModalOrder : null);
+
+    let queryParams = "";
+    if (o) {
+      if (o.isFastDelivery) queryParams += "&fastDelivery=true";
+      if (o.courierName) queryParams += `&courier=${encodeURIComponent(o.courierName)}`;
+    }
+
     const printUrl = adminApi.getShippingLabelPrintUrl
-      ? adminApi.getShippingLabelPrintUrl(orderId)
-      : `/api/orders/${orderId}/shipping-label?view=print&autoPrint=1&token=${localStorage.getItem("sparepro_token") || ""}`;
+      ? adminApi.getShippingLabelPrintUrl(orderId, queryParams.replace(/^&/, ""))
+      : `/api/orders/${orderId}/shipping-label?view=print&autoPrint=1&token=${localStorage.getItem("sparepro_token") || ""}${queryParams}`;
     window.open(printUrl, "_blank", "noopener,noreferrer,width=850,height=950");
   };
 
@@ -892,7 +904,7 @@ export default function Orders() {
                                 className="dropdown-item py-2 px-3 d-flex align-items-center gap-2 small rounded-2 text-dark"
                                 onClick={() => {
                                   setActiveDropdownId(null);
-                                  handlePrintShippingLabel(o._id);
+                                  handlePrintShippingLabel(o._id, o);
                                 }}
                               >
                                 <i className="fa-solid fa-barcode text-dark" style={{ width: "16px" }}></i>
@@ -1679,7 +1691,7 @@ export default function Orders() {
                   <button
                     type="button"
                     className="btn btn-outline-dark rounded-pill px-3 shadow-sm"
-                    onClick={() => handlePrintShippingLabel(selectedOrder._id)}
+                    onClick={() => handlePrintShippingLabel(selectedOrder._id, selectedOrder)}
                   >
                     <i className="fa-solid fa-barcode me-1"></i> Print / Download Shipping Label
                   </button>
@@ -2063,7 +2075,7 @@ export default function Orders() {
                   type="button"
                   className="btn btn-outline-dark rounded-pill px-3"
                   onClick={() => {
-                    handlePrintShippingLabel(courierModalOrder._id);
+                    handlePrintShippingLabel(courierModalOrder._id, courierModalOrder);
                     setCourierModalOrder(null);
                   }}
                 >
