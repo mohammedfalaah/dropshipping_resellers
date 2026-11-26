@@ -42,12 +42,14 @@ export default function Home() {
 
   const filteredProducts =
     selectedCategory === "all"
-      ? products.slice(0, 8)
-      : products.filter(
-          (p) =>
-            (p.categorySlug || "").toLowerCase() === selectedCategory.toLowerCase() ||
-            (p.category || "").toLowerCase() === selectedCategory.toLowerCase()
-        );
+      ? products.slice(0, 20)
+      : products
+          .filter(
+            (p) =>
+              (p.categorySlug || "").toLowerCase() === selectedCategory.toLowerCase() ||
+              (p.category || "").toLowerCase() === selectedCategory.toLowerCase()
+          )
+          .slice(0, 20);
 
   return (
     <>
