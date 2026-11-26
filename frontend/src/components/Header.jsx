@@ -165,11 +165,13 @@ export default function Header() {
                       <img src="/images/icon-cart-primary.svg" alt="Cart" />
                       {cartCount > 0 && (
                         <span
-                          className="position-absolute top-0 start-100 translate-middle badge rounded-pill text-white"
+                          className="position-absolute top-0 start-100 translate-middle badge rounded-pill"
                           style={{
                             fontSize: "10px",
                             padding: "3px 6px",
-                            backgroundColor: "var(--accent-color, #FA7EAA)"
+                            backgroundColor: "#00C9A7",
+                            color: "#111827",
+                            fontWeight: "700"
                           }}
                         >
                           {cartCount}
@@ -204,44 +206,44 @@ export default function Header() {
               <div className="mobile-menu-drawer d-lg-none py-3 px-4 position-relative" style={{ zIndex: 1000 }}>
                 <ul className="navbar-nav">
                   <li className="nav-item py-1">
-                    <Link className="nav-link fw-semibold" to="/" onClick={() => setMobileMenuOpen(false)}>
-                      <i className="fa-solid fa-house me-2 text-primary"></i> Home
-                    </Link>
+                    <NavLink className="nav-link fw-semibold" to="/" end onClick={() => setMobileMenuOpen(false)}>
+                      <i className="fa-solid fa-house me-2" style={{ color: "#00C9A7" }}></i> Home
+                    </NavLink>
                   </li>
                   <li className="nav-item py-1">
-                    <Link className="nav-link fw-semibold" to="/shop" onClick={() => setMobileMenuOpen(false)}>
-                      <i className="fa-solid fa-store me-2 text-primary"></i> Shop All Products
-                    </Link>
+                    <NavLink className="nav-link fw-semibold" to="/shop" onClick={() => setMobileMenuOpen(false)}>
+                      <i className="fa-solid fa-store me-2" style={{ color: "#00C9A7" }}></i> Shop All Products
+                    </NavLink>
                   </li>
                   <li className="nav-item py-1">
-                    <Link className="nav-link fw-semibold" to="/cart" onClick={() => setMobileMenuOpen(false)}>
-                      <i className="fa-solid fa-basket-shopping me-2 text-primary"></i> Cart ({cartCount})
-                    </Link>
+                    <NavLink className="nav-link fw-semibold" to="/cart" onClick={() => setMobileMenuOpen(false)}>
+                      <i className="fa-solid fa-basket-shopping me-2" style={{ color: "#00C9A7" }}></i> Cart ({cartCount})
+                    </NavLink>
                   </li>
                   <li className="nav-item py-1">
-                    <Link className="nav-link fw-semibold" to="/wishlist" onClick={() => setMobileMenuOpen(false)}>
-                      <i className="fa-solid fa-heart me-2 text-danger"></i> Wishlist ({wishlistCount})
-                    </Link>
+                    <NavLink className="nav-link fw-semibold" to="/wishlist" onClick={() => setMobileMenuOpen(false)}>
+                      <i className="fa-solid fa-heart me-2" style={{ color: "#00C9A7" }}></i> Wishlist ({wishlistCount})
+                    </NavLink>
                   </li>
                   <li className="nav-item py-1">
-                    <Link className="nav-link fw-semibold" to="/account" onClick={() => setMobileMenuOpen(false)}>
-                      <i className="fa-solid fa-user me-2 text-primary"></i> My Account
-                    </Link>
+                    <NavLink className="nav-link fw-semibold" to="/account" onClick={() => setMobileMenuOpen(false)}>
+                      <i className="fa-solid fa-user me-2" style={{ color: "#00C9A7" }}></i> My Account
+                    </NavLink>
                   </li>
                   <li className="nav-item py-1">
-                    <Link className="nav-link fw-semibold" to="/about" onClick={() => setMobileMenuOpen(false)}>
-                      <i className="fa-solid fa-circle-info me-2 text-primary"></i> About Us
-                    </Link>
+                    <NavLink className="nav-link fw-semibold" to="/about" onClick={() => setMobileMenuOpen(false)}>
+                      <i className="fa-solid fa-circle-info me-2" style={{ color: "#00C9A7" }}></i> About Us
+                    </NavLink>
                   </li>
                   <li className="nav-item py-1">
-                    <Link className="nav-link fw-semibold" to="/contact" onClick={() => setMobileMenuOpen(false)}>
-                      <i className="fa-solid fa-envelope me-2 text-primary"></i> Contact Us
-                    </Link>
+                    <NavLink className="nav-link fw-semibold" to="/contact" onClick={() => setMobileMenuOpen(false)}>
+                      <i className="fa-solid fa-envelope me-2" style={{ color: "#00C9A7" }}></i> Contact Us
+                    </NavLink>
                   </li>
                   <li className="nav-item py-1">
-                    <Link className="nav-link fw-semibold" to="/faqs" onClick={() => setMobileMenuOpen(false)}>
-                      <i className="fa-solid fa-circle-question me-2 text-primary"></i> FAQs
-                    </Link>
+                    <NavLink className="nav-link fw-semibold" to="/faqs" onClick={() => setMobileMenuOpen(false)}>
+                      <i className="fa-solid fa-circle-question me-2" style={{ color: "#00C9A7" }}></i> FAQs
+                    </NavLink>
                   </li>
                 </ul>
               </div>
@@ -315,7 +317,7 @@ export default function Header() {
                           <h6 className="mb-0" style={{ fontSize: "14px" }}>{prod.name}</h6>
                           <span className="text-muted small">{prod.category}</span>
                         </div>
-                        <span className="fw-bold" style={{ color: "var(--accent-color, #FA7EAA)" }}>
+                        <span className="fw-bold" style={{ color: "#00C9A7" }}>
                           ₹{prod.price.toFixed(2)}
                         </span>
                       </div>
